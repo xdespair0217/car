@@ -79,7 +79,7 @@
         <option value="pudding">布丁狗 (2.0T)</option>
       </select>
     </div>
-    <div style="color: #4a5568; font-size: 11px;">FOUR-ZONE MATRIX v1.7</div>
+    <div style="color: #4a5568; font-size: 11px;">FOUR-ZONE MATRIX v2.0</div>
   </header>
 
   <div class="dashboard">
@@ -159,9 +159,6 @@
   </div>
 
   <script>
-    // ==========================================
-    // 🔗 已經成功綁定你的 Google 試算表 CSV 發布網址
-    // ==========================================
     const GOOGLE_左欄說明_CSV_網址 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=480563912&single=true&output=csv";
     const GOOGLE_右欄案例_CSV_網址 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";
 
@@ -175,10 +172,9 @@
           fetch(GOOGLE_右欄案例_CSV_網址)
         ]);
         const 左欄文字 = await 回應左欄.text();
-        const 右欄文字 = await 回應右欄.text();
-        解析雲端中文資料(左欄文字, 右欄文字);
+        const 右欄文字 = await 回應熱攔 = await 回應右欄.text();
         
-        // 自動建立車型選單選項
+        解析雲端中文資料(左欄文字, 右欄文字);
         建立車型選單();
         switchCar();
       } catch (error) {
@@ -187,13 +183,49 @@
       }
     }
 
+    // 🌟 進階標準 CSV 解析引擎：精準支援 Google 試算表內的原生儲存格換行 (Alt+Enter)
+    function 拆分CSV資料列(完整文字) {
+      let 資料列 = [];
+      let 當前欄位 = '';
+      let 單列快取 = [];
+      let 在引號內 = false;
+
+      for (let i = 0; i < 完整文字.length; i++) {
+        let 字元 = 完整文字.charAt(i);
+        let 下個字元 = 完整文字.charAt(i + 1);
+
+        if (字元 === '"') {
+          if (在引號內 && 下個字元 === '"') {
+            當前欄位 += '"'; i++; // 處理連續雙引號轉義
+          } else {
+            在引號內 = !在引號內; // 切換引號狀態
+          }
+        } else if (字元 === ',' && !在引號內) {
+          單列快取.push(當前欄位.trim());
+          當前欄位 = '';
+        } else if ((字元 === '\r' || 字元 === '\n') && !在引號內) {
+          if (字元 === '\r' && 下個字元 === '\n') { i++; }
+          單列快取.push(當前欄位.trim());
+          資料列.push(單列快取);
+          單列快取 = [];
+          當前欄位 = '';
+        } else {
+          當前欄位 += 字元;
+        }
+      }
+      if (當前欄位 || 單列快取.length > 0) {
+        單列快取.push(當前欄位.trim());
+        資料列.push(單列快取);
+      }
+      return 資料列;
+    }
+
     function 解析雲端中文資料(左欄CSV, 右欄CSV) {
       全局車型資料庫 = {};
 
       // 解析左欄
-      const 左欄每一列 = 左欄CSV.split(/\r?\n/).slice(1);
-      左欄每一列.forEach(單列 => {
-        const 欄位 = parseCSVRow(單列);
+      const 左欄資料 = 拆分CSV資料列(左欄CSV).slice(1);
+      左欄資料.forEach(欄位 => {
         if (欄位.length < 3) return;
         const [車型代碼, 基礎數據, 核心通病] = 欄位;
         if (!車型代碼) return;
@@ -201,15 +233,14 @@
         if (!全局車型資料庫[車型代碼]) {
           全局車型資料庫[車型代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
         }
-        // 支援多行換行語法
+        // 替換掉可能殘留的字串斜線，改由原生換行接管
         全局車型資料庫[車型代碼].基礎數據 = 基礎數據.replace(/\\n/g, '\n');
         全局車型資料庫[車型代碼].核心通病 = 核心通病.replace(/\\n/g, '\n');
       });
 
       // 解析右欄
-      const 右欄每一列 = 右欄CSV.split(/\r?\n/).slice(1);
-      右欄每一列.forEach(單列 => {
-        const 欄位 = parseCSVRow(單列);
+      const 右欄資料 = 拆分CSV資料列(右欄CSV).slice(1);
+      右欄資料.forEach(欄位 => {
         if (欄位.length < 7) return;
         const [車型代碼, 部位名稱, 案例標題, 系統分類, 案例詳細文字描述, 實車參考圖片網址, 雲端PDF報告網址] = 欄位;
         if (!車型代碼 || !部位名稱) return;
@@ -232,18 +263,6 @@
           網址: 雲端PDF報告網址
         });
       });
-    }
-
-    function parseCSVRow(text) {
-      let p = '', r = []; let q = false;
-      for (let i = 0; i < text.length; i++) {
-        let c = text.charAt(i);
-        if (c === '"') { q = !q; }
-        else if (c === ',' && !q) { r.push(p); p = ''; }
-        else { p += c; }
-      }
-      r.push(p);
-      return r.map(v => v.replace(/^"|"$/g, '').trim());
     }
 
     function 建立車型選單() {
