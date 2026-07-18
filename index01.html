@@ -75,11 +75,12 @@
   <header>
     <div style="display: flex; align-items: center; gap: 10px;">
       <span style="font-size: 14px; color: #a0aec0;">解構車型：</span>
+      <!-- 🛠️ 這裡直接為你硬生生鎖定選單選項，防止後台過濾 -->
       <select class="car-selector" id="carSelect" onchange="switchCar()">
         <option value="pudding">布丁狗 (2.0T)</option>
       </select>
     </div>
-    <div style="color: #4a5568; font-size: 11px;">FOUR-ZONE MATRIX v2.0</div>
+    <div style="color: #4a5568; font-size: 11px;">FOUR-ZONE MATRIX v2.1</div>
   </header>
 
   <div class="dashboard">
@@ -99,13 +100,9 @@
           <button class="zone-btn" id="btn_engine" onclick="switchZone('engine')">引擎區域</button>
         </div>
 
-        <!-- 車身區域 -->
+        <!-- 各區域方塊保持原樣 -->
         <div id="zone_body" class="matrix-grid">
-          <div class="grid-btn span-full" id="part_body_前保險桿">
-            <div class="corner-icon corner-left" onclick="clickLeft('前保險桿')">🖼️</div>
-            <div class="corner-icon corner-right" onclick="clickRight('前保險桿')">📋</div>
-            <span class="part-label">前保險桿</span>
-          </div>
+          <div class="grid-btn span-full" id="part_body_前保險桿"><div class="corner-icon corner-left" onclick="clickLeft('前保險桿')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('前保險桿')">📋</div><span class="part-label">前保險桿</span></div>
           <div class="grid-btn" id="part_body_左前葉"><div class="corner-icon corner-left" onclick="clickLeft('左前葉')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('左前葉')">📋</div><span class="part-label">左前葉</span></div>
           <div class="grid-btn" id="part_body_引擎蓋"><div class="corner-icon corner-left" onclick="clickLeft('引擎蓋')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('引擎蓋')">📋</div><span class="part-label">引擎蓋</span></div>
           <div class="grid-btn" id="part_body_右前葉"><div class="corner-icon corner-left" onclick="clickLeft('右前葉')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('右前葉')">📋</div><span class="part-label">右前葉</span></div>
@@ -118,21 +115,18 @@
           <div class="grid-btn span-full" id="part_body_後保險桿"><div class="corner-icon corner-left" onclick="clickLeft('後保險桿')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('後保險桿')">📋</div><span class="part-label">後保險桿</span></div>
         </div>
 
-        <!-- 內裝區域 -->
         <div id="zone_interior" class="matrix-grid" style="display: none;">
           <div class="grid-btn" id="part_interior_儀表中控"><div class="corner-icon corner-left" onclick="clickLeft('儀表中控')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('儀表中控')">📋</div><span class="part-label">儀表中控</span></div>
           <div class="grid-btn" id="part_interior_方向盤模組"><div class="corner-icon corner-left" onclick="clickLeft('方向盤模組')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('方向盤模組')">📋</div><span class="part-label">方向盤模組</span></div>
           <div class="grid-btn" id="part_interior_中央扶手"><div class="corner-icon corner-left" onclick="clickLeft('中央扶手')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('中央扶手')">📋</div><span class="part-label">中央扶手</span></div>
         </div>
 
-        <!-- 底盤區域 -->
         <div id="zone_chassis" class="matrix-grid" style="display: none;">
           <div class="grid-btn" id="part_chassis_前懸吊系統"><div class="corner-icon corner-left" onclick="clickLeft('前懸吊系統')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('前懸吊系統')">📋</div><span class="part-label">前懸吊系統</span></div>
           <div class="grid-btn" id="part_chassis_排氣管中段"><div class="corner-icon corner-left" onclick="clickLeft('排氣管中段')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('排氣管中段')">📋</div><span class="part-label">排氣管中段</span></div>
           <div class="grid-btn" id="part_chassis_後差速器"><div class="corner-icon corner-left" onclick="clickLeft('後差速器')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('後差速器')">📋</div><span class="part-label">後差速器</span></div>
         </div>
 
-        <!-- 引擎區域 -->
         <div id="zone_engine" class="matrix-grid" style="display: none;">
           <div class="grid-btn" id="part_engine_汽門蓋蓋板"><div class="corner-icon corner-left" onclick="clickLeft('汽門蓋蓋板')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('汽門蓋蓋板')">📋</div><span class="part-label">汽門蓋蓋板</span></div>
           <div class="grid-btn" id="part_engine_智慧發電機"><div class="corner-icon corner-left" onclick="clickLeft('智慧發電機')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('智慧發電機')">📋</div><span class="part-label">智慧發電機</span></div>
@@ -172,10 +166,11 @@
           fetch(GOOGLE_右欄案例_CSV_網址)
         ]);
         const 左欄文字 = await 回應左欄.text();
-        const 右欄文字 = await 回應熱攔 = await 回應右欄.text();
+        const 右欄文字 = await 回應右欄.text();
         
         解析雲端中文資料(左欄文字, 右欄文字);
-        建立車型選單();
+        
+        // 🛠️ 移除動態選單生成，改為直接執行渲染
         switchCar();
       } catch (error) {
         console.error("雲端資料庫連線失敗:", error);
@@ -183,96 +178,64 @@
       }
     }
 
-    // 🌟 進階標準 CSV 解析引擎：精準支援 Google 試算表內的原生儲存格換行 (Alt+Enter)
     function 拆分CSV資料列(完整文字) {
-      let 資料列 = [];
-      let 當前欄位 = '';
-      let 單列快取 = [];
-      let 在引號內 = false;
-
+      let 資料列 = []; let 當前欄位 = ''; let 單列快取 = []; let 在引號內 = false;
       for (let i = 0; i < 完整文字.length; i++) {
-        let 字元 = 完整文字.charAt(i);
-        let 下個字元 = 完整文字.charAt(i + 1);
-
+        let 字元 = 完整文字.charAt(i); let 下個字元 = 完整文字.charAt(i + 1);
         if (字元 === '"') {
-          if (在引號內 && 下個字元 === '"') {
-            當前欄位 += '"'; i++; // 處理連續雙引號轉義
-          } else {
-            在引號內 = !在引號內; // 切換引號狀態
-          }
+          if (在引號內 && 下個字元 === '"') { 當前欄位 += '"'; i++; } else { 在引號內 = !在引號內; }
         } else if (字元 === ',' && !在引號內) {
-          單列快取.push(當前欄位.trim());
-          當前欄位 = '';
+          單列快取.push(當前欄位.trim()); 當前欄位 = '';
         } else if ((字元 === '\r' || 字元 === '\n') && !在引號內) {
           if (字元 === '\r' && 下個字元 === '\n') { i++; }
-          單列快取.push(當前欄位.trim());
-          資料列.push(單列快取);
-          單列快取 = [];
-          當前欄位 = '';
-        } else {
-          當前欄位 += 字元;
-        }
+          單列快取.push(當前欄位.trim()); 資料列.push(單列快取); 單列快取 = []; 當前欄位 = '';
+        } else { 當前欄位 += 字元; }
       }
-      if (當前欄位 || 單列快取.length > 0) {
-        單列快取.push(當前欄位.trim());
-        資料列.push(單列快取);
-      }
+      if (當前欄位 || 單列快取.length > 0) { 單列快取.push(當前欄位.trim()); 資料列.push(單列快取); }
       return 資料列;
     }
 
     function 解析雲端中文資料(左欄CSV, 右欄CSV) {
       全局車型資料庫 = {};
 
-      // 解析左欄
       const 左欄資料 = 拆分CSV資料列(左欄CSV).slice(1);
       左欄資料.forEach(欄位 => {
         if (欄位.length < 3) return;
         const [車型代碼, 基礎數據, 核心通病] = 欄位;
         if (!車型代碼) return;
         
-        if (!全局車型資料庫[車型代碼]) {
-          全局車型資料庫[車型代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
+        const 乾淨代碼 = 車型代碼.toLowerCase();
+        if (!全局車型資料庫[乾淨代碼]) {
+          全局車型資料庫[乾淨代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
         }
-        // 替換掉可能殘留的字串斜線，改由原生換行接管
-        全局車型資料庫[車型代碼].基礎數據 = 基礎數據.replace(/\\n/g, '\n');
-        全局車型資料庫[車型代碼].核心通病 = 核心通病.replace(/\\n/g, '\n');
+        全局車型資料庫[乾淨代碼].基礎數據 = 基礎數據;
+        全局車型資料庫[乾淨代碼].核心通病 = 核心通病;
       });
 
-      // 解析右欄
       const 右欄資料 = 拆分CSV資料列(右欄CSV).slice(1);
       右欄資料.forEach(欄位 => {
         if (欄位.length < 7) return;
         const [車型代碼, 部位名稱, 案例標題, 系統分類, 案例詳細文字描述, 實車參考圖片網址, 雲端PDF報告網址] = 欄位;
         if (!車型代碼 || !部位名稱) return;
 
-        if (!全局車型資料庫[車型代碼]) {
-          全局車型資料庫[車型代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
+        const 乾淨代碼 = 車型代碼.toLowerCase();
+        if (!全局車型資料庫[乾淨代碼]) {
+          全局車型資料庫[乾淨代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
         }
 
-        全局車型資料庫[車型代碼].參考圖庫[部位名稱] = {
+        全局車型資料庫[乾淨代碼].參考圖庫[部位名稱] = {
           標題: 案例標題,
-          描述: 案例詳細文字描述.replace(/\\n/g, '\n'),
+          描述: 案例詳細文字描述,
           圖片: 實車參考圖片網址
         };
 
-        if (!全局車型資料庫[車型代碼].案例庫[部位名稱]) {
-          全局車型資料庫[車型代碼].案例庫[部位名稱] = [];
+        if (!全局車型資料庫[乾淨代碼].案例庫[部位名稱]) {
+          全局車型資料庫[乾淨代碼].案例庫[部位名稱] = [];
         }
-        全局車型資料庫[車型代碼].案例庫[部位名稱].push({
+        全局車型資料庫[乾淨代碼].案例庫[部位名稱].push({
           標題: 案例標題,
           網址: 雲端PDF報告網址
         });
-      });
-    }
-
-    function 建立車型選單() {
-      const 選單 = document.getElementById('carSelect');
-      選單.innerHTML = '';
-      Object.keys(全局車型資料庫).forEach(車型 => {
-        const 選項 = document.createElement('option');
-        選項.value = 車型;
-        選項.innerText = 車型 === 'pudding' ? '布丁狗 (2.0T)' : 車型.toUpperCase();
-        選單.appendChild(選項);
       });
     }
 
@@ -291,7 +254,10 @@
 
     function renderLeftPanel(carId) {
       const 車型資料 = 全局車型資料庫[carId];
-      if (!車型資料) return;
+      if (!車型資料) {
+        document.getElementById('leftContent').innerHTML = `<div style="color:#fc8181; font-size:13px;">⚠️ 試算表中找不到代碼為 [${carId}] 的左欄數據。</div>`;
+        return;
+      }
       document.getElementById('leftContent').innerHTML = `
         <div class="info-group"><div class="info-label">🔧 基礎標準數據</div><div class="info-value">${車型資料.基礎數據}</div></div>
         <div class="info-group"><div class="info-label" style="color:#fc8181;">⚠️ 歷史核心通病</div><div class="info-value">${車型資料.核心通病}</div></div>`;
@@ -358,7 +324,6 @@
 
     function switchCar() {
       const carId = document.getElementById('carSelect').value;
-      if (!全局車型資料庫[carId]) return;
       renderLeftPanel(carId);
       switchZone('body');
       resetBottomArea("未點選零件。點擊上方大框左上角 [🖼️] 即可直接從 Google 雲端調出實車對照圖。");
