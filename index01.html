@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Black Box 診斷台 - 雲端連線正式版</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
+    body { background-color: #121214; color: #e2e8f0; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
+    
+    header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 15px; border-bottom: 1px solid #2d3748; }
+    .car-selector { background-color: #1a202c; color: #4fd1c5; border: 1px solid #4fd1c5; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; }
+
+    .dashboard { display: flex; flex: 1; gap: 20px; margin-top: 20px; overflow: hidden; }
+    .panel { background-color: #1e1e24; border-radius: 8px; border: 1px solid #2d2d35; display: flex; flex-direction: column; overflow: hidden; }
+    
+    .left-panel { flex: 0.9; min-width: 250px; }
+    .center-panel { flex: 2.6; min-width: 600px; background-color: #18181c; } 
+    .right-panel { flex: 1.3; min-width: 320px; }
+    
+    .panel-header { background-color: #26262b; padding: 12px 15px; font-size: 14px; font-weight: bold; color: #a0aec0; border-bottom: 1px solid #2d2d35; letter-spacing: 1px; }
+    .panel-content { padding: 15px; flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+
+    .zone-tabs { display: flex; gap: 8px; margin-bottom: 15px; width: 100%; max-width: 580px; margin: 0 auto 15px auto; }
+    .zone-btn { flex: 1; background-color: #26262b; border: 1px solid #3f3f46; color: #a0aec0; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s; }
+    .zone-btn.active { background-color: #4fd1c5; color: #121214; border-color: #4fd1c5; }
+
+    .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 580px; margin: 0 auto; }
+    
+    .grid-btn {
+      background-color: #2a2a35; border: 1px solid #3a3a45; color: #cbd5e0; 
+      height: 65px; border-radius: 5px; font-size: 15px; font-weight: bold; 
+      display: flex; justify-content: center; align-items: center; position: relative;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .grid-btn:hover { background-color: #333342; border-color: #4fd1c5; }
+    .span-full { grid-column: span 3; height: 55px; }
+    .part-label { pointer-events: none; letter-spacing: 1px; }
+
+    .corner-icon {
+      position: absolute; top: 4px; width: 20px; height: 20px; 
+      background-color: #1a202c; border: 1px solid #4a5568; border-radius: 3px;
+      font-size: 11px; display: flex; justify-content: center; align-items: center;
+      cursor: pointer; transition: all 0.2s; color: #a0aec0; user-select: none;
+    }
+    .corner-left { left: 4px; }
+    .corner-left:hover { border-color: #4fd1c5; color: #4fd1c5; background-color: #1c2d2f; }
+    .corner-right { right: 4px; }
+    .corner-right:hover { border-color: #f6ad55; color: #f6ad55; background-color: #2c271f; }
+
+    .grid-btn.active-left { border-color: #4fd1c5; box-shadow: 0 0 8px rgba(79, 209, 197, 0.2); background-color: #212d2f; }
+    .grid-btn.active-right { border-color: #f6ad55; box-shadow: 0 0 8px rgba(246, 173, 85, 0.2); background-color: #2c251d; }
+
+    .bottom-reference-area {
+      margin-top: 15px; background-color: #1e1e24; border: 1px dashed #4a5568;
+      border-radius: 6px; padding: 15px; min-height: 180px; display: flex; gap: 15px; align-items: center;
+    }
+    .ref-img-box { width: 45%; height: 140px; background-color: #121214; border-radius: 5px; border: 1px solid #2d2d35; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+    .ref-img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .ref-info-box { width: 55%; font-size: 13px; color: #cbd5e0; line-height: 1.5; }
+    .ref-title { font-size: 15px; font-weight: bold; color: #fff; margin-bottom: 6px; border-bottom: 1px solid #3a3a45; padding-bottom: 4px; }
+    .ref-placeholder { color: #4a5568; font-size: 13px; text-align: center; width: 100%; }
+
+    .info-group { margin-bottom: 12px; background: #26262b; padding: 10px; border-radius: 4px; border-left: 3px solid #4fd1c5; }
+    .info-label { font-size: 11px; color: #718096; margin-bottom: 4px; }
+    .info-value { font-size: 13px; color: #cbd5e0; white-space: pre-line; }
+
+    .case-list-item { background-color: #26262b; border: 1px solid #3f3f46; border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; border-left: 4px solid #f6ad55; }
+    .case-list-item:hover { transform: translateX(3px); background-color: #313138; }
+    .case-item-title { font-size: 13px; font-weight: bold; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span style="font-size: 14px; color: #a0aec0;">解構車型：</span>
+      <select class="car-selector" id="carSelect" onchange="switchCar()">
+        <option value="pudding">布丁狗 (2.0T)</option>
+      </select>
+    </div>
+    <div style="color: #4a5568; font-size: 11px;">FOUR-ZONE MATRIX v1.7</div>
+  </header>
+
+  <div class="dashboard">
+    <div class="panel left-panel">
+      <div class="panel-header">■ 車籍與標準環境說明</div>
+      <div class="panel-content" id="leftContent">正在連線雲端資料庫...</div>
+    </div>
+    
+    <div class="panel center-panel">
+      <div class="panel-header">■ 車體方位矩陣大面板 (左上 🖼️ 實車圖 / 右上 📋 篩案例)</div>
+      <div class="panel-content">
+        
+        <div class="zone-tabs">
+          <button class="zone-btn active" id="btn_body" onclick="switchZone('body')">車身區域</button>
+          <button class="zone-btn" id="btn_interior" onclick="switchZone('interior')">內裝區域</button>
+          <button class="zone-btn" id="btn_chassis" onclick="switchZone('chassis')">底盤區域</button>
+          <button class="zone-btn" id="btn_engine" onclick="switchZone('engine')">引擎區域</button>
+        </div>
+
+        <!-- 車身區域 -->
+        <div id="zone_body" class="matrix-grid">
+          <div class="grid-btn span-full" id="part_body_前保險桿">
+            <div class="corner-icon corner-left" onclick="clickLeft('前保險桿')">🖼️</div>
+            <div class="corner-icon corner-right" onclick="clickRight('前保險桿')">📋</div>
+            <span class="part-label">前保險桿</span>
+          </div>
+          <div class="grid-btn" id="part_body_左前葉"><div class="corner-icon corner-left" onclick="clickLeft('左前葉')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('左前葉')">📋</div><span class="part-label">左前葉</span></div>
+          <div class="grid-btn" id="part_body_引擎蓋"><div class="corner-icon corner-left" onclick="clickLeft('引擎蓋')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('引擎蓋')">📋</div><span class="part-label">引擎蓋</span></div>
+          <div class="grid-btn" id="part_body_右前葉"><div class="corner-icon corner-left" onclick="clickLeft('右前葉')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('右前葉')">📋</div><span class="part-label">右前葉</span></div>
+          <div class="grid-btn" id="part_body_左前門"><div class="corner-icon corner-left" onclick="clickLeft('左前門')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('左前門')">📋</div><span class="part-label">左前門</span></div>
+          <div class="grid-btn" id="part_body_車頂"><div class="corner-icon corner-left" onclick="clickLeft('車頂')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('車頂')">📋</div><span class="part-label">車頂</span></div>
+          <div class="grid-btn" id="part_body_右前門"><div class="corner-icon corner-left" onclick="clickLeft('右前門')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('右前門')">📋</div><span class="part-label">右前門</span></div>
+          <div class="grid-btn" id="part_body_左後門"><div class="corner-icon corner-left" onclick="clickLeft('左後門')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('左後門')">📋</div><span class="part-label">左後門</span></div>
+          <div class="grid-btn" id="part_body_後行李廂"><div class="corner-icon corner-left" onclick="clickLeft('後行李廂')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('後行李廂')">📋</div><span class="part-label">後行李廂</span></div>
+          <div class="grid-btn" id="part_body_右後門"><div class="corner-icon corner-left" onclick="clickLeft('右後門')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('右後門')">📋</div><span class="part-label">右後門</span></div>
+          <div class="grid-btn span-full" id="part_body_後保險桿"><div class="corner-icon corner-left" onclick="clickLeft('後保險桿')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('後保險桿')">📋</div><span class="part-label">後保險桿</span></div>
+        </div>
+
+        <!-- 內裝區域 -->
+        <div id="zone_interior" class="matrix-grid" style="display: none;">
+          <div class="grid-btn" id="part_interior_儀表中控"><div class="corner-icon corner-left" onclick="clickLeft('儀表中控')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('儀表中控')">📋</div><span class="part-label">儀表中控</span></div>
+          <div class="grid-btn" id="part_interior_方向盤模組"><div class="corner-icon corner-left" onclick="clickLeft('方向盤模組')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('方向盤模組')">📋</div><span class="part-label">方向盤模組</span></div>
+          <div class="grid-btn" id="part_interior_中央扶手"><div class="corner-icon corner-left" onclick="clickLeft('中央扶手')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('中央扶手')">📋</div><span class="part-label">中央扶手</span></div>
+        </div>
+
+        <!-- 底盤區域 -->
+        <div id="zone_chassis" class="matrix-grid" style="display: none;">
+          <div class="grid-btn" id="part_chassis_前懸吊系統"><div class="corner-icon corner-left" onclick="clickLeft('前懸吊系統')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('前懸吊系統')">📋</div><span class="part-label">前懸吊系統</span></div>
+          <div class="grid-btn" id="part_chassis_排氣管中段"><div class="corner-icon corner-left" onclick="clickLeft('排氣管中段')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('排氣管中段')">📋</div><span class="part-label">排氣管中段</span></div>
+          <div class="grid-btn" id="part_chassis_後差速器"><div class="corner-icon corner-left" onclick="clickLeft('後差速器')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('後差速器')">📋</div><span class="part-label">後差速器</span></div>
+        </div>
+
+        <!-- 引擎區域 -->
+        <div id="zone_engine" class="matrix-grid" style="display: none;">
+          <div class="grid-btn" id="part_engine_汽門蓋蓋板"><div class="corner-icon corner-left" onclick="clickLeft('汽門蓋蓋板')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('汽門蓋蓋板')">📋</div><span class="part-label">汽門蓋蓋板</span></div>
+          <div class="grid-btn" id="part_engine_智慧發電機"><div class="corner-icon corner-left" onclick="clickLeft('智慧發電機')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('智慧發電機')">📋</div><span class="part-label">智慧發電機</span></div>
+          <div class="grid-btn" id="part_engine_點火考耳模組"><div class="corner-icon corner-left" onclick="clickLeft('點火考耳模組')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('點火考耳模組')">📋</div><span class="part-label">點火考耳模組</span></div>
+        </div>
+
+        <div class="panel-header" style="margin-top:15px; border-radius:4px; font-size:12px;">▼ 點選左上角 [🖼️] 直接在下方解構實車相片</div>
+        <div class="bottom-reference-area">
+          <div class="ref-placeholder" id="refPlaceholder">未點選零件。點擊上方大框左上角 [🖼️] 即可在此處調出實車對照圖。</div>
+          <div class="ref-img-box" id="refImgBox" style="display:none;"><img src="" class="ref-img" id="refImg"></div>
+          <div class="ref-info-box" id="refInfoBox" style="display:none;">
+            <div class="ref-title" id="refTitle">部位名稱</div>
+            <div id="refDesc">基本客製說明。</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    
+    <div class="panel right-panel">
+      <div class="panel-header" id="rightHeader">■ 問題核心與歷史案例</div>
+      <div class="panel-content" id="rightContent"></div>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 🔗 已經成功綁定你的 Google 試算表 CSV 發布網址
+    // ==========================================
+    const GOOGLE_左欄說明_CSV_網址 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=480563912&single=true&output=csv";
+    const GOOGLE_右欄案例_CSV_網址 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";
+
+    let 全局車型資料庫 = {};
+    let 當前區域 = 'body';
+
+    async function loadDataFromGoogleSheets() {
+      try {
+        const [回應左欄, 回應右欄] = await Promise.all([
+          fetch(GOOGLE_左欄說明_CSV_網址),
+          fetch(GOOGLE_右欄案例_CSV_網址)
+        ]);
+        const 左欄文字 = await 回應左欄.text();
+        const 右欄文字 = await 回應右欄.text();
+        解析雲端中文資料(左欄文字, 右欄文字);
+        
+        // 自動建立車型選單選項
+        建立車型選單();
+        switchCar();
+      } catch (error) {
+        console.error("雲端資料庫連線失敗:", error);
+        resetBottomArea("無法連線至 Google 試算表，請檢查發布網址與網路權限。");
+      }
+    }
+
+    function 解析雲端中文資料(左欄CSV, 右欄CSV) {
+      全局車型資料庫 = {};
+
+      // 解析左欄
+      const 左欄每一列 = 左欄CSV.split(/\r?\n/).slice(1);
+      左欄每一列.forEach(單列 => {
+        const 欄位 = parseCSVRow(單列);
+        if (欄位.length < 3) return;
+        const [車型代碼, 基礎數據, 核心通病] = 欄位;
+        if (!車型代碼) return;
+        
+        if (!全局車型資料庫[車型代碼]) {
+          全局車型資料庫[車型代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
+        }
+        // 支援多行換行語法
+        全局車型資料庫[車型代碼].基礎數據 = 基礎數據.replace(/\\n/g, '\n');
+        全局車型資料庫[車型代碼].核心通病 = 核心通病.replace(/\\n/g, '\n');
+      });
+
+      // 解析右欄
+      const 右欄每一列 = 右欄CSV.split(/\r?\n/).slice(1);
+      右欄每一列.forEach(單列 => {
+        const 欄位 = parseCSVRow(單列);
+        if (欄位.length < 7) return;
+        const [車型代碼, 部位名稱, 案例標題, 系統分類, 案例詳細文字描述, 實車參考圖片網址, 雲端PDF報告網址] = 欄位;
+        if (!車型代碼 || !部位名稱) return;
+
+        if (!全局車型資料庫[車型代碼]) {
+          全局車型資料庫[車型代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
+        }
+
+        全局車型資料庫[車型代碼].參考圖庫[部位名稱] = {
+          標題: 案例標題,
+          描述: 案例詳細文字描述.replace(/\\n/g, '\n'),
+          圖片: 實車參考圖片網址
+        };
+
+        if (!全局車型資料庫[車型代碼].案例庫[部位名稱]) {
+          全局車型資料庫[車型代碼].案例庫[部位名稱] = [];
+        }
+        全局車型資料庫[車型代碼].案例庫[部位名稱].push({
+          標題: 案例標題,
+          網址: 雲端PDF報告網址
+        });
+      });
+    }
+
+    function parseCSVRow(text) {
+      let p = '', r = []; let q = false;
+      for (let i = 0; i < text.length; i++) {
+        let c = text.charAt(i);
+        if (c === '"') { q = !q; }
+        else if (c === ',' && !q) { r.push(p); p = ''; }
+        else { p += c; }
+      }
+      r.push(p);
+      return r.map(v => v.replace(/^"|"$/g, '').trim());
+    }
+
+    function 建立車型選單() {
+      const 選單 = document.getElementById('carSelect');
+      選單.innerHTML = '';
+      Object.keys(全局車型資料庫).forEach(車型 => {
+        const 選項 = document.createElement('option');
+        選項.value = 車型;
+        選項.innerText = 車型 === 'pudding' ? '布丁狗 (2.0T)' : 車型.toUpperCase();
+        選單.appendChild(選項);
+      });
+    }
+
+    function switchZone(zoneId) {
+      當前區域 = zoneId;
+      document.getElementById('zone_body').style.display = 'none';
+      document.getElementById('zone_interior').style.display = 'none';
+      document.getElementById('zone_chassis').style.display = 'none';
+      document.getElementById('zone_engine').style.display = 'none';
+      document.getElementById('zone_' + zoneId).style.display = 'grid';
+      
+      document.querySelectorAll('.zone-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById('btn_' + zoneId).classList.add('active');
+      clearActiveStyles();
+    }
+
+    function renderLeftPanel(carId) {
+      const 車型資料 = 全局車型資料庫[carId];
+      if (!車型資料) return;
+      document.getElementById('leftContent').innerHTML = `
+        <div class="info-group"><div class="info-label">🔧 基礎標準數據</div><div class="info-value">${車型資料.基礎數據}</div></div>
+        <div class="info-group"><div class="info-label" style="color:#fc8181;">⚠️ 歷史核心通病</div><div class="info-value">${車型資料.核心通病}</div></div>`;
+    }
+
+    function clickLeft(partName) {
+      const carId = document.getElementById('carSelect').value;
+      const 圖區資料 = 全局車型資料庫[carId]?.參考圖庫?.[partName];
+      
+      clearActiveStyles();
+      const 按鈕實體 = document.getElementById(`part_${當前區域}_${partName}`);
+      if(按鈕實體) 按鈕實體.classList.add('active-left');
+
+      if (圖區資料 && 圖區資料.圖片) {
+        document.getElementById('refPlaceholder').style.display = 'none';
+        document.getElementById('refImgBox').style.display = 'flex';
+        document.getElementById('refInfoBox').style.display = 'block';
+        
+        document.getElementById('refTitle').innerText = 圖區資料.標題;
+        document.getElementById('refDesc').innerText = 圖區資料.描述;
+        const imgEl = document.getElementById('refImg');
+        imgEl.src = 圖區資料.圖片;
+        imgEl.style.display = 'block';
+      } else {
+        resetBottomArea(`雲端試算表尚未配置 [${partName}] 的實車對照圖。`);
+      }
+    }
+
+    function clickRight(partName) {
+      const carId = document.getElementById('carSelect').value;
+      const 案例清單 = 全局車型資料庫[carId]?.案例庫?.[partName];
+      
+      clearActiveStyles();
+      const 按鈕實體 = document.getElementById(`part_${當前區域}_${partName}`);
+      if(按鈕實體) 按鈕實體.classList.add('active-right');
+
+      document.getElementById('rightHeader').innerText = `■ ${partName} // 歷史案例`;
+      let htmlOutput = '';
+      
+      if (案例清單 && 案例清單.length > 0) {
+        案例清單.forEach(案例 => {
+          htmlOutput += `
+            <div class="case-list-item" onclick="window.open('${案例.網址}', '_blank')">
+              <div class="case-item-title">${案例.標題}</div>
+              <div style="font-size:11px; color:#f6ad55; margin-top:5px;">↗ 點擊開啟雲端 PDF 報告</div>
+            </div>`;
+        });
+      } else {
+        htmlOutput = `<div class="info-group" style="border-left-color:#4a5568;"><div class="info-value" style="font-size:13px; color:#718096;">雲端試算表尚未建立此部位的 PDF 工單。</div></div>`;
+      }
+      document.getElementById('rightContent').innerHTML = htmlOutput;
+    }
+
+    function clearActiveStyles() {
+      document.querySelectorAll('.grid-btn').forEach(btn => btn.classList.remove('active-left', 'active-right'));
+    }
+
+    function resetBottomArea(msg) {
+      document.getElementById('refPlaceholder').style.display = 'block';
+      document.getElementById('refPlaceholder').innerText = msg;
+      document.getElementById('refImgBox').style.display = 'none';
+      document.getElementById('refInfoBox').style.display = 'none';
+    }
+
+    function switchCar() {
+      const carId = document.getElementById('carSelect').value;
+      if (!全局車型資料庫[carId]) return;
+      renderLeftPanel(carId);
+      switchZone('body');
+      resetBottomArea("未點選零件。點擊上方大框左上角 [🖼️] 即可直接從 Google 雲端調出實車對照圖。");
+      document.getElementById('rightContent').innerHTML = `<div class="info-group" style="border-left-color:#718096;"><div class="info-value" style="font-size:13px; color:#a0aec0;">請點擊方塊右上角 [📋] 讀取工單。</div></div>`;
+    }
+
+    window.onload = function() {
+      loadDataFromGoogleSheets();
+    };
+  </script>
+</body>
+</html>
