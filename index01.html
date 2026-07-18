@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Black Box 診斷台 - 雲端連線正式版</title>
+  <title>Black Box 診斷台 - 欄位完美對應版</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
     body { background-color: #121214; color: #e2e8f0; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
@@ -18,7 +18,7 @@
     .center-panel { flex: 2.6; min-width: 600px; background-color: #18181c; } 
     .right-panel { flex: 1.3; min-width: 320px; }
     
-    .panel-header { background-color: #26262b; padding: 12px 15px; font-size: 14px; font-weight: bold; color: #a0aec0; border-bottom: 1px solid #2d2d35; letter-spacing: 1px; }
+    .panel-header { background-color: #26262b; padding: 12px 15px; font-size: 14px; font-weight: bold; color: #a0aec0; border-bottom: 1px solid #2d3748; letter-spacing: 1px; }
     .panel-content { padding: 15px; flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
 
     .zone-tabs { display: flex; gap: 8px; margin-bottom: 15px; width: 100%; max-width: 580px; margin: 0 auto 15px auto; }
@@ -55,7 +55,7 @@
       margin-top: 15px; background-color: #1e1e24; border: 1px dashed #4a5568;
       border-radius: 6px; padding: 15px; min-height: 180px; display: flex; gap: 15px; align-items: center;
     }
-    .ref-img-box { width: 45%; height: 140px; background-color: #121214; border-radius: 5px; border: 1px solid #2d2d35; overflow: hidden; display: flex; justify-content: center; align-items: center; }
+    .ref-img-box { width: 45%; height: 140px; background-color: #121214; border-radius: 5px; border: 1px solid #2d3748; overflow: hidden; display: flex; justify-content: center; align-items: center; }
     .ref-img { width: 100%; height: 100%; object-fit: cover; display: none; }
     .ref-info-box { width: 55%; font-size: 13px; color: #cbd5e0; line-height: 1.5; }
     .ref-title { font-size: 15px; font-weight: bold; color: #fff; margin-bottom: 6px; border-bottom: 1px solid #3a3a45; padding-bottom: 4px; }
@@ -75,12 +75,11 @@
   <header>
     <div style="display: flex; align-items: center; gap: 10px;">
       <span style="font-size: 14px; color: #a0aec0;">解構車型：</span>
-      <!-- 🛠️ 這裡直接為你硬生生鎖定選單選項，防止後台過濾 -->
       <select class="car-selector" id="carSelect" onchange="switchCar()">
-        <option value="pudding">布丁狗 (2.0T)</option>
+        <option value="">載入中...</option>
       </select>
     </div>
-    <div style="color: #4a5568; font-size: 11px;">FOUR-ZONE MATRIX v2.1</div>
+    <div style="color: #4a5568; font-size: 11px;">MATCHED EXCEL SELECT v2.3</div>
   </header>
 
   <div class="dashboard">
@@ -100,7 +99,6 @@
           <button class="zone-btn" id="btn_engine" onclick="switchZone('engine')">引擎區域</button>
         </div>
 
-        <!-- 各區域方塊保持原樣 -->
         <div id="zone_body" class="matrix-grid">
           <div class="grid-btn span-full" id="part_body_前保險桿"><div class="corner-icon corner-left" onclick="clickLeft('前保險桿')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('前保險桿')">📋</div><span class="part-label">前保險桿</span></div>
           <div class="grid-btn" id="part_body_左前葉"><div class="corner-icon corner-left" onclick="clickLeft('左前葉')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('左前葉')">📋</div><span class="part-label">左前葉</span></div>
@@ -169,9 +167,7 @@
         const 右欄文字 = await 回應右欄.text();
         
         解析雲端中文資料(左欄文字, 右欄文字);
-        
-        // 🛠️ 移除動態選單生成，改為直接執行渲染
-        switchCar();
+        動態建立車型選單();
       } catch (error) {
         console.error("雲端資料庫連線失敗:", error);
         resetBottomArea("無法連線至 Google 試算表，請檢查發布網址與網路權限。");
@@ -188,7 +184,7 @@
           單列快取.push(當前欄位.trim()); 當前欄位 = '';
         } else if ((字元 === '\r' || 字元 === '\n') && !在引號內) {
           if (字元 === '\r' && 下個字元 === '\n') { i++; }
-          單列快取.push(當前欄位.trim()); 資料列.push(單列快取); 單列快取 = []; 當前欄位 = '';
+          單列快取.push(當前欄位.trim()); 資料列.push(當前欄位.trim() ? 單列快取 : []); 資料列.push(單列快取); 單列快取 = []; 當前欄位 = '';
         } else { 當前欄位 += 字元; }
       }
       if (當前欄位 || 單列快取.length > 0) { 單列快取.push(當前欄位.trim()); 資料列.push(單列快取); }
@@ -200,14 +196,15 @@
 
       const 左欄資料 = 拆分CSV資料列(左欄CSV).slice(1);
       左欄資料.forEach(欄位 => {
-        if (欄位.length < 3) return;
-        const [車型代碼, 基礎數據, 核心通病] = 欄位;
+        if (欄位.length < 4) return; // 🌟 升級防錯：現在一列必須有 4 個欄位才解析
+        const [車型代碼, 顯示名稱, 基礎數據, 核心通病] = 欄位;
         if (!車型代碼) return;
         
         const 乾淨代碼 = 車型代碼.toLowerCase();
         if (!全局車型資料庫[乾淨代碼]) {
-          全局車型資料庫[乾淨代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
+          全局車型資料庫[乾淨代碼] = { 顯示名稱: 顯示名稱, 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
         }
+        全局車型資料庫[乾淨代碼].顯示名稱 = 顯示名稱;
         全局車型資料庫[乾淨代碼].基礎數據 = 基礎數據;
         全局車型資料庫[乾淨代碼].核心通病 = 核心通病;
       });
@@ -220,7 +217,7 @@
 
         const 乾淨代碼 = 車型代碼.toLowerCase();
         if (!全局車型資料庫[乾淨代碼]) {
-          全局車型資料庫[乾淨代碼] = { 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
+          全局車型資料庫[乾淨代碼] = { 顯示名稱: 乾淨代碼.toUpperCase(), 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
         }
 
         全局車型資料庫[乾淨代碼].參考圖庫[部位名稱] = {
@@ -239,6 +236,31 @@
       });
     }
 
+    function 動態建立車型選單() {
+      const 選單 = document.getElementById('carSelect');
+      選單.innerHTML = '';
+      
+      const 所有車型鍵值 = Object.keys(全局車型資料庫);
+      
+      if(所有車型鍵值.length === 0) {
+        const 選項 = document.createElement('option');
+        選項.innerText = "暫無車型資料";
+        選單.appendChild(選項);
+        return;
+      }
+
+      所有車型鍵值.forEach(鍵值 => {
+        const 選項 = document.createElement('option');
+        選項.value = 鍵值; // 電腦底層抓對照依然用小寫英文 berlingo
+        
+        // 🌟 核心升級：直接抓取你寫在試算表 B 欄的中文顯示名稱
+        選項.innerText = 全局車型資料庫[鍵值].顯示名稱 || 鍵值.toUpperCase();
+        選單.appendChild(選項);
+      });
+
+      switchCar();
+    }
+
     function switchZone(zoneId) {
       當前區域 = zoneId;
       document.getElementById('zone_body').style.display = 'none';
@@ -254,10 +276,7 @@
 
     function renderLeftPanel(carId) {
       const 車型資料 = 全局車型資料庫[carId];
-      if (!車型資料) {
-        document.getElementById('leftContent').innerHTML = `<div style="color:#fc8181; font-size:13px;">⚠️ 試算表中找不到代碼為 [${carId}] 的左欄數據。</div>`;
-        return;
-      }
+      if (!車型資料) return;
       document.getElementById('leftContent').innerHTML = `
         <div class="info-group"><div class="info-label">🔧 基礎標準數據</div><div class="info-value">${車型資料.基礎數據}</div></div>
         <div class="info-group"><div class="info-label" style="color:#fc8181;">⚠️ 歷史核心通病</div><div class="info-value">${車型資料.核心通病}</div></div>`;
@@ -324,6 +343,7 @@
 
     function switchCar() {
       const carId = document.getElementById('carSelect').value;
+      if (!carId || !全局車型資料庫[carId]) return;
       renderLeftPanel(carId);
       switchZone('body');
       resetBottomArea("未點選零件。點擊上方大框左上角 [🖼️] 即可直接從 Google 雲端調出實車對照圖。");
