@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Black Box 診斷台 - 雙下拉選單自動對接版</title>
+  <title>Black Box 診斷台 - 故障碼高亮檢索版</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
     body { background-color: #121214; color: #e2e8f0; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
@@ -71,9 +71,17 @@
 
     .case-list-item { background-color: #26262b; border: 1px solid #3f3f46; border-radius: 6px; padding: 12px; margin-bottom: 10px; cursor: pointer; border-left: 4px solid #f6ad55; position: relative; }
     .case-list-item:hover { transform: translateX(3px); background-color: #313138; border-left-color: #ff9800; }
-    .case-item-title { font-size: 13px; font-weight: bold; color: #fff; margin-top: 4px; }
+    .case-item-title { font-size: 13px; font-weight: bold; color: #fff; margin-top: 4px; line-height: 1.4; }
     
     .case-part-badge { display: inline-block; background-color: #1a202c; color: #4fd1c5; border: 1px solid #4a5568; font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: bold; margin-bottom: 4px; letter-spacing: 0.5px; }
+    .case-desc-preview { font-size: 11px; color: #a0aec0; margin-top: 6px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .case-dtc-badge { display: inline-block; background-color: #2d1f1f; color: #fc8181; border: 1px solid #e53e3e; font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: bold; margin-bottom: 4px; margin-left: 4px; letter-spacing: 0.5px; }
+
+    .search-wrapper { padding: 12px; background-color: #1e1e24; border-bottom: 1px solid #2d2d35; }
+    .search-input { width: 100%; background-color: #121214; border: 1px solid #4a5568; color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 13px; outline: none; transition: all 0.2s; }
+    .search-input:focus { border-color: #f6ad55; box-shadow: 0 0 6px rgba(246, 173, 85, 0.3); }
+    .search-input::placeholder { color: #4a5568; }
   </style>
 </head>
 <body>
@@ -93,7 +101,7 @@
         </select>
       </div>
     </div>
-    <div style="color: #4a5568; font-size: 11px;">FULL SHOW MATRIX v3.6</div>
+    <div style="color: #4a5568; font-size: 11px;">DTC MATRIX INTEGRATED v4.6</div>
   </header>
 
   <div class="dashboard">
@@ -125,7 +133,7 @@
           <div class="grid-btn" id="part_body_右前門"><div class="corner-icon corner-left" onclick="clickLeft('右前門')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('右前門')">📋</div><span class="part-label">右前門</span></div>
           <div class="grid-btn" id="part_body_左後門"><div class="corner-icon corner-left" onclick="clickLeft('左後門')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('左後門')">📋</div><span class="part-label">左後門</span></div>
           <div class="grid-btn" id="part_body_後行李廂"><div class="corner-icon corner-left" onclick="clickLeft('後行李廂')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('後行李廂')">📋</div><span class="part-label">後行李廂</span></div>
-          <div class="grid-btn" id="part_body_右後門"><div class="corner-icon corner-left" onclick="clickLeft('右後門')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('右後門')">📋</div><span class="part-label">右後門</span></div>
+          <div class="grid-btn" id="part_body_right門"><div class="corner-icon corner-left" onclick="clickLeft('右後門')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('右後門')">📋</div><span class="part-label">右後門</span></div>
           <div class="grid-btn span-full" id="part_body_後保險桿"><div class="corner-icon corner-left" onclick="clickLeft('後保險桿')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('後保險桿')">📋</div><span class="part-label">後保險桿</span></div>
         </div>
 
@@ -145,9 +153,9 @@
 
         <!-- 引擎區域 -->
         <div id="zone_engine" class="matrix-grid" style="display: none;">
-          <div class="grid-btn" id="part_engine_汽門蓋蓋板"><div class="corner-icon corner-left" onclick="clickLeft('汽門蓋蓋板')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('汽門蓋蓋板')">📋</div><span class="part-label">汽門蓋蓋板</span></div>
-          <div class="grid-btn" id="part_engine_智慧發電機"><div class="corner-icon corner-left" onclick="clickLeft('智慧發電機')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('智慧發電機')">📋</div><span class="part-label">智慧發電機</span></div>
-          <div class="grid-btn" id="part_engine_點火考耳模組"><div class="corner-icon corner-left" onclick="clickLeft('點火考耳模組')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('點火考耳模組')">📋</div><span class="part-label">點火考耳模組</span></div>
+          <div class="grid-btn" id="part_engine_變速箱"><div class="corner-icon corner-left" onclick="clickLeft('變速箱')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('變速箱')">📋</div><span class="part-label">變速箱</span></div>
+          <div class="grid-btn" id="part_engine_引擎室"><div class="corner-icon corner-left" onclick="clickLeft('引擎室')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('引擎室')">📋</div><span class="part-label">引擎室</span></div>
+          <div class="grid-btn" id="part_engine_正時機構"><div class="corner-icon corner-left" onclick="clickLeft('正時機構')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('正時機構')">📋</div><span class="part-label">正時機構</span></div>
         </div>
 
         <div class="panel-header" style="margin-top:15px; border-radius:4px; font-size:12px;">▼ 點選左上角 [🖼️] 直接在下方解構實車相片</div>
@@ -165,6 +173,9 @@
     
     <div class="panel right-panel">
       <div class="panel-header" id="rightHeader">■ 歷史通病案例庫</div>
+      <div class="search-wrapper">
+        <input type="text" class="search-input" id="caseSearchInput" placeholder="🔍 輸入關鍵字或故障碼 (DTC) 深度檢索..." oninput="執行全局搜尋()">
+      </div>
       <div class="panel-content" id="rightContent"></div>
     </div>
   </div>
@@ -175,6 +186,7 @@
 
     let 全局車型資料庫 = {};
     let 品牌分群對照表 = {}; 
+    let 全局案例扁平庫 = []; 
     let 當前區域 = 'body';
 
     async function loadDataFromGoogleSheets() {
@@ -216,6 +228,9 @@
     function 解析雲端中文資料(左欄CSV, 右欄CSV) {
       全局車型資料庫 = {};
       品牌分群對照表 = {};
+      全局案例扁平庫 = []; 
+
+      let 代碼轉品牌與名稱 = {};
 
       const 左欄資料 = 拆分CSV資料列(左欄CSV).slice(1);
       左欄資料.forEach(欄位 => {
@@ -226,6 +241,8 @@
         const 乾淨品牌 = 品牌名稱.toUpperCase().trim();
         const 乾淨代碼 = 車型代碼.toLowerCase().trim();
         
+        代碼轉品牌與名稱[乾淨代碼] = { 品牌: 乾淨品牌, 車型名稱: 顯示名稱 };
+
         if (!全局車型資料庫[乾淨代碼]) {
           全局車型資料庫[乾淨代碼] = { 顯示名稱: 顯示名稱, 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
         }
@@ -250,17 +267,20 @@
           全局車型資料庫[乾淨代碼] = { 顯示名稱: 乾淨代碼.toUpperCase(), 基礎數據: "", 核心通病: "", 參考圖庫: {}, 案例庫: {} };
         }
 
-        全局車型資料庫[乾淨代碼].參考圖庫[部位名稱] = {
-          標題: 案例標題,
-          描述: 案例詳細文字描述,
-          圖片: 實車參考圖片網址
-        };
+        全局車型資料庫[乾淨代碼].參考圖庫[部位名稱] = { 標題: 案例標題, 描述: 案例詳細文字描述, 圖片: 實車參考圖片網址 };
+        if (!全局車型資料庫[乾淨代碼].案例庫[部位名稱]) { 全局車型資料庫[乾淨代碼].案例庫[部位名稱] = []; }
+        
+        全局車型資料庫[乾淨代碼].案例庫[部位名稱].push({ 標題: 案例標題, 網址: 雲端PDF報告網址, 故障碼: 系統分類 });
 
-        if (!全局車型資料庫[乾淨代碼].案例庫[部位名稱]) {
-          全局車型資料庫[乾淨代碼].案例庫[部位名稱] = [];
-        }
-        全局車型資料庫[乾淨代碼].案例庫[部位名稱].push({
+        const 對照 = 代碼轉品牌與名稱[乾淨代碼] || { 品牌: "未知品牌", 車型名稱: 乾淨代碼 };
+        全局案例扁平庫.push({
+          品牌: 對照.品牌,
+          車型名稱: 對照.車型名稱,
+          車型代碼: 乾淨代碼,
+          部位名稱: 部位名稱,
           標題: 案例標題,
+          分類: 系統分類, 
+          描述: 案例詳細文字描述,
           網址: 雲端PDF報告網址
         });
       });
@@ -270,14 +290,6 @@
       const 品牌選單 = document.getElementById('brandSelect');
       品牌選單.innerHTML = '';
       const 所有品牌 = Object.keys(品牌分群對照表);
-      
-      if (所有品牌.length === 0) {
-        const 選項 = document.createElement('option');
-        選項.innerText = "暫無品牌資料";
-        品牌選單.appendChild(選項);
-        return;
-      }
-
       所有品牌.forEach(品牌 => {
         const 選項 = document.createElement('option');
         選項.value = 品牌; 選項.innerText = 品牌;
@@ -290,13 +302,7 @@
       const 選擇的品牌 = document.getElementById('brandSelect').value;
       const 車型選單 = document.getElementById('carSelect');
       車型選單.innerHTML = '';
-
-      if (!選擇的品牌 || !品牌分群對照表[選擇的品牌]) {
-        const 選項 = document.createElement('option');
-        選項.innerText = "請先選擇品牌";
-        車型選單.appendChild(選項);
-        return;
-      }
+      if (!選擇的品牌 || !品牌分群對照表[選擇的品牌]) return;
 
       const 該品牌旗下車型 = 品牌分群對照表[選擇的品牌];
       該品牌旗下車型.forEach(車型 => {
@@ -307,7 +313,52 @@
       switchCar();
     }
 
+    function 執行全局搜尋() {
+      const 關鍵字 = document.getElementById('caseSearchInput').value.trim().toLowerCase();
+      
+      if (關鍵字 === "") {
+        渲染右欄全部案例();
+        return;
+      }
+
+      clearActiveStyles(); 
+      document.getElementById('rightHeader').innerText = `🔍 全局搜尋結果 // "${關鍵字}"`;
+
+      let htmlOutput = '';
+      let 匹配數量 = 0;
+
+      全局案例扁平庫.forEach(案例 => {
+        const 標題匹配 = 案例.標題.toLowerCase().includes(關鍵字);
+        const 描述匹配 = 案例.描述.toLowerCase().includes(關鍵字);
+        const 部位匹配 = 案例.部位名稱.toLowerCase().includes(關鍵字);
+        const 故障碼匹配 = 案例.分類.toLowerCase().includes(關鍵字);
+
+        if (標題匹配 || 描述匹配 || 部位匹配 || 故障碼匹配) {
+          匹配數量++;
+          
+          const dtcHtml = 案例.分類 ? `<div class="case-dtc-badge">⚠️ ${案例.分類}</div>` : '';
+
+          htmlOutput += `
+            <div class="case-list-item" onclick="window.open('${案例.網址}', '_blank')">
+              <div class="case-part-badge" style="background-color:#2c271f; color:#f6ad55; border-color:#f6ad55;">${案例.品牌} · ${案例.車型名稱}</div>
+              <div class="case-part-badge">[ ${案例.部位名稱} ]</div>
+              ${dtcHtml}
+              <div class="case-item-title">${案例.標題}</div>
+              <div class="case-desc-preview">${案例.描述}</div>
+              <div style="font-size:11px; color:#f6ad55; margin-top:5px;">↗ 點擊開啟雲端 PDF 報告</div>
+            </div>`;
+        }
+      });
+
+      if (匹配數量 === 0) {
+        htmlOutput = `<div class="info-group" style="border-left-color:#fc8181;"><div class="info-value" style="font-size:13px; color:#a0aec0;">找不到包含「${關鍵字}」的任何故障碼或案例描述。</div></div>`;
+      }
+      document.getElementById('rightContent').innerHTML = htmlOutput;
+    }
+
     function 渲染右欄全部案例() {
+      document.getElementById('caseSearchInput').value = "";
+      
       const carId = document.getElementById('carSelect').value;
       if (!carId || !全局車型資料庫[carId]) return;
       
@@ -323,10 +374,15 @@
         if (部位案例清單 && 部位案例清單.length > 0) {
           有任何案例 = true;
           部位案例清單.forEach(案例 => {
+            const 詳情 = 全局車型資料庫[carId].參考圖庫[部位名稱]?.描述 || "點擊看詳細工單記錄。";
+            const dtcHtml = 案例.故障碼 ? `<div class="case-dtc-badge">⚠️ ${案例.故障碼}</div>` : '';
+            
             htmlOutput += `
               <div class="case-list-item" onclick="window.open('${案例.網址}', '_blank')">
                 <div class="case-part-badge">[ ${部位名稱} ]</div>
+                ${dtcHtml}
                 <div class="case-item-title">${案例.標題}</div>
+                <div class="case-desc-preview">${詳情}</div>
                 <div style="font-size:11px; color:#f6ad55; margin-top:5px;">↗ 點擊開啟雲端 PDF 報告</div>
               </div>`;
           });
@@ -383,6 +439,8 @@
     }
 
     function clickRight(partName) {
+      document.getElementById('caseSearchInput').value = "";
+      
       const carId = document.getElementById('carSelect').value;
       const 案例清單 = 全局車型資料庫[carId]?.案例庫?.[partName];
       
@@ -395,10 +453,15 @@
       
       if (案例清單 && 案例清單.length > 0) {
         案例清單.forEach(案例 => {
+          const 詳情 = 全局車型資料庫[carId].參考圖庫[partName]?.描述 || "點擊看詳細工單記錄。";
+          const dtcHtml = 案例.故障碼 ? `<div class="case-dtc-badge">⚠️ ${案例.故障碼}</div>` : '';
+          
           htmlOutput += `
             <div class="case-list-item" onclick="window.open('${案例.網址}', '_blank')">
               <div class="case-part-badge">[ ${partName} ]</div>
+              ${dtcHtml}
               <div class="case-item-title">${案例.標題}</div>
+              <div class="case-desc-preview">${詳情}</div>
               <div style="font-size:11px; color:#f6ad55; margin-top:5px;">↗ 點擊開啟雲端 PDF 報告</div>
             </div>`;
         });
