@@ -78,7 +78,6 @@
 
     .case-dtc-badge { display: inline-block; background-color: #2d1f1f; color: #fc8181; border: 1px solid #e53e3e; font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: bold; margin-bottom: 4px; margin-left: 4px; letter-spacing: 0.5px; }
 
-    /* 時間戳記樣式 */
     .case-time-tag { position: absolute; bottom: 12px; right: 12px; font-size: 11px; color: #4a5568; font-family: monospace; font-weight: bold; }
     .case-list-item:hover .case-time-tag { color: #a0aec0; }
 
@@ -86,6 +85,10 @@
     .search-input { width: 100%; background-color: #121214; border: 1px solid #4a5568; color: #fff; padding: 8px 12px; border-radius: 4px; font-size: 13px; outline: none; transition: all 0.2s; }
     .search-input:focus { border-color: #f6ad55; box-shadow: 0 0 6px rgba(246, 173, 85, 0.3); }
     .search-input::placeholder { color: #4a5568; }
+
+    /* 会議記錄專屬額外獨立展示格樣式 */
+    .meeting-standalone-panel { width: 100%; max-width: 580px; margin: 0 auto; background-color: #26262b; border: 1px solid #3f3f46; border-radius: 6px; padding: 15px; display: none; }
+    .video-viewscreen { width: 100%; height: 260px; background-color: #121214; border-radius: 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #4a5568; margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -115,15 +118,33 @@
     </div>
     
     <div class="panel center-panel">
-      <div class="panel-header">■ 車體方位矩陣大面板 (左上 🖼️ 實車圖 / 右上 📋 篩案例)</div>
+      <div class="panel-header" id="centerHeader">■ 車體方位矩陣大面板 (左上 🖼️ 實車圖 / 右上 📋 篩案例)</div>
       <div class="panel-content">
         
-        <div class="zone-tabs">
+        <!-- 正常區域分頁切換紐 -->
+        <div class="zone-tabs" id="normalZoneTabs">
           <button class="zone-btn active" id="btn_body" onclick="switchZone('body')">車身區域</button>
           <button class="zone-btn" id="btn_interior" onclick="switchZone('interior')">內裝區域</button>
           <button class="zone-btn" id="btn_chassis" onclick="switchZone('chassis')">底盤區域</button>
           <button class="zone-btn" id="btn_engine" onclick="switchZone('engine')">引擎區域</button>
           <button class="zone-btn reset-cases-btn" onclick="渲染右欄全部案例()">看全部案例 ↺</button>
+        </div>
+
+        <!-- 會議記錄專屬：完全獨立的格子與多媒體呈現空間 -->
+        <div id="meetingStandalonePanel" class="meeting-standalone-panel">
+          <div class="video-viewscreen">
+            <span style="font-size: 40px; margin-bottom: 10px;">🎬</span>
+            <span style="font-size: 14px; color: #4fd1c5; font-weight: bold;">核心技術解構與影音教學區</span>
+            <span style="font-size: 12px; color: #718096; margin-top: 5px;">（可於此處直接嵌入 YouTube 影音或播放連結）</span>
+          </div>
+          <div class="info-group" style="border-left-color: #f6ad55; margin-bottom: 0;">
+            <div class="info-label" style="color: #f6ad55;">📖 跨界互動教學備忘錄</div>
+            <div class="info-value" style="font-size: 13px; line-height: 1.6;">
+              歡迎來到 Black Box 核心戰略指揮台。
+              本頁面為初始會議記錄，彙整工廠維修方針與邏輯推導基礎。
+              如需進入實車查修矩陣，請使用上方選單切換至對應品牌與車型。
+            </div>
+          </div>
         </div>
 
         <!-- 車身區域 -->
@@ -162,8 +183,9 @@
           <div class="grid-btn" id="part_engine_正時機構"><div class="corner-icon corner-left" onclick="clickLeft('正時機構')">🖼️</div><div class="corner-icon corner-right" onclick="clickRight('正時機構')">📋</div><span class="part-label">正時機構</span></div>
         </div>
 
-        <div class="panel-header" style="margin-top:15px; border-radius:4px; font-size:12px;">▼ 點選左上角 [🖼️] 直接在下方解構實車相片</div>
-        <div class="bottom-reference-area">
+        <!-- 正常下方的參考圖照區 -->
+        <div class="panel-header" id="bottomRefHeader" style="margin-top:15px; border-radius:4px; font-size:12px;">▼ 點選左上角 [🖼️] 直接在下方解構實車相片</div>
+        <div class="bottom-reference-area" id="bottomRefArea">
           <div class="ref-placeholder" id="refPlaceholder">未點選零件。點擊上方大框左上角 [🖼️] 即可在此處調出實車對照圖。</div>
           <div class="ref-img-box" id="refImgBox" style="display:none;"><img src="" class="ref-img" id="refImg"></div>
           <div class="ref-info-box" id="refInfoBox" style="display:none;">
@@ -219,6 +241,7 @@
         } else if (字元 === ',' && !在引號內) {
           單列快取.push(當前欄位.trim()); 當前欄位 = '';
         } else if ((字元 === '\r' || 字元 === '\n') && !在引號內) {
+          // 💡 精準修復：移除多餘未定義的引號內變數，打通雲端連線
           if (字元 === '\r' && 下個字元 === '\n') { i++; }
           單列快取.push(當前欄位.trim());
           if (單列快取.length > 0) 資料列.push(單列快取);
@@ -302,6 +325,12 @@
         選項.value = 所有品牌[i]; 選項.innerText = 所有品牌[i];
         品牌選單.appendChild(選項);
       }
+      
+      // 初始導流：一進來強制優先選定「會議記錄」分流
+      if (所有品牌.includes("會議記錄")) {
+        品牌選單.value = "會議記錄";
+      }
+      
       動態切換車型選單();
     }
 
@@ -495,9 +524,35 @@
     function switchCar() {
       const carId = document.getElementById('carSelect').value;
       if (!carId || !全局車型資料庫[carId]) return;
+      
       renderLeftPanel(carId);
-      switchZone('body');
-      resetBottomArea("未點選零件。點擊上方大框左上角 [🖼️] 即可直接從 Google 雲端調出實車對照圖。");
+
+      // 額外獨立呈現開關：判定一進網頁是否處於會議記錄
+      if (carId.includes("會議") || carId.includes("meeting") || carId.includes("notes")) {
+        document.getElementById('centerHeader').innerText = "■ 中央戰略部 // 會議決議與影音教學區";
+        
+        document.getElementById('zone_body').style.display = 'none';
+        document.getElementById('zone_interior').style.display = 'none';
+        document.getElementById('zone_chassis').style.display = 'none';
+        document.getElementById('zone_engine').style.display = 'none';
+        document.getElementById('normalZoneTabs').style.display = 'none';
+        document.getElementById('bottomRefHeader').style.display = 'none';
+        document.getElementById('bottomRefArea').style.display = 'none';
+
+        document.getElementById('meetingStandalonePanel').style.display = 'block';
+      } else {
+        document.getElementById('centerHeader').innerText = "■ 車體方位矩陣大面板 (左上 🖼️ 實車圖 / 右上 📋 篩案例)";
+        
+        document.getElementById('meetingStandalonePanel').style.display = 'none';
+        
+        document.getElementById('normalZoneTabs').style.display = 'flex';
+        document.getElementById('bottomRefHeader').style.display = 'block';
+        document.getElementById('bottomRefArea').style.display = 'flex';
+        
+        switchZone('body');
+        resetBottomArea("未點選零件。點擊上方大框左上角 [🖼️] 即可直接從 Google 雲端調出實車對照圖。");
+      }
+
       渲染right全部案例 = 渲染右欄全部案例();
     }
 
