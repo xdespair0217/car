@@ -94,7 +94,7 @@
   </div>
 
   <script>
-    // 僅連線案例資料庫 (右欄案例 CSV)
+    // 連線案例資料庫 (右欄案例 CSV)
     const GOOGLE_案例_CSV_網址 = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";
 
     let 全局案例陣列 = [];
@@ -133,38 +133,56 @@
       return lines;
     }
 
-    // 解析資料
+    // 解析資料：採用精確索引對應，自動修復欄位位移
     function 解析案例數據(csvText) {
       全局案例陣列 = [];
       車型與部位結構表 = {};
 
       const rows = parseCSV(csvText).slice(1); // 略過標頭檔
       rows.forEach(row => {
-        if (row.length < 5) return;
-        const [車型代碼, 部位名稱, 案例標題, 故障碼, 詳細描述, 雲端PDF網址] = row;
-        const 建立時間 = row[7] ? row[7].trim() : "--";
+        if (!row || row.length < 2) return;
+
+        const 車型代碼 = row[0] ? row[0].trim() : "";
+        const 部位名稱 = row[1] ? row[1].trim() : "未歸類部位";
+        const 案例標題 = row[2] ? row[2].trim() : "未命名案例";
+        const 故障碼   = row[3] ? row[3].trim() : "";
+        const 詳細描述 = row[4] ? row[4].trim() : "(暫無詳細敘述內容)";
+        
+        // 尋找符合 http/https 格式的 URL，防止欄位錯位導致抓錯欄位
+        let 雲端PDF網址 = "";
+        for (let i = 5; i < row.length; i++) {
+          if (row[i] && (row[i].startsWith("http://") || row[i].startsWith("https://"))) {
+            雲端PDF網址 = row[i].trim();
+            break;
+          }
+        }
+        // 若找不到 HTTP 連結，預設抓第 6 欄 (Index 5)
+        if (!雲端PDF網址 && row[5]) {
+          雲端PDF網址 = row[5].trim();
+        }
+
+        const 建立時間 = row[row.length - 1] && row[row.length - 1].includes("-") ? row[row.length - 1].trim() : "--";
         
         if (!車型代碼) return;
 
         const 乾淨車型 = 車型代碼.toUpperCase().trim();
-        const 乾淨部位 = 部位名稱 ? 部位名稱.trim() : "未歸類部位";
 
         // 建立選單聯動結構
         if (!車型與部位結構表[乾淨車型]) {
           車型與部位結構表[乾淨車型] = [];
         }
-        if (!車型與部位結構表[乾淨車型].includes(乾淨部位)) {
-          車型與部位結構表[乾淨車型].push(乾淨部位);
+        if (!車型與部位結構表[乾淨車型].includes(部位名稱)) {
+          車型與部位結構表[乾淨車型].push(部位名稱);
         }
 
-        // 塞入扁平陣列
+        // 塞入陣列
         全局案例陣列.push({
           車型: 乾淨車型,
-          部位: 乾淨部位,
-          標題: 案例標題 || "未命名案例",
-          故障碼: 故障碼 || "",
-          描述: 詳細描述 || "(暫無詳細敘述內容)",
-          網址: 雲端PDF網址 || "",
+          部位: 部位名稱,
+          標題: 案例標題,
+          故障碼: 故障碼,
+          描述: 詳細描述,
+          網址: 雲端PDF網址,
           時間: 建立時間
         });
       });
