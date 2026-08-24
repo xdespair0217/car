@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>黑盒數位觀測站 - 維修解構誌 (CBS 串接版)</title>
+    <title>黑盒數位觀測站 - 維修解構誌 (Obsidian 標籤雲版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -20,7 +20,7 @@
         <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">
                 <span class="w-3 h-3 rounded-full bg-amber-500 animate-pulse"></span>
-                <h1 class="font-bold text-lg tracking-wider text-slate-100">黑盒數位觀測站 <span class="text-xs text-amber-400 font-mono ml-2 border border-amber-500/30 px-2 py-0.5 rounded">CBS 即時串接中</span></h1>
+                <h1 class="font-bold text-lg tracking-wider text-slate-100">黑盒數位觀測站 <span class="text-xs text-amber-400 font-mono ml-2 border border-amber-500/30 px-2 py-0.5 rounded">Obsidian 標籤聯動版</span></h1>
             </div>
             <span class="text-xs text-slate-400 hidden md:inline">| 透過虛擬與現實交錯，解構未知的真相</span>
         </div>
@@ -33,23 +33,45 @@
     <!-- Main Workspace -->
     <div class="flex-1 flex overflow-hidden">
 
-        <!-- Left Sidebar: Article List -->
-        <aside class="w-[420px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0">
-            <!-- Search & Tags -->
+        <!-- Left Sidebar: Filters & Article List -->
+        <aside class="w-[450px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0">
+            <!-- Search & Dynamic Filters -->
             <div class="p-4 border-b border-[#262c38] space-y-3">
                 <div class="relative">
-                    <input type="text" id="search-input" placeholder="搜尋車型、部位、故障碼 DTC 或標題..." 
+                    <input type="text" id="search-input" placeholder="搜尋車型、部位、故障碼、症狀或標題..." 
                            class="w-full bg-[#1a1e29] border border-[#2a3243] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition">
                 </div>
-                <!-- Dynamic Tag Filters -->
-                <div class="flex flex-wrap gap-1.5" id="tag-filters">
-                    <button onclick="filterByPart('全部')" class="tag-btn active text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 font-medium transition">全部</button>
+                
+                <!-- Car Model & Part Filters -->
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-slate-400 shrink-0 font-mono">車型：</span>
+                    <select id="car-model-select" onchange="filterByCarModel(this.value)" class="w-full bg-[#1a1e29] border border-[#2a3243] rounded px-2 py-1.5 text-xs text-amber-400 font-mono focus:outline-none focus:border-amber-500">
+                        <option value="全部">全部車型</option>
+                    </select>
+                </div>
+
+                <!-- Part Tags row -->
+                <div class="flex flex-wrap gap-1.5 pt-1" id="tag-filters">
+                    <button onclick="filterByPart('全部')" class="tag-btn active text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 font-medium transition">全部部位</button>
+                </div>
+
+                <!-- Obsidian Style Symptoms Tag Cloud Section -->
+                <div class="pt-2 border-t border-[#262c38]">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-slate-400 font-mono flex items-center space-x-1">
+                            <span>🏷️ 症狀標籤雲 (Obsidian Vault)</span>
+                        </span>
+                        <button onclick="clearSymptomFilter()" id="clear-symptom-btn" class="hidden text-[10px] text-amber-400 hover:underline font-mono">清除症狀篩選</button>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1 bg-[#161922] rounded border border-[#222736]" id="symptom-tag-cloud">
+                        <!-- Dynamic Symptom Badges injected here -->
+                    </div>
                 </div>
             </div>
 
             <!-- List of Articles -->
             <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430]" id="case-list-container">
-                <div class="p-8 text-center text-slate-500 text-sm">正在從 Google 試算表串接指定分頁資料...</div>
+                <div class="p-8 text-center text-slate-500 text-sm">正在從 Google 試算表串接即時資料...</div>
             </div>
         </aside>
 
@@ -60,7 +82,7 @@
             <div id="empty-state" class="m-auto text-center space-y-3 p-8">
                 <div class="w-16 h-16 rounded-full bg-[#1b202c] border border-[#2e3646] flex items-center justify-center mx-auto text-amber-400 text-2xl font-mono">📖</div>
                 <h2 class="text-slate-200 font-medium">請從左側文章清單選取一篇維修解構報告</h2>
-                <p class="text-slate-500 text-sm max-w-md">系統將以文章閱讀器的沈浸式框架，為您解構該車型與故障碼的技術檔案。</p>
+                <p class="text-slate-500 text-sm max-w-md">系統將以文章閱讀器的沈浸式框架，自動解析多重 DTC 與症狀標籤並加載技術檔案。</p>
             </div>
 
             <!-- Article Reader Content Wrapper (Hidden initially) -->
@@ -72,22 +94,25 @@
                         <span id="art-meta-tag" class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded font-semibold">-</span>
                         <span id="art-meta-date">-</span>
                     </div>
-                    <h1 id="art-title" class="text-2xl font-bold tracking-tight text-slate-900 leading-snug">
-                        <!-- Title -->
-                    </h1>
+                    <h1 id="art-title" class="text-2xl font-bold tracking-tight text-slate-900 leading-snug"></h1>
                 </div>
 
-                <!-- DTC Highlight Box -->
-                <div id="art-dtc-box" class="bg-amber-50 border-l-4 border-amber-600 p-4 my-6 text-sm font-mono text-amber-900 rounded-r">
-                    <span class="font-bold">高亮故障碼標籤 (DTC Badge)：</span> <span id="art-dtc-text"></span>
+                <!-- Multi-DTC Highlight Box -->
+                <div id="art-dtc-box" class="bg-amber-50 border-l-4 border-amber-600 p-4 my-4 text-sm text-amber-900 rounded-r">
+                    <span class="font-bold block mb-2 font-mono">高亮故障碼標籤 (DTC Badges)：</span> 
+                    <div id="art-dtc-container" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <!-- Symptoms Tags Box -->
+                <div id="art-symptom-box" class="bg-blue-50 border-l-4 border-blue-600 p-4 my-4 text-sm text-blue-900 rounded-r">
+                    <span class="font-bold block mb-2 font-mono">症狀標籤 (Symptoms)：</span> 
+                    <div id="art-symptom-container" class="flex flex-wrap gap-2"></div>
                 </div>
 
                 <!-- Article Body / Description -->
                 <div class="space-y-4 text-slate-700 leading-relaxed text-sm mb-8">
                     <h3 class="font-bold text-slate-900 text-base">【案例詳細文字描述與解構】</h3>
-                    <p id="art-desc" class="bg-white p-6 rounded border border-slate-200 shadow-sm whitespace-pre-line font-mono text-xs leading-6 text-slate-800">
-                        <!-- Description -->
-                    </p>
+                    <p id="art-desc" class="bg-white p-6 rounded border border-slate-200 shadow-sm whitespace-pre-line font-mono text-xs leading-6 text-slate-800"></p>
                 </div>
 
                 <!-- Embedded PDF Report Section -->
@@ -100,7 +125,6 @@
                             在新視窗開啟 PDF ➔
                         </a>
                     </div>
-                    <!-- PDF Iframe Reader -->
                     <div class="w-full h-[600px] border border-slate-300 rounded bg-white shadow-inner overflow-hidden">
                         <iframe id="art-pdf-iframe" class="w-full h-full" src=""></iframe>
                     </div>
@@ -111,23 +135,25 @@
 
     </div>
 
-    <!-- JavaScript Data Fetcher & Controller -->
+    <!-- JavaScript Obsidian Tag Controller -->
     <script>
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";
         
         let dbData = [];
-        let currentFilter = '全部';
+        let currentCarFilter = '全部';
+        let currentPartFilter = '全部';
+        let currentSymptomFilter = null;
         let currentSearchQuery = '';
 
         async function loadSheetData() {
             try {
-                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在同步 CBS 雲端資料...</div>`;
+                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在同步 CBS 雲端資料與 Obsidian 標籤...</div>`;
                 const response = await fetch(CSV_URL);
                 const text = await response.text();
                 parseCSV(text);
             } catch (error) {
                 console.error("載入試算表失敗:", error);
-                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-red-400 text-sm">無法讀取 CBS 雲端資料。<br>請確認透過本地伺服器（如 Live Server）運行。</div>`;
+                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-red-400 text-sm">無法讀取 CBS 雲端資料。<br>請確認透過本地伺服器或線上環境運行。</div>`;
             }
         }
 
@@ -154,53 +180,163 @@
                 }
                 row.push(currentVal.trim());
 
-                if (row.length >= 6) {
+                // Column Index Mapping based on updated structure:
+                // Col 0: 車型代碼
+                // Col 1: 部位名稱
+                // Col 2: 案例標題
+                // Col 3: 高亮故障碼標籤 (DTC Badge)
+                // Col 4: 症狀標籤 (Symptoms) <--- NEW
+                // Col 5: 案例詳細文字描述
+                // Col 6: 雲端 PDF 報告網址
+                // Col 7: 建立時間
+                if (row.length >= 7) {
                     result.push({
                         id: i.toString(),
                         car_model: (row[0] || '').replace(/^"|"$/g, ''),
                         part_name: (row[1] || '').replace(/^"|"$/g, ''),
                         title: (row[2] || '').replace(/^"|"$/g, ''),
                         dtc: (row[3] || '').replace(/^"|"$/g, ''),
-                        description: (row[4] || '').replace(/^"|"$/g, ''),
-                        pdf_url: (row[5] || '').replace(/^"|"$/g, ''),
-                        date: (row[6] || '').replace(/^"|"$/g, '')
+                        symptoms: (row[4] || '').replace(/^"|"$/g, ''),
+                        description: (row[5] || '').replace(/^"|"$/g, ''),
+                        pdf_url: (row[6] || '').replace(/^"|"$/g, ''),
+                        date: (row[7] || '').replace(/^"|"$/g, '')
                     });
                 }
             }
 
             dbData = result;
+            initCarModelDropdown();
             initTags();
+            initSymptomCloud();
             renderList();
         }
 
+        function initCarModelDropdown() {
+            const cars = [...new Set(dbData.map(item => item.car_model).filter(Boolean))];
+            const select = document.getElementById('car-model-select');
+            select.innerHTML = `<option value="全部">全部車型 (${dbData.length})</option>`;
+            
+            cars.forEach(car => {
+                const count = dbData.filter(i => i.car_model === car).length;
+                const opt = document.createElement('option');
+                opt.value = car;
+                opt.innerText = `${car} (${count})`;
+                if (car === currentCarFilter) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
         function initTags() {
-            const parts = ['全部', ...new Set(dbData.map(item => item.part_name).filter(Boolean))];
+            const filteredByCar = currentCarFilter === '全部' ? dbData : dbData.filter(i => i.car_model === currentCarFilter);
+            const parts = ['全部', ...new Set(filteredByCar.map(item => item.part_name).filter(Boolean))];
             const tagContainer = document.getElementById('tag-filters');
             tagContainer.innerHTML = '';
             
             parts.forEach(part => {
-                const count = part === '全部' ? dbData.length : dbData.filter(i => i.part_name === part).length;
+                const count = part === '全部' ? filteredByCar.length : filteredByCar.filter(i => i.part_name === part).length;
                 const btn = document.createElement('button');
-                btn.className = `tag-btn text-xs px-2.5 py-1 rounded transition ${part === currentFilter ? 'bg-amber-500/25 text-amber-400 border border-amber-500/50 font-medium' : 'bg-[#1a1e29] text-slate-400 border border-[#2a3243] hover:border-slate-600'}`;
+                btn.className = `tag-btn text-xs px-2.5 py-1 rounded transition ${part === currentPartFilter ? 'bg-amber-500/25 text-amber-400 border border-amber-500/50 font-medium' : 'bg-[#1a1e29] text-slate-400 border border-[#2a3243] hover:border-slate-600'}`;
                 btn.innerText = `${part} (${count})`;
                 btn.onclick = () => filterByPart(part);
                 tagContainer.appendChild(btn);
             });
         }
 
+        // Build Obsidian Style Symptom Tag Cloud
+        function initSymptomCloud() {
+            const symptomCloud = document.getElementById('symptom-tag-cloud');
+            symptomCloud.innerHTML = '';
+
+            // Extract all symptoms separated by '/'
+            let symptomCounts = {};
+            dbData.forEach(item => {
+                if (item.symptoms) {
+                    item.symptoms.split('/').forEach(s => {
+                        const cleanS = s.trim();
+                        if (cleanS) {
+                            symptomCounts[cleanS] = (symptomCounts[cleanS] || 0) + 1;
+                        }
+                    });
+                }
+            });
+
+            const uniqueSymptoms = Object.keys(symptomCounts);
+            if (uniqueSymptoms.length === 0) {
+                symptomCloud.innerHTML = `<div class="p-2 text-xs text-slate-500 italic">尚無症狀標籤資料</div>`;
+                return;
+            }
+
+            uniqueSymptoms.forEach(sym => {
+                const isSelected = (currentSymptomFilter === sym);
+                const tag = document.createElement('button');
+                tag.className = `text-[11px] px-2.5 py-1 rounded-md transition font-mono flex items-center space-x-1 ${isSelected ? 'bg-blue-600 text-white font-bold shadow' : 'bg-[#1f2430] text-blue-400 hover:bg-[#2a3243] border border-blue-900/30'}`;
+                tag.innerHTML = `<span>#${sym}</span> <span class="text-[9px] opacity-75">(${symptomCounts[sym]})</span>`;
+                tag.onclick = () => filterBySymptom(sym);
+                symptomCloud.appendChild(tag);
+            });
+
+            const clearBtn = document.getElementById('clear-symptom-btn');
+            if (currentSymptomFilter) {
+                clearBtn.classList.remove('hidden');
+            } else {
+                clearBtn.classList.add('hidden');
+            }
+        }
+
+        function filterByCarModel(car) {
+            currentCarFilter = car;
+            currentPartFilter = '全部';
+            initTags();
+            renderList();
+        }
+
+        function filterByPart(part) {
+            currentPartFilter = part;
+            initTags();
+            renderList();
+        }
+
+        function filterBySymptom(sym) {
+            currentSymptomFilter = (currentSymptomFilter === sym) ? null : sym;
+            initSymptomCloud();
+            renderList();
+        }
+
+        function clearSymptomFilter() {
+            currentSymptomFilter = null;
+            initSymptomCloud();
+            renderList();
+        }
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            currentSearchQuery = e.target.value;
+            renderList();
+        });
+
         function renderList() {
             const container = document.getElementById('case-list-container');
             container.innerHTML = '';
 
             const filtered = dbData.filter(item => {
-                const matchPart = (currentFilter === '全部' || item.part_name === currentFilter);
+                const matchCar = (currentCarFilter === '全部' || item.car_model === currentCarFilter);
+                const matchPart = (currentPartFilter === '全部' || item.part_name === currentPartFilter);
+                
+                // Match symptom filter (checking if item symptoms contain the selected symptom tag)
+                let matchSymptom = true;
+                if (currentSymptomFilter) {
+                    const itemSyms = item.symptoms ? item.symptoms.split('/').map(s => s.trim()) : [];
+                    matchSymptom = itemSyms.includes(currentSymptomFilter);
+                }
+
                 const query = currentSearchQuery.toLowerCase();
                 const matchSearch = item.car_model.toLowerCase().includes(query) ||
                                     item.part_name.toLowerCase().includes(query) ||
                                     item.title.toLowerCase().includes(query) ||
                                     item.dtc.toLowerCase().includes(query) ||
+                                    item.symptoms.toLowerCase().includes(query) ||
                                     item.description.toLowerCase().includes(query);
-                return matchPart && matchSearch;
+
+                return matchCar && matchPart && matchSymptom && matchSearch;
             });
 
             document.getElementById('total-count').innerText = `文章總計: ${filtered.length} 篇`;
@@ -215,6 +351,24 @@
                 div.className = `p-4 cursor-pointer transition hover:bg-[#181d28] border-l-2 border-transparent`;
                 div.onclick = () => selectArticle(item.id, div);
                 
+                // DTC Badges
+                let dtcHtml = '';
+                if (item.dtc) {
+                    const dtcList = item.dtc.split('/').map(s => s.trim()).filter(Boolean);
+                    dtcHtml = `<div class="flex flex-wrap gap-1 mt-1">` + 
+                              dtcList.map(code => `<span class="text-[9px] mono-font text-red-400 bg-red-950/30 px-2 py-0.5 rounded border border-red-900/30">DTC: ${code}</span>`).join('') +
+                              `</div>`;
+                }
+
+                // Symptom Badges preview
+                let symHtml = '';
+                if (item.symptoms) {
+                    const symList = item.symptoms.split('/').map(s => s.trim()).filter(Boolean);
+                    symHtml = `<div class="flex flex-wrap gap-1 mt-1">` + 
+                              symList.map(s => `<span class="text-[9px] mono-font text-blue-400 bg-blue-950/30 px-2 py-0.5 rounded border border-blue-900/30">#${s}</span>`).join('') +
+                              `</div>`;
+                }
+
                 div.innerHTML = `
                     <div class="flex items-center justify-between mb-1.5">
                         <div class="flex items-center space-x-2">
@@ -224,22 +378,12 @@
                         <span class="text-[11px] text-slate-500 mono-font">${item.date}</span>
                     </div>
                     <h2 class="text-xs font-medium text-slate-200 line-clamp-2 leading-relaxed mb-1">${item.title}</h2>
-                    ${item.dtc ? `<div class="text-[11px] mono-font text-red-400 bg-red-950/30 px-2 py-0.5 rounded inline-block mt-1 border border-red-900/30">DTC: ${item.dtc}</div>` : ''}
+                    ${dtcHtml}
+                    ${symHtml}
                 `;
                 container.appendChild(div);
             });
         }
-
-        function filterByPart(part) {
-            currentFilter = part;
-            initTags();
-            renderList();
-        }
-
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            currentSearchQuery = e.target.value;
-            renderList();
-        });
 
         function selectArticle(id, element) {
             document.querySelectorAll('#case-list-container > div').forEach(el => {
@@ -260,12 +404,37 @@
             document.getElementById('art-meta-date').innerText = item.date;
             document.getElementById('art-title').innerText = item.title;
             
+            // DTC Badges
             const dtcBox = document.getElementById('art-dtc-box');
-            if(item.dtc) {
+            const dtcContainer = document.getElementById('art-dtc-container');
+            dtcContainer.innerHTML = '';
+            if (item.dtc) {
                 dtcBox.classList.remove('hidden');
-                document.getElementById('art-dtc-text').innerText = item.dtc;
+                item.dtc.split('/').map(s => s.trim()).filter(Boolean).forEach(code => {
+                    const badge = document.createElement('span');
+                    badge.className = "mono-font text-xs bg-red-100 text-red-800 px-2.5 py-1 rounded border border-red-300 font-semibold";
+                    badge.innerText = code;
+                    dtcContainer.appendChild(badge);
+                });
             } else {
                 dtcBox.classList.add('hidden');
+            }
+
+            // Symptom Badges
+            const symBox = document.getElementById('art-symptom-box');
+            const symContainer = document.getElementById('art-symptom-container');
+            symContainer.innerHTML = '';
+            if (item.symptoms) {
+                symBox.classList.remove('hidden');
+                item.symptoms.split('/').map(s => s.trim()).filter(Boolean).forEach(sym => {
+                    const badge = document.createElement('span');
+                    badge.className = "mono-font text-xs bg-blue-100 text-blue-800 px-2.5 py-1 rounded border border-blue-300 font-semibold cursor-pointer hover:bg-blue-200";
+                    badge.innerText = `#${sym}`;
+                    badge.onclick = () => filterBySymptom(sym);
+                    symContainer.appendChild(badge);
+                });
+            } else {
+                symBox.classList.add('hidden');
             }
 
             document.getElementById('art-desc').innerText = item.description;
