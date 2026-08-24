@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stellantis 維修實驗室 - PDF 專用檢視站</title>
+    <title>Stellantis 維修實驗室 - 智慧多媒體檢視站</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -16,7 +16,7 @@
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
-    <!-- Top Header (Optimized for Mobile Spacing) -->
+    <!-- Top Header -->
     <header class="bg-[#14171f] border-b border-[#262c38] px-4 py-3 md:py-0 md:h-14 flex flex-col md:flex-row md:items-center md:justify-between shrink-0 space-y-2 md:space-y-0">
         <div class="flex items-center justify-between md:justify-start md:space-x-4">
             <div class="flex items-center space-x-2">
@@ -42,7 +42,7 @@
         <!-- Mobile Toggle Button -->
         <div class="md:hidden bg-[#161a23] px-4 py-2 border-b border-[#262c38] flex justify-between items-center shrink-0">
             <span class="text-xs text-amber-400 font-mono" id="mobile-view-title">目前顯示：工單列表</span>
-            <button onclick="toggleMobileView()" id="mobile-toggle-btn" class="bg-amber-600 text-slate-950 font-semibold px-3 py-1 rounded text-xs">切換至 PDF 報告</button>
+            <button onclick="toggleMobileView()" id="mobile-toggle-btn" class="bg-amber-600 text-slate-950 font-semibold px-3 py-1 rounded text-xs">切換至內容檢視</button>
         </div>
 
         <!-- Left Sidebar: Filters & Article List -->
@@ -92,22 +92,20 @@
                 <span id="active-tag-status">點擊標籤進行過濾</span>
                 <button onclick="clearSymptomFilter()" id="clear-symptom-btn" class="hidden text-amber-400 hover:underline font-mono">清除篩選</button>
             </div>
-            <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1 bg-[#10131a] rounded border border-[#222736]" id="symptom-tag-cloud">
-                <!-- Dynamic tags injected here -->
-            </div>
+            <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1 bg-[#10131a] rounded border border-[#222736]" id="symptom-tag-cloud"></div>
         </div>
 
-        <!-- Right Content: Direct PDF Viewer -->
+        <!-- Right Content: Smart Viewer (PDF or YouTube) -->
         <main id="reader-panel" class="hidden md:flex flex-1 bg-[#090b0e] flex-col relative h-full">
             
             <!-- Default Empty State -->
             <div id="empty-state" class="m-auto text-center space-y-3 p-6 md:p-8">
                 <div class="w-16 h-16 rounded-full bg-[#161a23] border border-[#262c38] flex items-center justify-center mx-auto text-amber-400 text-2xl font-mono">⚡</div>
                 <h2 class="text-slate-200 font-medium text-sm md:text-base">請從左側列表選取一篇維修案例</h2>
-                <p class="text-slate-500 text-xs md:text-sm max-w-md">右側將直接滿版加載對應的雲端 PDF 報告。</p>
+                <p class="text-slate-500 text-xs md:text-sm max-w-md">右側將自動辨識並滿版加載 PDF 報告或 YouTube 影片。</p>
             </div>
 
-            <!-- PDF Viewer Header Bar -->
+            <!-- Viewer Header Bar -->
             <div id="pdf-header" class="hidden h-12 bg-[#14171f] border-b border-[#262c38] px-4 md:px-6 flex items-center justify-between shrink-0">
                 <div class="flex items-center space-x-3 overflow-hidden">
                     <span class="text-xs uppercase tracking-wider text-amber-500 font-mono font-semibold shrink-0" id="pdf-car-tag">-</span>
@@ -115,13 +113,20 @@
                     <span class="text-xs md:text-sm font-medium text-slate-200 truncate" id="pdf-title-text">-</span>
                 </div>
                 <a id="external-link" href="#" target="_blank" class="text-xs bg-[#1f2430] hover:bg-amber-600 hover:text-slate-950 text-slate-300 px-3 py-1.5 rounded border border-[#2e3646] transition flex items-center space-x-1 shrink-0 font-mono">
-                    <span>在新視窗開啟 ↗</span>
+                    <span id="external-link-text">在新視窗開啟 ↗</span>
                 </a>
             </div>
 
-            <!-- Full-size PDF Iframe Canvas -->
+            <!-- PDF Iframe Canvas -->
             <div class="flex-1 bg-white relative w-full h-full hidden" id="pdf-container">
                 <iframe id="pdf-iframe" class="w-full h-full border-0" src=""></iframe>
+            </div>
+
+            <!-- YouTube Embedded Canvas (Shown when YouTube link is detected) -->
+            <div class="flex-1 bg-black relative w-full h-full hidden flex-col items-center justify-center p-6" id="youtube-container">
+                <div class="w-full max-w-4xl aspect-video bg-[#14171f] rounded-lg overflow-hidden border border-[#262c38] shadow-2xl">
+                    <iframe id="youtube-iframe" class="w-full h-full" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
             </div>
         </main>
 
@@ -213,13 +218,13 @@
                 reader.classList.remove('hidden');
                 reader.classList.add('flex');
                 btn.innerText = "返回列表";
-                title.innerText = "目前顯示：PDF 報告";
+                title.innerText = "目前顯示：內容檢視";
                 mobileViewMode = 'reader';
             } else {
                 reader.classList.remove('flex');
                 reader.classList.add('hidden');
                 sidebar.classList.remove('hidden');
-                btn.innerText = "切換至 PDF 報告";
+                btn.innerText = "切換至內容檢視";
                 title.innerText = "目前顯示：工單列表";
                 mobileViewMode = 'list';
             }
@@ -400,6 +405,7 @@
             });
         }
 
+        // Smart URL Inspector: Detects YouTube vs PDF
         function selectArticle(id, element) {
             document.querySelectorAll('#case-list-container > div').forEach(el => {
                 el.classList.remove('bg-[#1a202c]', 'border-l-amber-500');
@@ -413,18 +419,47 @@
 
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('pdf-header').classList.remove('hidden');
-            document.getElementById('pdf-container').classList.remove('hidden');
-            document.getElementById('pdf-container').classList.add('flex');
 
             document.getElementById('pdf-car-tag').innerText = `${item.car_model} / ${item.part_name}`;
             document.getElementById('pdf-title-text').innerText = item.title;
 
-            let pdfUrl = item.pdf_url;
-            if (pdfUrl.includes('/view')) {
-                pdfUrl = pdfUrl.replace('/view', '/preview');
+            const url = item.pdf_url;
+            const pdfContainer = document.getElementById('pdf-container');
+            const youtubeContainer = document.getElementById('youtube-container');
+            const externalLink = document.getElementById('external-link');
+            const externalLinkText = document.getElementById('external-link-text');
+
+            // Check if it's a YouTube link
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                pdfContainer.classList.add('hidden');
+                youtubeContainer.classList.remove('hidden');
+                youtubeContainer.classList.add('flex');
+
+                // Extract YouTube video ID for embed
+                let videoId = '';
+                if (url.includes('youtu.be/')) {
+                    videoId = url.split('youtu.be/')[1].split('?')[0];
+                } else if (url.includes('watch?v=')) {
+                    videoId = url.split('watch?v=')[1].split('&')[0];
+                }
+
+                document.getElementById('youtube-iframe').src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+                externalLink.href = url;
+                externalLinkText.innerText = "在 YouTube 觀看 ↗";
+            } else {
+                // Default PDF Handling
+                youtubeContainer.classList.add('hidden');
+                pdfContainer.classList.remove('hidden');
+                pdfContainer.classList.add('flex');
+
+                let pdfUrl = url;
+                if (pdfUrl.includes('/view')) {
+                    pdfUrl = pdfUrl.replace('/view', '/preview');
+                }
+                document.getElementById('pdf-iframe').src = pdfUrl;
+                externalLink.href = url;
+                externalLinkText.innerText = "在新視窗開啟 ↗";
             }
-            document.getElementById('pdf-iframe').src = pdfUrl;
-            document.getElementById('external-link').href = item.pdf_url;
 
             if (window.innerWidth < 768 && mobileViewMode === 'list') {
                 toggleMobileView();
