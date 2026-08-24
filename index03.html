@@ -2,7 +2,8 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>黑盒數位觀測站 - 維修解構誌 (CBS 排序優化版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellantis 維修實驗室 - CBS 數位解構誌</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -16,34 +17,40 @@
 <body class="h-screen flex flex-col overflow-hidden">
 
     <!-- Top Header -->
-    <header class="h-14 bg-[#14171f] border-b border-[#262c38] flex items-center justify-between px-6 shrink-0">
-        <div class="flex items-center space-x-4">
+    <header class="h-14 bg-[#14171f] border-b border-[#262c38] flex items-center justify-between px-4 md:px-6 shrink-0">
+        <div class="flex items-center space-x-3">
             <div class="flex items-center space-x-2">
                 <span class="w-3 h-3 rounded-full bg-amber-500 animate-pulse"></span>
-                <h1 class="font-bold text-lg tracking-wider text-slate-100">黑盒數位觀測站 <span class="text-xs text-amber-400 font-mono ml-2 border border-amber-500/30 px-2 py-0.5 rounded">CBS 智能解構</span></h1>
+                <h1 class="font-bold text-base md:text-lg tracking-wider text-slate-100">Stellantis 維修實驗室 <span class="text-[10px] md:text-xs text-amber-400 font-mono ml-1 md:ml-2 border border-amber-500/30 px-2 py-0.5 rounded">CBS 數位解構</span></h1>
             </div>
-            <span class="text-xs text-slate-400 hidden md:inline">| 透過虛擬與現實交錯，解構未知的真相</span>
+            <span class="text-xs text-slate-400 hidden lg:inline">| 透過虛擬與現實交錯，解構未知的真相</span>
         </div>
-        <div class="flex items-center space-x-3 text-sm">
-            <button onclick="loadSheetData()" class="bg-[#1f2430] hover:bg-[#2e3646] text-slate-300 border border-[#2e3646] px-3 py-1 rounded text-xs transition">手動同步</button>
-            <span class="bg-[#1f2430] px-3 py-1 rounded text-slate-300 border border-[#2e3646]" id="total-count">文章總計: 載入中...</span>
+        <div class="flex items-center space-x-2 md:space-x-3 text-xs md:text-sm">
+            <button onclick="loadSheetData()" class="bg-[#1f2430] hover:bg-[#2e3646] text-slate-300 border border-[#2e3646] px-2.5 py-1 rounded transition">手動同步</button>
+            <span class="bg-[#1f2430] px-2.5 py-1 rounded text-slate-300 border border-[#2e3646]" id="total-count">文章: 載入中...</span>
         </div>
     </header>
 
-    <!-- Main Workspace -->
-    <div class="flex-1 flex overflow-hidden relative">
+    <!-- Main Workspace (Responsive Flex) -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+        <!-- Mobile Toggle Button for List / View -->
+        <div class="md:hidden bg-[#161a23] px-4 py-2 border-b border-[#262c38] flex justify-between items-center shrink-0">
+            <span class="text-xs text-amber-400 font-mono" id="mobile-view-title">目前顯示：工單列表</span>
+            <button onclick="toggleMobileView()" id="mobile-toggle-btn" class="bg-amber-600 text-slate-950 font-semibold px-3 py-1 rounded text-xs">切換至閱讀報告</button>
+        </div>
 
         <!-- Left Sidebar: Filters & Article List -->
-        <aside class="w-[450px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0">
+        <aside id="sidebar-panel" class="w-full md:w-[420px] lg:w-[450px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0 h-full">
             <!-- Search & Action Bar -->
-            <div class="p-4 border-b border-[#262c38] space-y-3">
+            <div class="p-3 md:p-4 border-b border-[#262c38] space-y-2.5">
                 <div class="flex items-center space-x-2">
                     <div class="relative flex-1">
-                        <input type="text" id="search-input" placeholder="搜尋手札..." 
+                        <input type="text" id="search-input" placeholder="搜尋車型、故障碼或手札..." 
                                class="w-full bg-[#1a1e29] border border-[#2a3243] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition">
                     </div>
                     <!-- 標籤庫 Toggle Button -->
-                    <button onclick="toggleTagLibrary()" id="tag-lib-btn" class="bg-[#1a1e29] hover:bg-[#262c38] text-amber-400 border border-[#2a3243] hover:border-amber-500/50 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shrink-0">
+                    <button onclick="toggleTagLibrary()" id="tag-lib-btn" class="bg-[#1a1e29] hover:bg-[#262c38] text-amber-400 border border-[#2a3243] hover:border-amber-500/50 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center space-x-1 shrink-0">
                         <span>🏷️ 標籤庫</span>
                     </button>
                 </div>
@@ -64,12 +71,12 @@
 
             <!-- List of Articles -->
             <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430]" id="case-list-container">
-                <div class="p-8 text-center text-slate-500 text-sm">正在從 Google 試算表同步資料...</div>
+                <div class="p-8 text-center text-slate-500 text-sm">正在從 CBS 雲端同步資料...</div>
             </div>
         </aside>
 
         <!-- Obsidian Style Tag Library Modal / Overlay Panel -->
-        <div id="tag-library-panel" class="hidden absolute top-4 left-4 z-50 w-96 bg-[#161a23] border border-[#2e3646] rounded-xl shadow-2xl p-4 space-y-3 backdrop-blur-md bg-opacity-95">
+        <div id="tag-library-panel" class="hidden absolute top-16 md:top-4 left-4 z-50 w-80 md:w-96 bg-[#161a23] border border-[#2e3646] rounded-xl shadow-2xl p-4 space-y-3 backdrop-blur-md bg-opacity-95">
             <div class="flex items-center justify-between border-b border-[#262c38] pb-2">
                 <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-1.5">
                     <span>🏷️ 症狀標籤庫 (Vault Tags)</span>
@@ -86,56 +93,56 @@
         </div>
 
         <!-- Right Content: Article Reader & Document Canvas -->
-        <main class="flex-1 bg-[#14171f] flex flex-col relative overflow-y-auto" id="main-viewer-area">
+        <main id="reader-panel" class="hidden md:flex flex-1 bg-[#14171f] flex-col relative overflow-y-auto h-full" id="main-viewer-area">
             
             <!-- Default Empty State -->
-            <div id="empty-state" class="m-auto text-center space-y-3 p-8">
+            <div id="empty-state" class="m-auto text-center space-y-3 p-6 md:p-8">
                 <div class="w-16 h-16 rounded-full bg-[#1b202c] border border-[#2e3646] flex items-center justify-center mx-auto text-amber-400 text-2xl font-mono">📖</div>
-                <h2 class="text-slate-200 font-medium">請從左側文章清單選取一篇維修解構報告</h2>
-                <p class="text-slate-500 text-sm max-w-md">系統將以文章閱讀器的沈浸式框架，自動解析多重 DTC 與症狀標籤並加載技術檔案。</p>
+                <h2 class="text-slate-200 font-medium text-sm md:text-base">請從左側文章清單選取一篇維修解構報告</h2>
+                <p class="text-slate-500 text-xs md:text-sm max-w-md">系統將以文章閱讀器的沈浸式框架，自動解析多重 DTC 與症狀標籤並加載技術檔案。</p>
             </div>
 
             <!-- Article Reader Content Wrapper (Hidden initially) -->
-            <div id="article-container" class="hidden max-w-4xl w-full mx-auto p-10 bg-[#fbf9f5] text-slate-900 min-h-full my-auto shadow-2xl rounded-none">
+            <div id="article-container" class="hidden max-w-4xl w-full mx-auto p-4 md:p-10 bg-[#fbf9f5] text-slate-900 min-h-full my-auto shadow-2xl rounded-none">
                 
                 <!-- Article Header Meta -->
-                <div class="border-b border-slate-300 pb-6 mb-6">
+                <div class="border-b border-slate-300 pb-4 md:pb-6 mb-4 md:mb-6">
                     <div class="flex items-center justify-between text-xs font-mono text-slate-500 mb-3">
                         <span id="art-meta-tag" class="bg-amber-100 text-amber-800 px-2.5 py-1 rounded font-semibold">-</span>
                         <span id="art-meta-date">-</span>
                     </div>
-                    <h1 id="art-title" class="text-2xl font-bold tracking-tight text-slate-900 leading-snug"></h1>
+                    <h1 id="art-title" class="text-xl md:text-2xl font-bold tracking-tight text-slate-900 leading-snug"></h1>
                 </div>
 
                 <!-- Multi-DTC Highlight Box -->
-                <div id="art-dtc-box" class="bg-amber-50 border-l-4 border-amber-600 p-4 my-4 text-sm text-amber-900 rounded-r">
+                <div id="art-dtc-box" class="bg-amber-50 border-l-4 border-amber-600 p-3 md:p-4 my-3 md:my-4 text-xs md:text-sm text-amber-900 rounded-r">
                     <span class="font-bold block mb-2 font-mono">高亮故障碼標籤 (DTC Badges)：</span> 
                     <div id="art-dtc-container" class="flex flex-wrap gap-2"></div>
                 </div>
 
                 <!-- Symptoms Tags Box -->
-                <div id="art-symptom-box" class="bg-blue-50 border-l-4 border-blue-600 p-4 my-4 text-sm text-blue-900 rounded-r">
+                <div id="art-symptom-box" class="bg-blue-50 border-l-4 border-blue-600 p-3 md:p-4 my-3 md:my-4 text-xs md:text-sm text-blue-900 rounded-r">
                     <span class="font-bold block mb-2 font-mono">症狀標籤 (Symptoms)：</span> 
                     <div id="art-symptom-container" class="flex flex-wrap gap-2"></div>
                 </div>
 
                 <!-- Article Body / Description -->
-                <div class="space-y-4 text-slate-700 leading-relaxed text-sm mb-8">
-                    <h3 class="font-bold text-slate-900 text-base">【案例詳細文字描述與解構】</h3>
-                    <p id="art-desc" class="bg-white p-6 rounded border border-slate-200 shadow-sm whitespace-pre-line font-mono text-xs leading-6 text-slate-800"></p>
+                <div class="space-y-3 text-slate-700 leading-relaxed text-xs md:text-sm mb-6 md:mb-8">
+                    <h3 class="font-bold text-slate-900 text-sm md:text-base">【案例詳細文字描述與解構】</h3>
+                    <p id="art-desc" class="bg-white p-4 md:p-6 rounded border border-slate-200 shadow-sm whitespace-pre-line font-mono text-xs leading-5 md:leading-6 text-slate-800"></p>
                 </div>
 
                 <!-- Embedded PDF Report Section -->
-                <div class="mt-8 border-t border-slate-300 pt-6">
+                <div class="mt-6 md:mt-8 border-t border-slate-300 pt-4 md:pt-6">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-bold text-slate-900 text-base flex items-center space-x-2">
+                        <h3 class="font-bold text-slate-900 text-sm md:text-base flex items-center space-x-2">
                             <span>📄 雲端 PDF 原始技術報告檢視</span>
                         </h3>
                         <a id="art-pdf-link" href="#" target="_blank" class="text-xs bg-slate-900 hover:bg-amber-600 text-white px-3 py-1.5 rounded transition font-mono">
-                            在新視窗開啟 PDF ➔
+                            在新視窗開啟 ➔
                         </a>
                     </div>
-                    <div class="w-full h-[600px] border border-slate-300 rounded bg-white shadow-inner overflow-hidden">
+                    <div class="w-full h-[450px] md:h-[600px] border border-slate-300 rounded bg-white shadow-inner overflow-hidden">
                         <iframe id="art-pdf-iframe" class="w-full h-full" src=""></iframe>
                     </div>
                 </div>
@@ -154,6 +161,7 @@
         let currentPartFilter = '全部';
         let currentSymptomFilter = null;
         let currentSearchQuery = '';
+        let mobileViewMode = 'list'; // 'list' or 'reader'
 
         async function loadSheetData() {
             try {
@@ -205,7 +213,6 @@
                 }
             }
 
-            // 依照日期由近到遠排序 (Descending order: newest date first)
             result.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             dbData = result;
@@ -218,6 +225,29 @@
         function toggleTagLibrary() {
             const panel = document.getElementById('tag-library-panel');
             panel.classList.toggle('hidden');
+        }
+
+        function toggleMobileView() {
+            const sidebar = document.getElementById('sidebar-panel');
+            const reader = document.getElementById('reader-panel');
+            const btn = document.getElementById('mobile-toggle-btn');
+            const title = document.getElementById('mobile-view-title');
+
+            if (mobileViewMode === 'list') {
+                sidebar.classList.add('hidden');
+                reader.classList.remove('hidden');
+                reader.classList.add('flex');
+                btn.innerText = "返回列表";
+                title.innerText = "目前顯示：報告閱讀器";
+                mobileViewMode = 'reader';
+            } else {
+                reader.classList.remove('flex');
+                reader.classList.add('hidden');
+                sidebar.classList.remove('hidden');
+                btn.innerText = "切換至閱讀報告";
+                title.innerText = "目前顯示：工單列表";
+                mobileViewMode = 'list';
+            }
         }
 
         function initCarModelDropdown() {
@@ -351,7 +381,7 @@
                 return matchCar && matchPart && matchSymptom && matchSearch;
             });
 
-            document.getElementById('total-count').innerText = `文章總計: ${filtered.length} 篇`;
+            document.getElementById('total-count').innerText = `文章: ${filtered.length} 篇`;
 
             if (filtered.length === 0) {
                 container.innerHTML = `<div class="p-8 text-center text-slate-500 text-sm">沒有找到符合的文章紀錄</div>`;
@@ -360,7 +390,7 @@
 
             filtered.forEach((item) => {
                 const div = document.createElement('div');
-                div.className = `p-4 cursor-pointer transition hover:bg-[#181d28] border-l-2 border-transparent`;
+                div.className = `p-3 md:p-4 cursor-pointer transition hover:bg-[#181d28] border-l-2 border-transparent`;
                 div.onclick = () => selectArticle(item.id, div);
                 
                 let dtcHtml = '';
@@ -453,6 +483,11 @@
             }
             document.getElementById('art-pdf-iframe').src = pdfUrl;
             document.getElementById('art-pdf-link').href = item.pdf_url;
+
+            // On mobile, automatically toggle view to reader when an article is clicked
+            if (window.innerWidth < 768 && mobileViewMode === 'list') {
+                toggleMobileView();
+            }
         }
 
         loadSheetData();
