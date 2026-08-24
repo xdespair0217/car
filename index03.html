@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>黑盒數位觀測站 - 維修解構誌 (Obsidian 標籤雲版)</title>
+    <title>黑盒數位觀測站 - 維修解構誌 (標籤庫互動版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -20,7 +20,7 @@
         <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">
                 <span class="w-3 h-3 rounded-full bg-amber-500 animate-pulse"></span>
-                <h1 class="font-bold text-lg tracking-wider text-slate-100">黑盒數位觀測站 <span class="text-xs text-amber-400 font-mono ml-2 border border-amber-500/30 px-2 py-0.5 rounded">Obsidian 標籤聯動版</span></h1>
+                <h1 class="font-bold text-lg tracking-wider text-slate-100">黑盒數位觀測站 <span class="text-xs text-amber-400 font-mono ml-2 border border-amber-500/30 px-2 py-0.5 rounded">標籤庫聯動版</span></h1>
             </div>
             <span class="text-xs text-slate-400 hidden md:inline">| 透過虛擬與現實交錯，解構未知的真相</span>
         </div>
@@ -31,15 +31,21 @@
     </header>
 
     <!-- Main Workspace -->
-    <div class="flex-1 flex overflow-hidden">
+    <div class="flex-1 flex overflow-hidden relative">
 
         <!-- Left Sidebar: Filters & Article List -->
         <aside class="w-[450px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0">
-            <!-- Search & Dynamic Filters -->
+            <!-- Search & Action Bar -->
             <div class="p-4 border-b border-[#262c38] space-y-3">
-                <div class="relative">
-                    <input type="text" id="search-input" placeholder="搜尋車型、部位、故障碼、症狀或標題..." 
-                           class="w-full bg-[#1a1e29] border border-[#2a3243] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition">
+                <div class="flex items-center space-x-2">
+                    <div class="relative flex-1">
+                        <input type="text" id="search-input" placeholder="搜尋手札..." 
+                               class="w-full bg-[#1a1e29] border border-[#2a3243] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition">
+                    </div>
+                    <!-- 標籤庫 Toggle Button -->
+                    <button onclick="toggleTagLibrary()" id="tag-lib-btn" class="bg-[#1a1e29] hover:bg-[#262c38] text-amber-400 border border-[#2a3243] hover:border-amber-500/50 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 shrink-0">
+                        <span>🏷️ 標籤庫</span>
+                    </button>
                 </div>
                 
                 <!-- Car Model & Part Filters -->
@@ -54,19 +60,6 @@
                 <div class="flex flex-wrap gap-1.5 pt-1" id="tag-filters">
                     <button onclick="filterByPart('全部')" class="tag-btn active text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 font-medium transition">全部部位</button>
                 </div>
-
-                <!-- Obsidian Style Symptoms Tag Cloud Section -->
-                <div class="pt-2 border-t border-[#262c38]">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs text-slate-400 font-mono flex items-center space-x-1">
-                            <span>🏷️ 症狀標籤雲 (Obsidian Vault)</span>
-                        </span>
-                        <button onclick="clearSymptomFilter()" id="clear-symptom-btn" class="hidden text-[10px] text-amber-400 hover:underline font-mono">清除症狀篩選</button>
-                    </div>
-                    <div class="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1 bg-[#161922] rounded border border-[#222736]" id="symptom-tag-cloud">
-                        <!-- Dynamic Symptom Badges injected here -->
-                    </div>
-                </div>
             </div>
 
             <!-- List of Articles -->
@@ -74,6 +67,23 @@
                 <div class="p-8 text-center text-slate-500 text-sm">正在從 Google 試算表串接即時資料...</div>
             </div>
         </aside>
+
+        <!-- Obsidian Style Tag Library Modal / Overlay Panel -->
+        <div id="tag-library-panel" class="hidden absolute top-4 left-4 z-50 w-96 bg-[#161a23] border border-[#2e3646] rounded-xl shadow-2xl p-4 space-y-3 backdrop-blur-md bg-opacity-95">
+            <div class="flex items-center justify-between border-b border-[#262c38] pb-2">
+                <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-1.5">
+                    <span>🏷️ 症狀標籤庫 (Vault Tags)</span>
+                </h3>
+                <button onclick="toggleTagLibrary()" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-[#1f2430]">✕ 關閉</button>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-400">
+                <span id="active-tag-status">點擊標籤進行過濾</span>
+                <button onclick="clearSymptomFilter()" id="clear-symptom-btn" class="hidden text-amber-400 hover:underline font-mono">清除篩選</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1 bg-[#10131a] rounded border border-[#222736]" id="symptom-tag-cloud">
+                <!-- Dynamic tags injected here -->
+            </div>
+        </div>
 
         <!-- Right Content: Article Reader & Document Canvas -->
         <main class="flex-1 bg-[#14171f] flex flex-col relative overflow-y-auto" id="main-viewer-area">
@@ -135,7 +145,7 @@
 
     </div>
 
-    <!-- JavaScript Obsidian Tag Controller -->
+    <!-- JavaScript Controller -->
     <script>
         const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";
         
@@ -147,7 +157,7 @@
 
         async function loadSheetData() {
             try {
-                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在同步 CBS 雲端資料與 Obsidian 標籤...</div>`;
+                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在同步 CBS 雲端資料與標籤庫...</div>`;
                 const response = await fetch(CSV_URL);
                 const text = await response.text();
                 parseCSV(text);
@@ -180,15 +190,6 @@
                 }
                 row.push(currentVal.trim());
 
-                // Column Index Mapping based on updated structure:
-                // Col 0: 車型代碼
-                // Col 1: 部位名稱
-                // Col 2: 案例標題
-                // Col 3: 高亮故障碼標籤 (DTC Badge)
-                // Col 4: 症狀標籤 (Symptoms) <--- NEW
-                // Col 5: 案例詳細文字描述
-                // Col 6: 雲端 PDF 報告網址
-                // Col 7: 建立時間
                 if (row.length >= 7) {
                     result.push({
                         id: i.toString(),
@@ -209,6 +210,11 @@
             initTags();
             initSymptomCloud();
             renderList();
+        }
+
+        function toggleTagLibrary() {
+            const panel = document.getElementById('tag-library-panel');
+            panel.classList.toggle('hidden');
         }
 
         function initCarModelDropdown() {
@@ -242,12 +248,10 @@
             });
         }
 
-        // Build Obsidian Style Symptom Tag Cloud
         function initSymptomCloud() {
             const symptomCloud = document.getElementById('symptom-tag-cloud');
             symptomCloud.innerHTML = '';
 
-            // Extract all symptoms separated by '/'
             let symptomCounts = {};
             dbData.forEach(item => {
                 if (item.symptoms) {
@@ -269,17 +273,23 @@
             uniqueSymptoms.forEach(sym => {
                 const isSelected = (currentSymptomFilter === sym);
                 const tag = document.createElement('button');
-                tag.className = `text-[11px] px-2.5 py-1 rounded-md transition font-mono flex items-center space-x-1 ${isSelected ? 'bg-blue-600 text-white font-bold shadow' : 'bg-[#1f2430] text-blue-400 hover:bg-[#2a3243] border border-blue-900/30'}`;
+                tag.className = `text-[11px] px-2.5 py-1 rounded-md transition font-mono flex items-center justify-between ${isSelected ? 'bg-blue-600 text-white font-bold shadow' : 'bg-[#1f2430] text-blue-400 hover:bg-[#2a3243] border border-blue-900/30'}`;
                 tag.innerHTML = `<span>#${sym}</span> <span class="text-[9px] opacity-75">(${symptomCounts[sym]})</span>`;
-                tag.onclick = () => filterBySymptom(sym);
+                tag.onclick = () => {
+                    filterBySymptom(sym);
+                    toggleTagLibrary(); // Auto close panel on select
+                };
                 symptomCloud.appendChild(tag);
             });
 
             const clearBtn = document.getElementById('clear-symptom-btn');
+            const statusText = document.getElementById('active-tag-status');
             if (currentSymptomFilter) {
                 clearBtn.classList.remove('hidden');
+                statusText.innerHTML = `目前篩選：<span class="text-blue-400 font-bold">#${currentSymptomFilter}</span>`;
             } else {
                 clearBtn.classList.add('hidden');
+                statusText.innerHTML = `點擊標籤進行過濾`;
             }
         }
 
@@ -321,7 +331,6 @@
                 const matchCar = (currentCarFilter === '全部' || item.car_model === currentCarFilter);
                 const matchPart = (currentPartFilter === '全部' || item.part_name === currentPartFilter);
                 
-                // Match symptom filter (checking if item symptoms contain the selected symptom tag)
                 let matchSymptom = true;
                 if (currentSymptomFilter) {
                     const itemSyms = item.symptoms ? item.symptoms.split('/').map(s => s.trim()) : [];
@@ -351,7 +360,6 @@
                 div.className = `p-4 cursor-pointer transition hover:bg-[#181d28] border-l-2 border-transparent`;
                 div.onclick = () => selectArticle(item.id, div);
                 
-                // DTC Badges
                 let dtcHtml = '';
                 if (item.dtc) {
                     const dtcList = item.dtc.split('/').map(s => s.trim()).filter(Boolean);
@@ -360,7 +368,6 @@
                               `</div>`;
                 }
 
-                // Symptom Badges preview
                 let symHtml = '';
                 if (item.symptoms) {
                     const symList = item.symptoms.split('/').map(s => s.trim()).filter(Boolean);
@@ -404,7 +411,6 @@
             document.getElementById('art-meta-date').innerText = item.date;
             document.getElementById('art-title').innerText = item.title;
             
-            // DTC Badges
             const dtcBox = document.getElementById('art-dtc-box');
             const dtcContainer = document.getElementById('art-dtc-container');
             dtcContainer.innerHTML = '';
@@ -420,7 +426,6 @@
                 dtcBox.classList.add('hidden');
             }
 
-            // Symptom Badges
             const symBox = document.getElementById('art-symptom-box');
             const symContainer = document.getElementById('art-symptom-container');
             symContainer.innerHTML = '';
