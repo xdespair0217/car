@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <title>黑盒數位觀測站 - 維修解構誌 (標籤庫互動版)</title>
+    <title>黑盒數位觀測站 - 維修解構誌 (CBS 排序優化版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -20,12 +20,12 @@
         <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">
                 <span class="w-3 h-3 rounded-full bg-amber-500 animate-pulse"></span>
-                <h1 class="font-bold text-lg tracking-wider text-slate-100">黑盒數位觀測站 <span class="text-xs text-amber-400 font-mono ml-2 border border-amber-500/30 px-2 py-0.5 rounded">標籤庫聯動版</span></h1>
+                <h1 class="font-bold text-lg tracking-wider text-slate-100">黑盒數位觀測站 <span class="text-xs text-amber-400 font-mono ml-2 border border-amber-500/30 px-2 py-0.5 rounded">CBS 智能解構</span></h1>
             </div>
             <span class="text-xs text-slate-400 hidden md:inline">| 透過虛擬與現實交錯，解構未知的真相</span>
         </div>
         <div class="flex items-center space-x-3 text-sm">
-            <button onclick="loadSheetData()" class="bg-[#1f2430] hover:bg-[#2e3646] text-slate-300 border border-[#2e3646] px-3 py-1 rounded text-xs transition">重新同步 CBS</button>
+            <button onclick="loadSheetData()" class="bg-[#1f2430] hover:bg-[#2e3646] text-slate-300 border border-[#2e3646] px-3 py-1 rounded text-xs transition">手動同步</button>
             <span class="bg-[#1f2430] px-3 py-1 rounded text-slate-300 border border-[#2e3646]" id="total-count">文章總計: 載入中...</span>
         </div>
     </header>
@@ -64,7 +64,7 @@
 
             <!-- List of Articles -->
             <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430]" id="case-list-container">
-                <div class="p-8 text-center text-slate-500 text-sm">正在從 Google 試算表串接即時資料...</div>
+                <div class="p-8 text-center text-slate-500 text-sm">正在從 Google 試算表同步資料...</div>
             </div>
         </aside>
 
@@ -157,7 +157,7 @@
 
         async function loadSheetData() {
             try {
-                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在同步 CBS 雲端資料與標籤庫...</div>`;
+                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在手動同步 CBS 雲端資料與標籤庫...</div>`;
                 const response = await fetch(CSV_URL);
                 const text = await response.text();
                 parseCSV(text);
@@ -204,6 +204,9 @@
                     });
                 }
             }
+
+            // 依照日期由近到遠排序 (Descending order: newest date first)
+            result.sort((a, b) => new Date(b.date) - new Date(a.date));
 
             dbData = result;
             initCarModelDropdown();
@@ -277,7 +280,7 @@
                 tag.innerHTML = `<span>#${sym}</span> <span class="text-[9px] opacity-75">(${symptomCounts[sym]})</span>`;
                 tag.onclick = () => {
                     filterBySymptom(sym);
-                    toggleTagLibrary(); // Auto close panel on select
+                    toggleTagLibrary();
                 };
                 symptomCloud.appendChild(tag);
             });
