@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f1115; color: #e2e8f0; overflow: hidden; height: 100dvh; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f1115; color: #e2e8f0; overflow: hidden; height: 100dvh; position: fixed; width: 100%; }
         .mono-font { font-family: 'JetBrains Mono', monospace; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #181b22; }
@@ -47,7 +47,7 @@
 
         <!-- Left Sidebar: Filters & Article List -->
         <aside id="sidebar-panel" class="w-full md:w-[420px] lg:w-[450px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0 h-full overflow-hidden">
-            <!-- Search & Action Bar -->
+            <!-- Search & Action Bar (Fixed Height Area) -->
             <div class="p-3 md:p-4 border-b border-[#262c38] space-y-2.5 shrink-0">
                 <div class="flex items-center space-x-2">
                     <div class="relative flex-1">
@@ -68,15 +68,15 @@
                     </select>
                 </div>
 
-                <!-- Part Tags row -->
-                <div class="flex flex-wrap gap-1.5 pt-1" id="tag-filters">
+                <!-- Part Tags row (Scrollable horizontally if needed) -->
+                <div class="flex flex-wrap gap-1.5 pt-1 max-h-20 overflow-y-auto" id="tag-filters">
                     <button onclick="filterByPart('全部')" class="tag-btn active text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 font-medium transition">全部部位</button>
                 </div>
             </div>
 
-            <!-- List of Articles (Added pb-32 to ensure bottom items can be scrolled fully into view) -->
-            <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430] pb-32 overscroll-y-auto" id="case-list-container">
-                <div class="p-8 text-center text-slate-500 text-sm">正在從 CBS 雲端同步資料...[cite: 3]</div>
+            <!-- List of Articles (Strictly independent scroll with bottom padding) -->
+            <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430] pb-36 overscroll-contain" id="case-list-container">
+                <div class="p-8 text-center text-slate-500 text-sm">正在從 CBS 雲端同步資料...</div>
             </div>
         </aside>
 
@@ -84,12 +84,12 @@
         <div id="tag-library-panel" class="hidden absolute top-24 md:top-4 left-4 z-50 w-80 md:w-96 bg-[#161a23] border border-[#2e3646] rounded-xl shadow-2xl p-4 space-y-3 backdrop-blur-md bg-opacity-95">
             <div class="flex items-center justify-between border-b border-[#262c38] pb-2">
                 <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-1.5">
-                    <span>🏷️ 症狀標籤庫 (Vault Tags)[cite: 3]</span>
+                    <span>🏷️ 症狀標籤庫 (Vault Tags)</span>
                 </h3>
                 <button onclick="toggleTagLibrary()" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-[#1f2430]">✕ 關閉</button>
             </div>
             <div class="flex items-center justify-between text-xs text-slate-400">
-                <span id="active-tag-status">點擊標籤進行過濾[cite: 3]</span>
+                <span id="active-tag-status">點擊標籤進行過濾</span>
                 <button onclick="clearSymptomFilter()" id="clear-symptom-btn" class="hidden text-amber-400 hover:underline font-mono">清除篩選</button>
             </div>
             <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1 bg-[#10131a] rounded border border-[#222736]" id="symptom-tag-cloud"></div>
@@ -101,8 +101,8 @@
             <!-- Default Empty State -->
             <div id="empty-state" class="m-auto text-center space-y-3 p-6 md:p-8">
                 <div class="w-16 h-16 rounded-full bg-[#161a23] border border-[#262c38] flex items-center justify-center mx-auto text-amber-400 text-2xl font-mono">⚡</div>
-                <h2 class="text-slate-200 font-medium text-sm md:text-base">請從左側列表選取一篇維修案例[cite: 3]</h2>
-                <p class="text-slate-500 text-xs md:text-sm max-w-md">右側將自動辨識並滿版加載 PDF 報告或 YouTube 影片。[cite: 3]</p>
+                <h2 class="text-slate-200 font-medium text-sm md:text-base">請從左側列表選取一篇維修案例</h2>
+                <p class="text-slate-500 text-xs md:text-sm max-w-md">右側將自動辨識並滿版加載 PDF 報告或 YouTube 影片。</p>
             </div>
 
             <!-- Viewer Header Bar -->
@@ -134,7 +134,7 @@
 
     <!-- JavaScript Controller -->
     <script>
-        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";[cite: 3]
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";
         
         let dbData = [];
         let currentCarFilter = '全部';
@@ -145,13 +145,13 @@
 
         async function loadSheetData() {
             try {
-                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在手動同步 CBS 雲端資料與標籤庫...</div>`;[cite: 3]
+                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在手動同步 CBS 雲端資料與標籤庫...</div>`;
                 const response = await fetch(CSV_URL);
                 const text = await response.text();
                 parseCSV(text);
             } catch (error) {
                 console.error("載入試算表失敗:", error);
-                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-red-400 text-sm">無法讀取 CBS 雲端資料。<br>請確認透過本地伺服器或線上環境運行。</div>`;[cite: 3]
+                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-red-400 text-sm">無法讀取 CBS 雲端資料。<br>請確認透過本地伺服器或線上環境運行。</div>`;
             }
         }
 
@@ -233,7 +233,7 @@
         function initCarModelDropdown() {
             const cars = [...new Set(dbData.map(item => item.car_model).filter(Boolean))];
             const select = document.getElementById('car-model-select');
-            select.innerHTML = `<option value="全部">全部車型 (${dbData.length})</option>`;[cite: 3]
+            select.innerHTML = `<option value="全部">全部車型 (${dbData.length})</option>`;
             
             cars.forEach(car => {
                 const count = dbData.filter(i => i.car_model === car).length;
@@ -302,7 +302,7 @@
                 statusText.innerHTML = `目前篩選：<span class="text-blue-400 font-bold">#${currentSymptomFilter}</span>`;
             } else {
                 clearBtn.classList.add('hidden');
-                statusText.innerHTML = `點擊標籤進行過濾[cite: 3]`;
+                statusText.innerHTML = `點擊標籤進行過濾`;
             }
         }
 
@@ -405,7 +405,6 @@
             });
         }
 
-        // Smart URL Inspector: Detects YouTube vs PDF
         function selectArticle(id, element) {
             document.querySelectorAll('#case-list-container > div').forEach(el => {
                 el.classList.remove('bg-[#1a202c]', 'border-l-amber-500');
@@ -429,13 +428,11 @@
             const externalLink = document.getElementById('external-link');
             const externalLinkText = document.getElementById('external-link-text');
 
-            // Check if it's a YouTube link
             if (url.includes('youtube.com') || url.includes('youtu.be')) {
                 pdfContainer.classList.add('hidden');
                 youtubeContainer.classList.remove('hidden');
                 youtubeContainer.classList.add('flex');
 
-                // Extract YouTube video ID for embed
                 let videoId = '';
                 if (url.includes('youtu.be/')) {
                     videoId = url.split('youtu.be/')[1].split('?')[0];
@@ -447,7 +444,6 @@
                 externalLink.href = url;
                 externalLinkText.innerText = "在 YouTube 觀看 ↗";
             } else {
-                // Default PDF Handling
                 youtubeContainer.classList.add('hidden');
                 pdfContainer.classList.remove('hidden');
                 pdfContainer.classList.add('flex');
