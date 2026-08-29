@@ -2,19 +2,19 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stellantis 維修實驗室 - 智慧多媒體檢視站</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f1115; color: #e2e8f0; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f1115; color: #e2e8f0; overflow: hidden; height: 100dvh; }
         .mono-font { font-family: 'JetBrains Mono', monospace; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #181b22; }
-        ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 2px; }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="h-[100dvh] flex flex-col overflow-hidden">
 
     <!-- Top Header -->
     <header class="bg-[#14171f] border-b border-[#262c38] px-4 py-3 md:py-0 md:h-14 flex flex-col md:flex-row md:items-center md:justify-between shrink-0 space-y-2 md:space-y-0">
@@ -37,18 +37,18 @@
     </header>
 
     <!-- Main Workspace -->
-    <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden relative w-full h-full">
 
         <!-- Mobile Toggle Button -->
-        <div class="md:hidden bg-[#161a23] px-4 py-2 border-b border-[#262c38] flex justify-between items-center shrink-0">
+        <div class="md:hidden bg-[#161a23] px-4 py-2 border-b border-[#262c38] flex justify-between items-center shrink-0 z-10">
             <span class="text-xs text-amber-400 font-mono" id="mobile-view-title">目前顯示：工單列表</span>
             <button onclick="toggleMobileView()" id="mobile-toggle-btn" class="bg-amber-600 text-slate-950 font-semibold px-3 py-1 rounded text-xs">切換至內容檢視</button>
         </div>
 
         <!-- Left Sidebar: Filters & Article List -->
-        <aside id="sidebar-panel" class="w-full md:w-[420px] lg:w-[450px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0 h-full">
+        <aside id="sidebar-panel" class="w-full md:w-[420px] lg:w-[450px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0 h-full overflow-hidden">
             <!-- Search & Action Bar -->
-            <div class="p-3 md:p-4 border-b border-[#262c38] space-y-2.5">
+            <div class="p-3 md:p-4 border-b border-[#262c38] space-y-2.5 shrink-0">
                 <div class="flex items-center space-x-2">
                     <div class="relative flex-1">
                         <input type="text" id="search-input" placeholder="搜尋車型、故障碼或手札..." 
@@ -74,9 +74,9 @@
                 </div>
             </div>
 
-            <!-- List of Articles -->
-            <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430]" id="case-list-container">
-                <div class="p-8 text-center text-slate-500 text-sm">正在從 CBS 雲端同步資料...</div>
+            <!-- List of Articles (Added pb-32 to ensure bottom items can be scrolled fully into view) -->
+            <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430] pb-32 overscroll-y-auto" id="case-list-container">
+                <div class="p-8 text-center text-slate-500 text-sm">正在從 CBS 雲端同步資料...[cite: 3]</div>
             </div>
         </aside>
 
@@ -84,25 +84,25 @@
         <div id="tag-library-panel" class="hidden absolute top-24 md:top-4 left-4 z-50 w-80 md:w-96 bg-[#161a23] border border-[#2e3646] rounded-xl shadow-2xl p-4 space-y-3 backdrop-blur-md bg-opacity-95">
             <div class="flex items-center justify-between border-b border-[#262c38] pb-2">
                 <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-1.5">
-                    <span>🏷️ 症狀標籤庫 (Vault Tags)</span>
+                    <span>🏷️ 症狀標籤庫 (Vault Tags)[cite: 3]</span>
                 </h3>
                 <button onclick="toggleTagLibrary()" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-[#1f2430]">✕ 關閉</button>
             </div>
             <div class="flex items-center justify-between text-xs text-slate-400">
-                <span id="active-tag-status">點擊標籤進行過濾</span>
+                <span id="active-tag-status">點擊標籤進行過濾[cite: 3]</span>
                 <button onclick="clearSymptomFilter()" id="clear-symptom-btn" class="hidden text-amber-400 hover:underline font-mono">清除篩選</button>
             </div>
             <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1 bg-[#10131a] rounded border border-[#222736]" id="symptom-tag-cloud"></div>
         </div>
 
         <!-- Right Content: Smart Viewer (PDF or YouTube) -->
-        <main id="reader-panel" class="hidden md:flex flex-1 bg-[#090b0e] flex-col relative h-full">
+        <main id="reader-panel" class="hidden md:flex flex-1 bg-[#090b0e] flex-col relative h-full overflow-hidden">
             
             <!-- Default Empty State -->
             <div id="empty-state" class="m-auto text-center space-y-3 p-6 md:p-8">
                 <div class="w-16 h-16 rounded-full bg-[#161a23] border border-[#262c38] flex items-center justify-center mx-auto text-amber-400 text-2xl font-mono">⚡</div>
-                <h2 class="text-slate-200 font-medium text-sm md:text-base">請從左側列表選取一篇維修案例</h2>
-                <p class="text-slate-500 text-xs md:text-sm max-w-md">右側將自動辨識並滿版加載 PDF 報告或 YouTube 影片。</p>
+                <h2 class="text-slate-200 font-medium text-sm md:text-base">請從左側列表選取一篇維修案例[cite: 3]</h2>
+                <p class="text-slate-500 text-xs md:text-sm max-w-md">右側將自動辨識並滿版加載 PDF 報告或 YouTube 影片。[cite: 3]</p>
             </div>
 
             <!-- Viewer Header Bar -->
@@ -134,7 +134,7 @@
 
     <!-- JavaScript Controller -->
     <script>
-        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSw0kBqYIQbAPsmha3HSVyRRgzjVxocLJxCOk2exxsJwo-qv0QLNUENzThS07cRx4AYNDF4n5s-xMjE/pub?gid=213514790&single=true&output=csv";[cite: 3]
         
         let dbData = [];
         let currentCarFilter = '全部';
@@ -145,13 +145,13 @@
 
         async function loadSheetData() {
             try {
-                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在手動同步 CBS 雲端資料與標籤庫...</div>`;
+                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-slate-400 text-sm animate-pulse">正在手動同步 CBS 雲端資料與標籤庫...</div>`;[cite: 3]
                 const response = await fetch(CSV_URL);
                 const text = await response.text();
                 parseCSV(text);
             } catch (error) {
                 console.error("載入試算表失敗:", error);
-                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-red-400 text-sm">無法讀取 CBS 雲端資料。<br>請確認透過本地伺服器或線上環境運行。</div>`;
+                document.getElementById('case-list-container').innerHTML = `<div class="p-8 text-center text-red-400 text-sm">無法讀取 CBS 雲端資料。<br>請確認透過本地伺服器或線上環境運行。</div>`;[cite: 3]
             }
         }
 
@@ -233,7 +233,7 @@
         function initCarModelDropdown() {
             const cars = [...new Set(dbData.map(item => item.car_model).filter(Boolean))];
             const select = document.getElementById('car-model-select');
-            select.innerHTML = `<option value="全部">全部車型 (${dbData.length})</option>`;
+            select.innerHTML = `<option value="全部">全部車型 (${dbData.length})</option>`;[cite: 3]
             
             cars.forEach(car => {
                 const count = dbData.filter(i => i.car_model === car).length;
@@ -302,7 +302,7 @@
                 statusText.innerHTML = `目前篩選：<span class="text-blue-400 font-bold">#${currentSymptomFilter}</span>`;
             } else {
                 clearBtn.classList.add('hidden');
-                statusText.innerHTML = `點擊標籤進行過濾`;
+                statusText.innerHTML = `點擊標籤進行過濾[cite: 3]`;
             }
         }
 
