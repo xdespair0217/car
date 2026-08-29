@@ -47,50 +47,64 @@
 
         <!-- Left Sidebar: Filters & Article List -->
         <aside id="sidebar-panel" class="w-full md:w-[420px] lg:w-[450px] bg-[#12151b] border-r border-[#262c38] flex flex-col shrink-0 h-full overflow-hidden">
-            <!-- Search & Action Bar (Fixed Height Area) -->
+            <!-- Search & Action Bar (Cleaned up: Part tags moved to popup) -->
             <div class="p-3 md:p-4 border-b border-[#262c38] space-y-2.5 shrink-0">
-                <div class="flex items-center space-x-2">
+                <div class="flex items-center space-x-1.5">
                     <div class="relative flex-1">
                         <input type="text" id="search-input" placeholder="搜尋車型、故障碼或手札..." 
                                class="w-full bg-[#1a1e29] border border-[#2a3243] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition">
                     </div>
-                    <!-- 標籤庫 Toggle Button -->
-                    <button onclick="toggleTagLibrary()" id="tag-lib-btn" class="bg-[#1a1e29] hover:bg-[#262c38] text-amber-400 border border-[#2a3243] hover:border-amber-500/50 px-3 py-2 rounded-lg text-xs font-medium transition flex items-center space-x-1 shrink-0">
-                        <span>🏷️ 標籤庫</span>
+                    <!-- 部位標籤 Toggle Button -->
+                    <button onclick="togglePartLibrary()" id="part-lib-btn" class="bg-[#1a1e29] hover:bg-[#2e3646] text-amber-400 border border-[#2a3243] hover:border-amber-500/50 px-2.5 py-2 rounded-lg text-xs font-medium transition flex items-center space-x-1 shrink-0">
+                        <span>🏷️ 部位</span>
+                    </button>
+                    <!-- 症狀標籤庫 Toggle Button -->
+                    <button onclick="toggleTagLibrary()" id="tag-lib-btn" class="bg-[#1a1e29] hover:bg-[#2e3646] text-blue-400 border border-[#2a3243] hover:border-blue-500/50 px-2.5 py-2 rounded-lg text-xs font-medium transition flex items-center space-x-1 shrink-0">
+                        <span>🏷️ 症狀</span>
                     </button>
                 </div>
                 
-                <!-- Car Model & Part Filters -->
+                <!-- Car Model Filter -->
                 <div class="flex items-center space-x-2">
                     <span class="text-xs text-slate-400 shrink-0 font-mono">車型：</span>
                     <select id="car-model-select" onchange="filterByCarModel(this.value)" class="w-full bg-[#1a1e29] border border-[#2a3243] rounded px-2 py-1.5 text-xs text-amber-400 font-mono focus:outline-none focus:border-amber-500">
                         <option value="全部">全部車型</option>
                     </select>
                 </div>
-
-                <!-- Part Tags row (Scrollable horizontally if needed) -->
-                <div class="flex flex-wrap gap-1.5 pt-1 max-h-20 overflow-y-auto" id="tag-filters">
-                    <button onclick="filterByPart('全部')" class="tag-btn active text-xs px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 font-medium transition">全部部位</button>
-                </div>
             </div>
 
-            <!-- List of Articles (Strictly independent scroll with bottom padding) -->
+            <!-- List of Articles -->
             <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430] pb-36 overscroll-contain" id="case-list-container">
                 <div class="p-8 text-center text-slate-500 text-sm">正在從 CBS 雲端同步資料...</div>
             </div>
         </aside>
 
-        <!-- Obsidian Style Tag Library Modal / Overlay Panel -->
-        <div id="tag-library-panel" class="hidden absolute top-24 md:top-4 left-4 z-50 w-80 md:w-96 bg-[#161a23] border border-[#2e3646] rounded-xl shadow-2xl p-4 space-y-3 backdrop-blur-md bg-opacity-95">
+        <!-- Part Tags Modal / Overlay Panel -->
+        <div id="part-library-panel" class="hidden absolute top-24 md:top-4 left-4 z-50 w-80 md:w-96 bg-[#161a23] border border-[#2e3646] rounded-xl shadow-2xl p-4 space-y-3 backdrop-blur-md bg-opacity-95">
             <div class="flex items-center justify-between border-b border-[#262c38] pb-2">
                 <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-1.5">
+                    <span>🏷️ 維修部位篩選 (Part Filter)</span>
+                </h3>
+                <button onclick="togglePartLibrary()" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-[#1f2430]">✕ 關閉</button>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-400">
+                <span id="active-part-status">目前選擇：全部部位</span>
+                <button onclick="filterByPart('全部')" class="text-amber-400 hover:underline font-mono">重設部位</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1 bg-[#10131a] rounded border border-[#222736]" id="part-tag-cloud"></div>
+        </div>
+
+        <!-- Symptom Style Tag Library Modal / Overlay Panel -->
+        <div id="tag-library-panel" class="hidden absolute top-24 md:top-4 left-24 z-50 w-80 md:w-96 bg-[#161a23] border border-[#2e3646] rounded-xl shadow-2xl p-4 space-y-3 backdrop-blur-md bg-opacity-95">
+            <div class="flex items-center justify-between border-b border-[#262c38] pb-2">
+                <h3 class="text-sm font-bold text-blue-400 flex items-center space-x-1.5">
                     <span>🏷️ 症狀標籤庫 (Vault Tags)</span>
                 </h3>
                 <button onclick="toggleTagLibrary()" class="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-[#1f2430]">✕ 關閉</button>
             </div>
             <div class="flex items-center justify-between text-xs text-slate-400">
                 <span id="active-tag-status">點擊標籤進行過濾</span>
-                <button onclick="clearSymptomFilter()" id="clear-symptom-btn" class="hidden text-amber-400 hover:underline font-mono">清除篩選</button>
+                <button onclick="clearSymptomFilter()" id="clear-symptom-btn" class="hidden text-blue-400 hover:underline font-mono">清除篩選</button>
             </div>
             <div class="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto p-1 bg-[#10131a] rounded border border-[#222736]" id="symptom-tag-cloud"></div>
         </div>
@@ -122,7 +136,7 @@
                 <iframe id="pdf-iframe" class="w-full h-full border-0" src=""></iframe>
             </div>
 
-            <!-- YouTube Embedded Canvas (Shown when YouTube link is detected) -->
+            <!-- YouTube Embedded Canvas -->
             <div class="flex-1 bg-black relative w-full h-full hidden flex-col items-center justify-center p-6" id="youtube-container">
                 <div class="w-full max-w-4xl aspect-video bg-[#14171f] rounded-lg overflow-hidden border border-[#262c38] shadow-2xl">
                     <iframe id="youtube-iframe" class="w-full h-full" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
@@ -197,13 +211,22 @@
 
             dbData = result;
             initCarModelDropdown();
-            initTags();
+            initPartCloud();
             initSymptomCloud();
             renderList();
         }
 
         function toggleTagLibrary() {
             const panel = document.getElementById('tag-library-panel');
+            const partPanel = document.getElementById('part-library-panel');
+            partPanel.classList.add('hidden');
+            panel.classList.toggle('hidden');
+        }
+
+        function togglePartLibrary() {
+            const panel = document.getElementById('part-library-panel');
+            const tagPanel = document.getElementById('tag-library-panel');
+            tagPanel.classList.add('hidden');
             panel.classList.toggle('hidden');
         }
 
@@ -245,20 +268,27 @@
             });
         }
 
-        function initTags() {
+        function initPartCloud() {
             const filteredByCar = currentCarFilter === '全部' ? dbData : dbData.filter(i => i.car_model === currentCarFilter);
             const parts = ['全部', ...new Set(filteredByCar.map(item => item.part_name).filter(Boolean))];
-            const tagContainer = document.getElementById('tag-filters');
-            tagContainer.innerHTML = '';
+            const partCloud = document.getElementById('part-tag-cloud');
+            partCloud.innerHTML = '';
             
             parts.forEach(part => {
                 const count = part === '全部' ? filteredByCar.length : filteredByCar.filter(i => i.part_name === part).length;
+                const isSelected = (currentPartFilter === part);
+                
                 const btn = document.createElement('button');
-                btn.className = `tag-btn text-xs px-2.5 py-1 rounded transition ${part === currentPartFilter ? 'bg-amber-500/25 text-amber-400 border border-amber-500/50 font-medium' : 'bg-[#1a1e29] text-slate-400 border border-[#2a3243] hover:border-slate-600'}`;
-                btn.innerText = `${part} (${count})`;
-                btn.onclick = () => filterByPart(part);
-                tagContainer.appendChild(btn);
+                btn.className = `text-[11px] px-2.5 py-1 rounded-md transition font-mono flex items-center justify-between ${isSelected ? 'bg-amber-500 text-slate-950 font-bold shadow' : 'bg-[#1f2430] text-amber-400 hover:bg-[#2a3243] border border-amber-900/30'}`;
+                btn.innerHTML = `<span>${part}</span> <span class="text-[9px] opacity-75">(${count})</span>`;
+                btn.onclick = () => {
+                    filterByPart(part);
+                    togglePartLibrary();
+                };
+                partCloud.appendChild(btn);
             });
+
+            document.getElementById('active-part-status').innerText = `目前選擇：${currentPartFilter}`;
         }
 
         function initSymptomCloud() {
@@ -309,13 +339,13 @@
         function filterByCarModel(car) {
             currentCarFilter = car;
             currentPartFilter = '全部';
-            initTags();
+            initPartCloud();
             renderList();
         }
 
         function filterByPart(part) {
             currentPartFilter = part;
-            initTags();
+            initPartCloud();
             renderList();
         }
 
