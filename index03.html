@@ -7,11 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
-        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f1115; color: #e2e8f0; overflow: hidden; height: 100dvh; position: fixed; width: 100%; overscroll-behavior-y: none; }
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #0f1115; color: #e2e8f0; overflow: hidden; height: 100dvh; position: fixed; width: 100%; overscroll-behavior: none; }
         .mono-font { font-family: 'JetBrains Mono', monospace; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #181b22; }
         ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 2px; }
+        /* 鎖定列表容器滾動行為，防止底部回彈 */
+        #case-list-container { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     </style>
 </head>
 <body class="h-[100dvh] flex flex-col overflow-hidden">
@@ -74,7 +76,7 @@
             </div>
 
             <!-- List of Articles -->
-            <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430] pb-36 overscroll-contain" id="case-list-container">
+            <div class="flex-1 overflow-y-auto divide-y divide-[#1f2430] pb-36" id="case-list-container">
                 <div class="p-8 text-center text-slate-500 text-sm">正在從 CBS 雲端同步資料...</div>
             </div>
         </aside>
