@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>Jeep ESS 雙電瓶全方位實戰量測與診斷模擬器</title>
+  <style>
+    :root {
+      --bg-color: #111419;
+      --card-bg: #1a1e26;
+      --panel-bg: #222733;
+      --border-color: #353d4d;
+      --text-main: #f0f4fc;
+      --text-dim: #9aa7bc;
+      --accent-red: #ff6b78;
+      --accent-blue: #52a9ff;
+      --accent-green: #98d172;
+      --accent-yellow: #f2c76d;
+      --accent-purple: #d183e8;
+      --accent-cyan: #4ec9d9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      background: var(--bg-color);
+      color: var(--text-main);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header { text-align: center; margin-bottom: 12px; }
+    h1 { font-size: 24px; color: var(--accent-blue); margin-bottom: 4px; }
+    p.sub { font-size: 13px; color: var(--text-dim); }
+
+    /* 頂部頁籤導航 */
+    .nav-tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+      background: var(--card-bg);
+      padding: 6px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--accent-blue);
+      color: #fff;
+    }
+
+    .tab-content {
+      width: 100%;
+      max-width: 1560px;
+      display: none;
+    }
+    .tab-content.active {
+      display: flex;
+      gap: 16px;
+    }
+
+    /* 左側主畫面 */
+    .visual-area {
+      flex: 1.25;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .svg-box {
+      background: #151820;
+      border-radius: 10px;
+      border: 2px solid var(--border-color);
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    }
+    svg { width: 100%; height: auto; display: block; }
+
+    /* 雙電表看板 */
+    .dmm-rack {
+      display: flex;
+      gap: 16px;
+      background: var(--card-bg);
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      justify-content: space-around;
+    }
+
+    .dmm {
+      background: #252a34;
+      border: 2px solid #3d4554;
+      border-radius: 8px;
+      width: 48%;
+      padding: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .dmm-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    .dmm-screen {
+      background: #62946f;
+      height: 70px;
+      border-radius: 6px;
+      border: 2px solid #14171a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 14px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+    }
+
+    .dmm-mode-tag {
+      font-size: 13px;
+      font-weight: 900;
+      color: #0c1810;
+      align-self: flex-start;
+      margin-top: 6px;
+    }
+
+    .dmm-val {
+      font-family: "Courier New", monospace;
+      font-size: 40px;
+      font-weight: 900;
+      color: #08140a;
+      letter-spacing: 2px;
+    }
+
+    .dmm-probe-info {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-main);
+    }
+
+    .probe-tag {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .probe-red { background: var(--accent-red); color: #fff; }
+    .probe-black { background: #5c6370; color: #fff; }
+
+    /* 右側控制面板 */
+    .controls {
+      flex: 0.85;
+      background: var(--card-bg);
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 880px;
+      overflow-y: auto;
+    }
+
+    .group-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--accent-yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      border-bottom: 1px solid #333842;
+      padding-bottom: 4px;
+    }
+
+    .scenario-btn {
+      background: #232832;
+      border: 1px solid #353d4d;
+      color: var(--text-main);
+      padding: 10px 12px;
+      border-radius: 6px;
+      text-align: left;
+      font-size: 12px;
+      line-height: 1.4;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .scenario-btn strong { font-size: 13px; color: #fff; }
+    .scenario-btn:hover { background: #2f3644; border-color: var(--accent-blue); }
+    .scenario-btn.active {
+      background: #233547;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 6px rgba(82, 169, 255, 0.3);
+    }
+
+    .info-card {
+      margin-top: 6px;
+      background: #14171d;
+      border-left: 5px solid var(--accent-blue);
+      border-radius: 6px;
+      padding: 12px;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #c4cddb;
+    }
+    .info-card strong { color: #fff; font-size: 13px; }
+
+    /* 名詞辭典網格 */
+    .dictionary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 16px;
+      width: 100%;
+    }
+    .dict-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      border-top: 5px solid var(--accent-blue);
+    }
+    .dict-code {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--accent-yellow);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 4px;
+    }
+    .dict-en { font-size: 12px; color: var(--text-dim); font-weight: normal; }
+    .dict-tw { font-size: 15px; font-weight: bold; color: var(--text-main); margin-bottom: 8px; }
+    .dict-desc { font-size: 13px; color: #abb2bf; line-height: 1.6; }
+    .dict-desc strong { color: var(--accent-cyan); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Jeep ESS 雙電瓶系統：全實戰診斷與物理原理模擬器</h1>
+    <p class="sub">標準修訂版 • 解決樁頭重疊 • 直觀展現並聯分流定理與 P2AF5 判讀核心</p>
+  </header>
+
+  <!-- 頂部頁籤 -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('sim')">⚡ 動態量測模擬器</button>
+    <button class="tab-btn" onclick="switchTab('dict')">📖 核心模組縮寫名詞辭典 (PDC / PCR / PCM...)</button>
+  </div>
+
+  <!-- 頁籤一：動態量測模擬器 -->
+  <div class="tab-content active" id="tab-sim">
+    <div class="visual-area">
+      <div class="svg-box">
+        <svg viewBox="0 0 920 500" id="circuit-svg">
+          <!-- 1. 主電瓶 (大電瓶) -->
+          <g id="main-battery-group">
+            <rect x="40" y="60" width="210" height="130" rx="8" fill="#1b1e26" stroke="#8892b0" stroke-width="2.5"/>
+            <text x="145" y="130" fill="#f0f4fc" font-size="16" font-weight="bold" text-anchor="middle">主電瓶 (大電瓶)</text>
+            <text x="145" y="152" fill="#717d96" font-size="12" text-anchor="middle">啟動專用 (低內阻)</text>
+
+            <!-- 負極樁頭 -->
+            <circle cx="80" cy="85" r="13" fill="#3b4252" stroke="#abb2bf" stroke-width="2"/>
+            <text x="80" y="90" fill="#fff" font-size="16" font-weight="bold" text-anchor="middle">-</text>
+
+            <!-- IBS 感測器方塊 -->
+            <rect id="ibs-unit" x="55" y="16" width="50" height="24" rx="4" fill="#d19a66" stroke="#fff" stroke-width="1.5"/>
+            <text x="80" y="32" fill="#000" font-size="11" font-weight="bold" text-anchor="middle">IBS</text>
+            <line x1="80" y1="40" x2="80" y2="72" stroke="#d19a66" stroke-width="3"/>
+
+            <!-- 13號螺母 -->
+            <circle id="nut-13" cx="135" cy="85" r="10" fill="#e5c07b" stroke="#000" stroke-width="2"/>
+            <text x="135" y="108" fill="#e5c07b" font-size="10" font-weight="bold" text-anchor="middle">13號螺母</text>
+            <line x1="93" y1="85" x2="125" y2="85" stroke="#abb2bf" stroke-width="3"/>
+
+            <!-- 正極樁頭 -->
+            <circle id="main-pos" cx="210" cy="85" r="13" fill="#ff6b78" stroke="#fff" stroke-width="2"/>
+            <text x="210" y="90" fill="#fff" font-size="16" font-weight="bold" text-anchor="middle">+</text>
+            <text id="spark-indicator" x="210" y="42" fill="#e5c07b" font-size="12" font-weight="bold" text-anchor="middle" style="display:none;">⚠️ 正極鬆動!</text>
+          </g>
+
+          <!-- 2. 輔助小電瓶 -->
+          <g id="aux-battery-group">
+            <rect x="40" y="270" width="180" height="110" rx="8" fill="#1b1e26" stroke="#8892b0" stroke-width="2.5"/>
+            <text x="130" y="325" fill="#f0f4fc" font-size="15" font-weight="bold" text-anchor="middle">輔助電瓶 (小電瓶)</text>
+            <text x="130" y="348" fill="#717d96" font-size="12" text-anchor="middle">右前輪拱內 / 穩壓全車</text>
+
+            <circle id="aux-neg" cx="75" cy="290" r="11" fill="#3b4252" stroke="#abb2bf" stroke-width="1.5"/>
+            <text x="75" y="295" fill="#fff" font-size="14" font-weight="bold" text-anchor="middle">-</text>
+
+            <circle id="aux-pos" cx="185" cy="290" r="11" fill="#ff6b78" stroke="#fff" stroke-width="1.5"/>
+            <text x="185" y="295" fill="#fff" font-size="14" font-weight="bold" text-anchor="middle">+</text>
+          </g>
+
+          <!-- 3. PDC 配電中心 -->
+          <g id="pdc-group">
+            <rect x="330" y="60" width="270" height="170" rx="10" fill="#20242e" stroke="#52a9ff" stroke-width="2.5"/>
+            <text x="465" y="90" fill="#52a9ff" font-size="15" font-weight="bold" text-anchor="middle">PDC 配電中心 (保險絲陣列)</text>
+
+            <!-- Z-Case 保險絲群 -->
+            <g id="fuse-pins">
+              <rect id="pin-n1" x="355" y="115" width="34" height="50" rx="4" fill="#353d4d"/>
+              <text x="372" y="142" fill="#abb2bf" font-size="11" font-weight="bold" text-anchor="middle">N1</text>
+              <circle cx="372" cy="154" r="3.5" fill="#e5c07b"/>
+
+              <rect id="pin-n2" x="400" y="115" width="34" height="50" rx="4" fill="#353d4d"/>
+              <text x="417" y="142" fill="#abb2bf" font-size="11" font-weight="bold" text-anchor="middle">N2</text>
+              <circle cx="417" cy="154" r="3.5" fill="#e5c07b"/>
+
+              <!-- N3 150A 核心保險絲 -->
+              <rect id="pin-n3" x="445" y="115" width="46" height="50" rx="4" fill="#98d172" stroke="#fff" stroke-width="2"/>
+              <text id="pin-n3-title" x="468" y="137" fill="#000" font-size="12" font-weight="bold" text-anchor="middle">N3</text>
+              <text id="pin-n3-val" x="468" y="153" fill="#000" font-size="11" font-weight="bold" text-anchor="middle">150A</text>
+              <circle cx="468" cy="120" r="3.5" fill="#e5c07b"/>
+
+              <rect x="505" y="115" width="34" height="50" rx="4" fill="#353d4d"/>
+              <text x="522" y="142" fill="#abb2bf" font-size="11" font-weight="bold" text-anchor="middle">N5</text>
+              <rect x="550" y="115" width="34" height="50" rx="4" fill="#353d4d"/>
+              <text x="567" y="142" fill="#abb2bf" font-size="11" font-weight="bold" text-anchor="middle">N7</text>
+            </g>
+          </g>
+
+          <!-- 4. PCR 繼電器 -->
+          <g id="pcr-group">
+            <rect x="680" y="60" width="180" height="130" rx="10" fill="#20242e" stroke="#d183e8" stroke-width="2.5"/>
+            <text x="770" y="88" fill="#d183e8" font-size="15" font-weight="bold" text-anchor="middle">PCR 繼電器</text>
+            <text x="770" y="108" fill="#717d96" font-size="11" text-anchor="middle">(電腦代碼: 啟動繼電器3)</text>
+
+            <circle cx="720" cy="145" r="6" fill="#f0f4fc"/>
+            <circle cx="820" cy="145" r="6" fill="#f0f4fc"/>
+            <line id="pcr-arm" x1="720" y1="145" x2="818" y2="145" stroke="#98d172" stroke-width="4.5" stroke-linecap="round"/>
+          </g>
+
+          <!-- 5. 發電機 -->
+          <circle cx="465" cy="330" r="36" fill="#1b1e26" stroke="#f2c76d" stroke-width="2.5"/>
+          <text x="465" y="335" fill="#f2c76d" font-size="13" font-weight="bold" text-anchor="middle">發電機</text>
+
+          <!-- 實體導線路徑 -->
+          <path id="cable-main-pdc" d="M 223 85 L 330 85" stroke="#ff6b78" stroke-width="4.5" fill="none"/>
+          <path id="cable-gen-pdc" d="M 465 294 L 465 230" stroke="#ff6b78" stroke-width="4.5" fill="none"/>
+          <path id="cable-n3-pcr" d="M 491 145 L 720 145" stroke="#ff6b78" stroke-width="4.5" fill="none"/>
+          <path id="cable-pcr-aux" d="M 820 145 L 880 145 L 880 290 L 196 290" stroke="#ff6b78" stroke-width="3.5" fill="none"/>
+          <path id="cable-neg-link" d="M 75 301 L 20 301 L 20 85 L 125 85" stroke="#717d96" stroke-width="3" stroke-dasharray="4" fill="none"/>
+
+          <!-- 實時量測探針 -->
+          <path id="probe-m1-pos" d="M 160 440 L 210 85" stroke="#ff6b78" stroke-width="3" fill="none"/>
+          <path id="probe-m1-neg" d="M 120 440 L 80 85" stroke="#abb2bf" stroke-width="3" fill="none"/>
+          <path id="probe-m2-pos" d="M 720 440 L 185 290" stroke="#ff6b78" stroke-width="3" fill="none"/>
+          <path id="probe-m2-neg" d="M 680 440 L 75 290" stroke="#abb2bf" stroke-width="3" fill="none"/>
+        </svg>
+      </div>
+
+      <!-- 雙電表看板 -->
+      <div class="dmm-rack">
+        <div class="dmm">
+          <div class="dmm-header">
+            <span>DMM 1 (主路/大電瓶)</span>
+            <span id="m1-status">DCV</span>
+          </div>
+          <div class="dmm-screen">
+            <span class="dmm-mode-tag" id="m1-mode">DCV</span>
+            <div class="dmm-val" id="m1-val">14.10</div>
+          </div>
+          <div class="dmm-probe-info" id="m1-desc">
+            <span class="probe-tag probe-red">紅棒</span> 主電瓶正極樁頭<br>
+            <span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地
+          </div>
+        </div>
+
+        <div class="dmm">
+          <div class="dmm-header">
+            <span>DMM 2 (次路/壓降/歐姆)</span>
+            <span id="m2-status">DCV</span>
+          </div>
+          <div class="dmm-screen">
+            <span class="dmm-mode-tag" id="m2-mode">DCV</span>
+            <div class="dmm-val" id="m2-val">11.00</div>
+          </div>
+          <div class="dmm-probe-info" id="m2-desc">
+            <span class="probe-tag probe-red">紅棒</span> 輔助小電瓶正極<br>
+            <span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側情境控制面板 -->
+    <div class="controls">
+      <div class="group-title">一、 物理電學理論（串聯 vs 並聯）</div>
+      <button class="scenario-btn active" onclick="applyMode('theory_parallel')">
+        <strong>A. 【並聯物理】Jeep 雙電瓶平常本質</strong><br>
+        端電壓相等、總電流相加。弱電瓶會被強電瓶拉住電位！
+      </button>
+
+      <button class="scenario-btn" onclick="applyMode('theory_series_warn')">
+        <strong>B. 【串聯警告】若接成串聯會怎樣？</strong><br>
+        電壓相加 (12V+12V=24V)，車身所有電腦晶片瞬間燒穿！
+      </button>
+
+      <div class="group-title">二、 致命故障推演（鬆脫為何衝爆 N3？）</div>
+      <button class="scenario-btn" onclick="applyMode('fault_loose_math')">
+        <strong>C. 正極未鎖緊 ➔ 分流定律衝爆 N3</strong><br>
+        大電瓶阻抗暴增，發電機電流反向暴灌小電瓶，衝毀 150A！
+      </button>
+
+      <button class="scenario-btn" onclick="applyMode('dead_10km')">
+        <strong>D. 交車 10km 暴斃 ➔ 觸發 P2AF5</strong><br>
+        小電瓶充電斷開、單獨耗盡跌破 3V，行駛間全車斷電癱瘓。
+      </button>
+
+      <div class="group-title">三、 影片核心量測手法與陷阱對比</div>
+      <button class="scenario-btn" onclick="applyMode('parallel_test')">
+        <strong>E. 【誤診陷阱】未拆線直接量電瓶樁頭</strong><br>
+        並聯互相補償，量出來都是虛假 12.5V，量不出小電瓶已死！
+      </button>
+
+      <button class="scenario-btn" onclick="applyMode('independent_test')">
+        <strong>F. 【標準 SOP】拆 13 號螺母獨立量小電瓶</strong><br>
+        黑棒夾拆開的負極線、紅棒量 PDC N1/N3，揭露小電瓶 10.5V。
+      </button>
+
+      <button class="scenario-btn" onclick="applyMode('n2_n3_drop')">
+        <strong>G. 【P2AF5 核心判讀】量測 N2-N3 壓降</strong><br>
+        探針跨接保險絲兩端：壓差超過 2V 系統即觸發「繼電器3卡滯」。
+      </button>
+
+      <button class="scenario-btn" onclick="applyMode('fuse_ohm')">
+        <strong>H. 【歐姆檔判定】N3 保險絲斷路 (O.L.)</strong><br>
+        電阻檔對比：正常為 000.0Ω，燒毀為 O.L. (Open Loop 開迴路)。
+      </button>
+
+      <div class="group-title">四、 原廠保養與充電規範</div>
+      <button class="scenario-btn" onclick="applyMode('ibs_rule')">
+        <strong>I. 【IBS 充電規範與 80% 假象】</strong><br>
+        負極不可夾電瓶樁頭！電流繞過 IBS 會導致電量計算錯亂。
+      </button>
+
+      <div class="info-card" id="info-box">
+        <strong>物理與量測解析：</strong><br>
+        目前處於正常並聯狀態。發電機電力輸入 PDC 後分流為兩路：一路為大電瓶充電，另一路經由閉合的 PCR 繼電器對輔助小電瓶充電。
+      </div>
+    </div>
+  </div>
+
+  <!-- 頁籤二：名詞辭典與縮寫對照表 -->
+  <div class="tab-content" id="tab-dict">
+    <div class="dictionary-grid">
+      <div class="dict-card">
+        <div class="dict-code">PDC <span class="dict-en">Power Distribution Center</span></div>
+        <div class="dict-tw">配電中心（引擎室保險絲盒總成）</div>
+        <div class="dict-desc">
+          位於引擎室左側。內含多層 PCB 控制電路板以及側邊的 <strong>Z-Case 大容量保險絲陣列（N1~N7）</strong>。所有發電機電力與大電瓶電力皆由此做全車分配。
+        </div>
+      </div>
+
+      <div class="dict-card">
+        <div class="dict-code">PCR <span class="dict-en">Power Control Relay</span></div>
+        <div class="dict-tw">電源控制繼電器（實體大繼電器）</div>
+        <div class="dict-desc">
+          藏在<strong>右前內輪拱遮板下方、輔助小電瓶後方</strong>。常態下接點閉合（大小電瓶並聯充電）；<strong>Auto-Start 啟動瞬間通電斷開</strong>，切斷大小電瓶連繫，防止啟動壓降拉跨車內影音螢幕。<strong>診斷電腦將此繼電器稱為「啟動繼電器 3」</strong>。
+        </div>
+      </div>
+
+      <div class="dict-card">
+        <div class="dict-code">PCR Control Relay <span class="dict-en">PCR Pilot Relay</span></div>
+        <div class="dict-tw">PCR 控制繼電器（先導微型繼電器）</div>
+        <div class="dict-desc">
+          焊接或插置在 <strong>PDC 內部的 PCB 電路板上</strong>。受 PCM 電腦控制，專門負責送出 12V 電源去驅動輪拱內那顆真正的實體 PCR 大繼電器。
+        </div>
+      </div>
+
+      <div class="dict-card">
+        <div class="dict-code">PCM <span class="dict-en">Powertrain Control Module</span></div>
+        <div class="dict-tw">動力系統控制模組（引擎大腦電腦）</div>
+        <div class="dict-desc">
+          監控車輛運行條件、啟停條件以及 <strong>N2 與 N3 兩點之間的電壓差</strong>。當偵測到 N2 與 N3 壓差超過 2V 時，判定繼電器控制迴路異常，儲存故障碼 <strong>`P2AF5`</strong>。
+        </div>
+      </div>
+
+      <div class="dict-card">
+        <div class="dict-code">IBS <span class="dict-en">Intelligent Battery Sensor</span></div>
+        <div class="dict-tw">智慧型電池感測器</div>
+        <div class="dict-desc">
+          直接整合在大電瓶負極樁頭上。內置分流電阻與微處理器，走 <strong>LIN-Bus 通訊線</strong> 即時回傳電瓶的電壓、充放電電流、溫度與 <strong>SOC（電池電量健康狀態）</strong>。充電時負極夾若直接夾在樁頭上會繞過 IBS，使庫倫計算失準。
+        </div>
+      </div>
+
+      <div class="dict-card">
+        <div class="dict-code">BCM / CBC <span class="dict-en">Body Control Module</span></div>
+        <div class="dict-tw">車身控制模組 / 中央車身控制器</div>
+        <div class="dict-desc">
+          負責控制全車儀表、防盜、車門鎖、燈光及中控娛樂螢幕。由<strong>輔助小電瓶</strong>專責穩壓供電；當小電瓶耗盡斷電時，BCM 進入休眠，導致全車儀表黑屏、無法辨識啟動按鈕。
+        </div>
+      </div>
+
+      <div class="dict-card">
+        <div class="dict-code">Fuse N3 (150A) <span class="dict-en">Z-Case Fuse Array</span></div>
+        <div class="dict-tw">PDC 側邊 150A 專用保險絲</div>
+        <div class="dict-desc">
+          位於 PDC 側邊保險絲陣列第 3 個位置。專門負責<strong>保護從小電瓶通往 PCR 及發電機的充電迴路</strong>。本故障案例中，因大電瓶正極未鎖緊，突波電流衝破 150A 上限導致其熔斷。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      document.getElementById('tab-' + tabId).classList.add('active');
+    }
+
+    function updateProbes(p1Pos, p1Neg, p2Pos, p2Neg) {
+      document.getElementById('probe-m1-pos').setAttribute('d', p1Pos);
+      document.getElementById('probe-m1-neg').setAttribute('d', p1Neg);
+      document.getElementById('probe-m2-pos').setAttribute('d', p2Pos);
+      document.getElementById('probe-m2-neg').setAttribute('d', p2Neg);
+    }
+
+    function applyMode(mode) {
+      document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+
+      const m1Val = document.getElementById('m1-val');
+      const m2Val = document.getElementById('m2-val');
+      const m1Mode = document.getElementById('m1-mode');
+      const m2Mode = document.getElementById('m2-mode');
+      const m1Desc = document.getElementById('m1-desc');
+      const m2Desc = document.getElementById('m2-desc');
+      const info = document.getElementById('info-box');
+
+      const pcrArm = document.getElementById('pcr-arm');
+      const pinN3 = document.getElementById('pin-n3');
+      const pinN3Val = document.getElementById('pin-n3-val');
+      const nut13 = document.getElementById('nut-13');
+      const negLink = document.getElementById('cable-neg-link');
+      const cableMainPdc = document.getElementById('cable-main-pdc');
+      const spark = document.getElementById('spark-indicator');
+
+      // 重置基礎狀態
+      pcrArm.setAttribute('x2', '818');
+      pcrArm.setAttribute('y2', '145');
+      pcrArm.setAttribute('stroke', '#98d172');
+      pinN3.setAttribute('fill', '#98d172');
+      pinN3Val.textContent = '150A';
+      nut13.setAttribute('fill', '#e5c07b');
+      negLink.setAttribute('stroke', '#717d96');
+      negLink.setAttribute('d', 'M 75 301 L 20 301 L 20 85 L 125 85');
+      cableMainPdc.setAttribute('stroke', '#ff6b78');
+      cableMainPdc.setAttribute('stroke-dasharray', 'none');
+      spark.style.display = 'none';
+      m1Mode.textContent = 'DCV';
+      m2Mode.textContent = 'DCV';
+
+      if (mode === 'theory_parallel') {
+        m1Val.textContent = '14.10';
+        m2Val.textContent = '11.00';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 大電瓶正極<br><span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 小電瓶正極<br><span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地';
+        updateProbes('M 160 440 L 210 85', 'M 120 440 L 80 85', 'M 720 440 L 185 290', 'M 680 440 L 75 290');
+        info.innerHTML = '<strong>【並聯（Parallel）物理本質】：</strong><br>' +
+          '• <strong>定義</strong>：正接正、負接負。<br>' +
+          '• <strong>特性</strong>：各支路端電壓相等（$V_{\\text{total}} = V_1 = V_2$），總電流相加。<br>' +
+          '• <strong>陷阱</strong>：發電機以 12V 充兩顆電瓶。若小電瓶老化，電位會被大電瓶撐住，直接在樁頭量測絕對量不出問題！';
+      }
+      else if (mode === 'theory_series_warn') {
+        m1Val.textContent = '24.00';
+        m2Val.textContent = '燒毀!';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 串聯總正極<br><span class="probe-tag probe-black">黑棒</span> 串聯總負極';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">警告</span> 系統嚴重超壓<br><span class="probe-tag probe-black">後果</span> 車身模組瞬間燒穿';
+        updateProbes('M 160 440 L 210 85', 'M 120 440 L 75 290', 'M 720 440 L 465 115', 'M 680 440 L 465 115');
+        info.innerHTML = '<strong>【串聯（Series）毀滅性後果】：</strong><br>' +
+          '• <strong>定義</strong>：正接負、負接正。<br>' +
+          '• <strong>特性</strong>：電壓累加（$12\\text{V} + 12\\text{V} = 24\\text{V}$）。<br>' +
+          '• <strong>警告</strong>：若接成串聯，24V 高壓會瞬間擊穿車上所有 12V 車身電腦與儀表，整車電系報廢！';
+      }
+      else if (mode === 'fault_loose_math') {
+        spark.style.display = 'block';
+        cableMainPdc.setAttribute('stroke', '#e5c07b');
+        cableMainPdc.setAttribute('stroke-dasharray', '4');
+        pinN3.setAttribute('fill', '#ff6b78');
+        pinN3Val.textContent = '熔斷';
+
+        m1Val.textContent = '12.50';
+        m2Val.textContent = '10.50';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 主電瓶樁頭 (接觸阻抗暴增)<br><span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 小電瓶迴路 (承受暴衝電流)<br><span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地';
+        updateProbes('M 160 440 L 210 85', 'M 120 440 L 80 85', 'M 720 440 L 185 290', 'M 680 440 L 75 290');
+        info.innerHTML = '<strong>【致命失誤：正極未鎖緊 ➔ 分流定律衝爆 N3】：</strong><br>' +
+          '• <strong>分流定律</strong>：$I_1 \\cdot R_1 = I_2 \\cdot R_2$（電流與電阻成反比）。<br>' +
+          '• <strong>因果鏈</strong>：大電瓶正極螺母鬆脫使接觸電阻暴增。發電機輸出高達 100A~300A 電流進不去大電瓶，<strong>全數轉向灌入小電瓶並聯支線</strong>！<br>' +
+          '• <strong>結果</strong>：PDC 內的 <strong>N3 (150A) 保險絲</strong> 超載熔斷！發電機對小電瓶的充電路徑徹底被斬斷。';
+      }
+      else if (mode === 'dead_10km') {
+        pinN3.setAttribute('fill', '#111');
+        pinN3Val.textContent = 'X';
+
+        m1Val.textContent = '12.40';
+        m2Val.textContent = '03.00';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 大電瓶 (電量充沛)<br><span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 小電瓶 (耗盡死亡)<br><span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地';
+        updateProbes('M 160 440 L 210 85', 'M 120 440 L 80 85', 'M 720 440 L 185 290', 'M 680 440 L 75 290');
+        info.innerHTML = '<strong>【交車 10 公里後熄火暴斃】：</strong><br>' +
+          'N3 斷開後，全車儀表、BCM 與行車電腦僅能靠小電瓶苦撐。行駛 10 公里後小電瓶耗盡跌破 3V，電腦因欠壓集體休眠，車輛在行駛中突然熄火癱瘓且儀表黑屏！';
+      }
+      else if (mode === 'parallel_test') {
+        m1Val.textContent = '12.50';
+        m2Val.textContent = '12.50';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 大電瓶正極樁頭<br><span class="probe-tag probe-black">黑棒</span> 大電瓶負極樁頭';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 小電瓶正極樁頭<br><span class="probe-tag probe-black">黑棒</span> 小電瓶負極樁頭';
+        updateProbes('M 160 440 L 210 85', 'M 120 440 L 80 85', 'M 720 440 L 185 290', 'M 680 440 L 75 290');
+        info.innerHTML = '<strong>【誤診陷阱——未拆線直接量電瓶】：</strong><br>' +
+          '因 PCR 平常導通閉合，大小電瓶並聯。健康的大電瓶會把電位補償給小電瓶，兩表皆量出虛假的 12.5V，根本看不出小電瓶已經損壞！';
+      }
+      else if (mode === 'independent_test') {
+        nut13.setAttribute('fill', '#ff6b78');
+        negLink.setAttribute('d', 'M 75 301 L 20 301 L 20 160 L 60 210');
+
+        m1Val.textContent = '12.50';
+        m2Val.textContent = '10.50';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 大電瓶正極樁頭<br><span class="probe-tag probe-black">黑棒</span> 大電瓶負極樁頭';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> PDC N1/N3 端子<br><span class="probe-tag probe-black">黑棒</span> 拆下的 13 號負極線頭';
+        updateProbes('M 160 440 L 210 85', 'M 120 440 L 80 85', 'M 720 440 L 372 154', 'M 680 440 L 60 210');
+        info.innerHTML = '<strong>【標準 SOP——拆 13 號螺母獨立測試】：</strong><br>' +
+          '• <strong>動作</strong>：將大電瓶負極上的 <strong>13 號螺母</strong> 拆下（切斷並聯負極線）。<br>' +
+          '• <strong>接線</strong>：電表黑棒夾拆開的負極線，紅棒點 PDC N1 或 N3 端子。<br>' +
+          '• <strong>真相</strong>：切斷並聯後，小電瓶僅剩 10.5V 的真實衰竭狀態立即現形！';
+      }
+      else if (mode === 'n2_n3_drop') {
+        pinN3.setAttribute('fill', '#ff6b78');
+        pinN3Val.textContent = '熔斷';
+
+        m1Val.textContent = '12.40';
+        m2Val.textContent = '02.10';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> N2 端 (大電瓶側 12.4V)<br><span class="probe-tag probe-black">黑棒</span> 車身搭鐵接地';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 探針夾 PDC N2<br><span class="probe-tag probe-black">黑棒</span> 探針夾 PDC N3';
+        updateProbes('M 160 440 L 417 154', 'M 120 440 L 80 85', 'M 720 440 L 417 154', 'M 680 440 L 468 120');
+        info.innerHTML = '<strong>【P2AF5 核心診斷——N2 與 N3 壓降測量】：</strong><br>' +
+          '• <strong>邏輯</strong>：N2 與 N3 為同一保險絲兩端，正常時壓差為 0V。<br>' +
+          '• <strong>異常</strong>：N3 熔斷後，兩點之間出現高達 <strong>2.1V（>2V）</strong> 的巨大壓降！<br>' +
+          '• <strong>判碼</strong>：PCM 判定繼電器控制通路異常，儲存故障碼 <code>P2AF5 啟動繼電器3卡滯</code>！';
+      }
+      else if (mode === 'fuse_ohm') {
+        pinN3.setAttribute('fill', '#20242e');
+        pinN3Val.textContent = 'O.L.';
+        m1Mode.textContent = 'OHM';
+        m2Mode.textContent = 'OHM';
+
+        m1Val.textContent = '000.0';
+        m2Val.textContent = 'O.L.';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> 正常通路端 1<br><span class="probe-tag probe-black">黑棒</span> 正常通路端 2';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">紅棒</span> N3 保險絲輸入端<br><span class="probe-tag probe-black">黑棒</span> N3 保險絲輸出端';
+        updateProbes('M 160 440 L 355 140', 'M 120 440 L 389 140', 'M 720 440 L 445 140', 'M 680 440 L 491 140');
+        info.innerHTML = '<strong>【三用電錶歐姆檔判讀】：</strong><br>' +
+          '• <code>000.0 Ω</code>：電阻趨近於 0，代表通路導通良好（Closed Loop）。<br>' +
+          '• <code>O.L.</code>：代表 <strong>Open Loop（開迴路 / 斷路）</strong>，阻抗無限大！量測 N3 兩端顯示 O.L.，證實 150A 熔絲已燒斷。';
+      }
+      else if (mode === 'ibs_rule') {
+        document.getElementById('ibs-unit').setAttribute('stroke', '#ff6b78');
+        document.getElementById('ibs-unit').setAttribute('stroke-width', '2.5');
+
+        m1Val.textContent = '13.80';
+        m2Val.textContent = '80 %';
+        m2Mode.textContent = 'SOC';
+        m1Desc.innerHTML = '<span class="probe-tag probe-red">充電機正</span> 接大電瓶正極<br><span class="probe-tag probe-black">充電機負</span> ❌ 錯誤夾在負極樁頭！';
+        m2Desc.innerHTML = '<span class="probe-tag probe-red">診斷儀</span> 顯示虛假 SOC 80%<br><span class="probe-tag probe-black">後果</span> 啟閉系統 (ESS) 鎖定不作動';
+        updateProbes('M 160 440 L 210 85', 'M 120 440 L 80 85', 'M 720 440 L 80 28', 'M 680 440 L 80 28');
+        info.innerHTML = '<strong>【IBS 充電規範與 80% 假象】：</strong><br>' +
+          '• <strong>充電鐵律</strong>：充電機負極<strong>絕對不能夾在電瓶負極樁頭上</strong>！必須夾在車身接地點。<br>' +
+          '• <strong>原因</strong>：直接夾樁頭會繞過 IBS，導致電流未被記錄，SOC 卡死在預設值 80%，自動啟閉系統直接罷工！<br>' +
+          '• <strong>學習機制</strong>：拔開 IBS 20~30 秒重置後，車輛必須熄火鎖車<strong>「靜置 4 小時」</strong>（需 1~3 次循環），系統校準真實電量後 ESS 才會放行。';
+      }
+    }
+  </script>
+</body>
+</html>
