@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>Citroën Berlingo 1.5 BlueHDi (DV5) 凸輪軸正時鏈條與調整器碎裂損害模擬器</title>
+  <style>
+    :root {
+      --bg-color: #111419;
+      --card-bg: #1a1e27;
+      --panel-bg: #222834;
+      --border-color: #384254;
+      --text-main: #f0f4fc;
+      --text-dim: #9aa8be;
+      --accent-red: #ff6b78;
+      --accent-blue: #52a9ff;
+      --accent-green: #98d172;
+      --accent-yellow: #f2c76d;
+      --accent-purple: #d183e8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      background: var(--bg-color);
+      color: var(--text-main);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header { text-align: center; margin-bottom: 20px; }
+    h1 { font-size: 30px; color: var(--accent-blue); margin-bottom: 8px; letter-spacing: 1px; }
+    p.sub { font-size: 16px; color: var(--text-dim); }
+
+    .main-layout {
+      display: flex;
+      gap: 24px;
+      width: 100%;
+      max-width: 1720px;
+    }
+
+    .visual-area {
+      flex: 1.35;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .svg-box {
+      background: #151820;
+      border-radius: 12px;
+      border: 2px solid var(--border-color);
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+    svg { width: 100%; height: auto; display: block; }
+
+    /* 即時診斷看板 */
+    .status-rack {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      background: var(--card-bg);
+      padding: 16px;
+      border-radius: 12px;
+      border: 2px solid var(--border-color);
+    }
+
+    .status-card {
+      background: #232835;
+      border: 1.5px solid #384254;
+      border-radius: 8px;
+      padding: 12px 14px;
+      text-align: center;
+    }
+    .status-name { font-size: 14px; color: var(--text-dim); font-weight: bold; margin-bottom: 4px; }
+    .status-val { font-size: 18px; font-weight: 900; color: var(--accent-green); }
+    .status-val.danger { color: var(--accent-red); }
+    .status-val.warning { color: var(--accent-yellow); }
+
+    /* 右側控制面板 */
+    .controls {
+      flex: 0.85;
+      background: var(--card-bg);
+      border-radius: 12px;
+      border: 2px solid var(--border-color);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 960px;
+      overflow-y: auto;
+    }
+
+    .group-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: var(--accent-yellow);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 8px;
+      border-bottom: 2px solid #333842;
+      padding-bottom: 4px;
+    }
+
+    .scenario-btn {
+      background: #232835;
+      border: 2px solid #384254;
+      color: var(--text-main);
+      padding: 14px 16px;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 15px;
+      line-height: 1.5;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .scenario-btn strong { font-size: 16px; color: #fff; }
+    .scenario-btn:hover { background: #31394a; border-color: var(--accent-blue); }
+    .scenario-btn.active {
+      background: #25394d;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 10px rgba(82, 169, 255, 0.4);
+    }
+
+    .info-card {
+      margin-top: auto;
+      background: #13161d;
+      border-left: 6px solid var(--accent-blue);
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 15px;
+      line-height: 1.7;
+      color: #c4cddb;
+    }
+    .info-card strong { color: #fff; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Citroën Berlingo 1.5 BlueHDi (DV5) 正時鏈條與調整器碎裂損害模擬器</h1>
+    <p class="sub">實務現場惡夢解析：調整器斷裂碎裂 ➔ 鏈條大跳齒 ➔ 氣門撞彎、搖臂粉碎連鎖反應</p>
+  </header>
+
+  <div class="main-layout">
+    <!-- 左側剖面視覺區 -->
+    <div class="visual-area">
+      <div class="svg-box">
+        <svg viewBox="0 0 960 580" id="engine-svg">
+          <!-- 汽缸體剖面 -->
+          <g id="cylinder-block">
+            <path d="M 310 200 L 310 490 L 350 490 L 350 240 L 610 240 L 610 490 L 650 490 L 650 200 Z" fill="#252b37" stroke="#485368" stroke-width="2.5"/>
+            <rect x="350" y="240" width="260" height="250" fill="#15171f"/>
+            <text x="480" y="470" fill="#444e63" font-size="18" font-weight="bold" text-anchor="middle">汽缸 1 燃燒室 (Bore: 75mm)</text>
+          </g>
+
+          <!-- 曲軸 -->
+          <g id="crank-group">
+            <circle cx="480" cy="500" r="34" fill="#2e3543" stroke="#717f98" stroke-width="2.5"/>
+            <circle cx="480" cy="500" r="9" fill="#e5c07b"/>
+            <circle id="crank-pin" cx="480" cy="475" r="7" fill="#ff6b78"/>
+          </g>
+
+          <!-- 活塞連桿組 -->
+          <g id="piston-rod-assembly">
+            <line id="conn-rod" x1="480" y1="475" x2="480" y2="370" stroke="#717f98" stroke-width="14" stroke-linecap="round"/>
+            <line x1="480" y1="475" x2="480" y2="370" stroke="#2e3543" stroke-width="7" stroke-linecap="round"/>
+            
+            <g id="piston-body" transform="translate(0, 0)">
+              <rect x="352" y="340" width="256" height="76" rx="5" fill="#3b4354" stroke="#abb2bf" stroke-width="2"/>
+              <line x1="352" y1="352" x2="608" y2="352" stroke="#15171f" stroke-width="2.5"/>
+              <line x1="352" y1="360" x2="608" y2="360" stroke="#15171f" stroke-width="2.5"/>
+              <circle cx="480" cy="375" r="11" fill="#717f98" stroke="#fff" stroke-width="2"/>
+              <text x="480" y="398" fill="#abb2bf" font-size="13" font-weight="bold" text-anchor="middle">活塞 (Piston)</text>
+              <path id="piston-dent" d="M 400 340 L 415 348 L 430 340" stroke="#ff6b78" stroke-width="3.5" fill="none" style="display:none;"/>
+            </g>
+          </g>
+
+          <!-- 汽缸蓋 -->
+          <g id="cylinder-head">
+            <rect x="270" y="110" width="420" height="100" fill="#1e232e" stroke="#485368" stroke-width="2.5"/>
+            <text x="330" y="135" fill="#52a9ff" font-size="14" font-weight="bold">汽缸蓋總成</text>
+            <path d="M 270 150 Q 370 150 415 200" stroke="#384254" stroke-width="18" fill="none"/>
+            <path d="M 690 150 Q 590 150 545 200" stroke="#384254" stroke-width="18" fill="none"/>
+          </g>
+
+          <!-- 進氣門 (左) -->
+          <g id="valve-in-group" transform="translate(0, 0)">
+            <path id="valve-in-stem" d="M 415 100 L 415 205 L 385 210 L 445 210 Z" fill="#abb2bf" stroke="#717f98" stroke-width="1.5"/>
+            <rect x="405" y="115" width="20" height="45" fill="none" stroke="#f2c76d" stroke-width="2.5" stroke-dasharray="4"/>
+          </g>
+
+          <!-- 排氣門 (右) -->
+          <g id="valve-ex-group" transform="translate(0, 0)">
+            <path id="valve-ex-stem" d="M 545 100 L 545 205 L 515 210 L 575 210 Z" fill="#abb2bf" stroke="#717f98" stroke-width="1.5"/>
+            <rect x="535" y="115" width="20" height="45" fill="none" stroke="#f2c76d" stroke-width="2.5" stroke-dasharray="4"/>
+          </g>
+
+          <!-- 滾針搖臂組 -->
+          <g id="rocker-assembly">
+            <g id="rocker-in">
+              <path id="rocker-in-arm" d="M 375 92 Q 415 80 445 95" stroke="#abb2bf" stroke-width="9" stroke-linecap="round" fill="none"/>
+              <circle cx="415" cy="86" r="6" fill="#e5c07b"/>
+            </g>
+            <g id="rocker-ex">
+              <path id="rocker-ex-arm" d="M 585 92 Q 545 80 515 95" stroke="#abb2bf" stroke-width="9" stroke-linecap="round" fill="none"/>
+              <circle cx="545" cy="86" r="6" fill="#e5c07b"/>
+            </g>
+          </g>
+
+          <!-- 雙凸輪軸 -->
+          <g id="cam-intake-group">
+            <circle cx="415" cy="58" r="26" fill="#282d39" stroke="#52a9ff" stroke-width="2.5"/>
+            <circle cx="415" cy="58" r="7" fill="#52a9ff"/>
+            <path id="cam-in-lobe" d="M 415 58 L 398 22 A 18 18 0 0 1 432 22 Z" fill="#3e4758"/>
+            <text x="375" y="35" fill="#52a9ff" font-size="12" font-weight="bold">進氣凸輪</text>
+          </g>
+
+          <g id="cam-exhaust-group">
+            <circle cx="545" cy="58" r="26" fill="#282d39" stroke="#d183e8" stroke-width="2.5"/>
+            <circle cx="545" cy="58" r="7" fill="#d183e8"/>
+            <path id="cam-ex-lobe" d="M 545 58 L 528 22 A 18 18 0 0 1 562 22 Z" fill="#3e4758"/>
+            <text x="585" y="35" fill="#d183e8" font-size="12" font-weight="bold">排氣凸輪</text>
+          </g>
+
+          <!-- 鏈條與鏈條調整器 (實務核心) -->
+          <g id="chain-group">
+            <path id="chain-path" d="M 415 32 L 545 32 A 26 26 0 0 1 545 84 L 415 84 A 26 26 0 0 1 415 32" stroke="#98d172" stroke-width="5" stroke-dasharray="7" fill="none"/>
+            <text id="chain-tag" x="480" y="24" fill="#98d172" font-size="13" font-weight="bold" text-anchor="middle">原廠 7mm 連動鏈條</text>
+            
+            <!-- 鏈條調整器本體與滑靴 -->
+            <g id="tensioner-full">
+              <rect id="tensioner-box" x="468" y="84" width="24" height="20" rx="3" fill="#d19a66"/>
+              <!-- 調整器頂桿滑靴 -->
+              <path id="tensioner-shoe" d="M 450 84 Q 480 82 510 84" stroke="#d19a66" stroke-width="6" fill="none"/>
+              <text id="tensioner-text" x="480" y="118" fill="#d19a66" font-size="11" font-weight="bold" text-anchor="middle">鏈條調整器 (張緊器)</text>
+            </g>
+
+            <!-- 調整器斷裂碎裂碎片 (預設隱藏) -->
+            <g id="tensioner-shards" style="display:none;">
+              <polygon points="455,86 465,92 458,98" fill="#ff6b78"/>
+              <polygon points="495,84 505,88 500,95" fill="#ff6b78"/>
+              <polygon points="475,102 485,110 472,112" fill="#d19a66"/>
+              <text x="480" y="132" fill="#ff6b78" font-size="12" font-weight="bold" text-anchor="middle">💥 調整器斷裂碎裂！</text>
+            </g>
+          </g>
+
+          <!-- 撞擊特效 -->
+          <g id="damage-effects" style="display:none;">
+            <path d="M 405 230 L 415 210 L 425 230 L 415 220 Z" fill="#ff6b78"/>
+            <circle cx="415" cy="220" r="16" fill="none" stroke="#ff6b78" stroke-width="2.5" stroke-dasharray="3"/>
+            <polygon points="398,102 406,114 394,118" fill="#e5c07b"/>
+            <polygon points="422,98 432,108 420,112" fill="#e5c07b"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- 下方即時診斷看板 -->
+      <div class="status-rack">
+        <div class="status-card">
+          <div class="status-name">調整器狀態 (Tensioner)</div>
+          <div class="status-val" id="st-tensioner">張力正常 (油壓健全)</div>
+        </div>
+        <div class="status-card">
+          <div class="status-name">鏈條與相位 (Timing)</div>
+          <div class="status-val" id="st-timing">精準同步 (0° CA)</div>
+        </div>
+        <div class="status-card">
+          <div class="status-name">搖臂狀態 (Rockers)</div>
+          <div class="status-val" id="st-rocker">正常完好 (16只)</div>
+        </div>
+        <div class="status-card">
+          <div class="status-name">氣門/活塞狀態</div>
+          <div class="status-val" id="st-piston">安全間隙 (>3mm)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右側實戰情境控制面板 -->
+    <div class="controls">
+      <div class="group-title">一、 正常狀態與初期病徵</div>
+      <button class="scenario-btn active" onclick="setEngineState('normal_run')">
+        <strong>1. 【正常運轉】調整器張緊良好，鏈條穩固帶動</strong><br>
+        油壓調整器將 7mm 鏈條穩穩頂住，進排氣門與活塞交錯避開。
+      </button>
+
+      <button class="scenario-btn" onclick="setEngineState('chain_stretch')">
+        <strong>2. 【初期病徵】鏈條拉長、調整器行程推至極限</strong><br>
+        張緊器推到底無法再頂，冷車啟動發出清脆金屬甩動打鐵異音。
+      </button>
+
+      <div class="group-title">二、 實務惡夢：調整器斷裂與連鎖摧毀</div>
+      <button class="scenario-btn" onclick="setEngineState('tensioner_shattered')">
+        <strong>3. 【實務重大通病】調整器直接斷裂、碎裂！</strong><br>
+        塑膠導板疲勞碎解、彈片折斷！鏈條瞬間失張大甩動，齒盤狂跳齒！
+      </button>
+
+      <button class="scenario-btn" onclick="setEngineState('chain_snapped')">
+        <strong>4. 【突發扯斷】鏈條被咬死扯斷，凸輪軸停擺</strong><br>
+        甩動的鏈條被齒盤卡死扯斷，多只氣門定格在最大開啟行程！
+      </button>
+
+      <button class="scenario-btn" onclick="setEngineState('valve_strike')">
+        <strong>5. 【相撞頂爆】活塞衝頂撞彎氣門、搖臂粉碎</strong><br>
+        相位大錯位！活塞直接猛烈撞擊氣門頭，氣門彎曲、搖臂折斷炸開！
+      </button>
+
+      <div class="group-title">三、 原廠技術對策升級</div>
+      <button class="scenario-btn" onclick="setEngineState('upgrade_8mm')">
+        <strong>6. 【原廠對策件】全面升級 8mm 套件 (改進型調整器)</strong><br>
+        更換加強型金屬油壓調整器、加粗 8mm 鏈條與齒盤，徹底根除通病。
+      </button>
+
+      <div class="info-card" id="info-box">
+        <strong>實務損害機制：</strong><br>
+        DV5RC 實務現場非常常見：<strong>鏈條本身還沒斷，底下的油壓調整器塑膠滑靴與本體就先碎裂！</strong>調整器一碎，鏈條失去張力在高速下瞬間跳齒（甚至跳 3 齒以上），凸輪軸相位嚴重跑掉，活塞立即頂爆氣門！
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let animInterval = null;
+    let engineRunning = true;
+    let isWobbling = false;
+    let angle = 0;
+
+    function startEngineLoop() {
+      if (animInterval) clearInterval(animInterval);
+      animInterval = setInterval(() => {
+        if (!engineRunning) return;
+        angle = (angle + 12) % 360;
+        const rad = angle * Math.PI / 180;
+        
+        const pistonY = Math.sin(rad) * 44;
+        const crankPinX = 480 + Math.cos(rad) * 28;
+        const crankPinY = 500 + Math.sin(rad) * 28;
+
+        const pistonBody = document.getElementById('piston-body');
+        const connRod = document.getElementById('conn-rod');
+        const crankPin = document.getElementById('crank-pin');
+
+        pistonBody.setAttribute('transform', `translate(0, ${pistonY})`);
+        crankPin.setAttribute('cx', crankPinX);
+        crankPin.setAttribute('cy', crankPinY);
+        connRod.setAttribute('x1', crankPinX);
+        connRod.setAttribute('y1', crankPinY);
+        connRod.setAttribute('y2', 370 + pistonY);
+
+        const valveIn = document.getElementById('valve-in-group');
+        const valveEx = document.getElementById('valve-ex-group');
+        const valveInOffset = Math.max(0, Math.sin(rad + Math.PI/2)) * 18;
+        const valveExOffset = Math.max(0, Math.sin(rad)) * 18;
+
+        valveIn.setAttribute('transform', `translate(0, ${valveInOffset})`);
+        valveEx.setAttribute('transform', `translate(0, ${valveExOffset})`);
+
+        // 調整器碎裂時的鏈條劇烈甩動動畫
+        if (isWobbling) {
+          const chainPath = document.getElementById('chain-path');
+          const wobbleOffset = (Math.sin(angle * 3) * 8);
+          chainPath.setAttribute('d', `M 415 32 Q 480 ${25 + wobbleOffset} 545 32 A 26 26 0 0 1 545 84 Q 480 ${105 + wobbleOffset} 415 84 A 26 26 0 0 1 415 32`);
+        }
+      }, 35);
+    }
+
+    startEngineLoop();
+
+    function setEngineState(state) {
+      document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+
+      const stTensioner = document.getElementById('st-tensioner');
+      const stTiming = document.getElementById('st-timing');
+      const stRocker = document.getElementById('st-rocker');
+      const stPiston = document.getElementById('st-piston');
+      const info = document.getElementById('info-box');
+
+      const chainPath = document.getElementById('chain-path');
+      const chainTag = document.getElementById('chain-tag');
+      const tensionerFull = document.getElementById('tensioner-full');
+      const tensionerShards = document.getElementById('tensioner-shards');
+      const damageEffects = document.getElementById('damage-effects');
+      const valveIn = document.getElementById('valve-in-group');
+      const valveInStem = document.getElementById('valve-in-stem');
+      const rockerInArm = document.getElementById('rocker-in-arm');
+      const pistonDent = document.getElementById('piston-dent');
+      const pistonBody = document.getElementById('piston-body');
+
+      // 重置
+      damageEffects.style.display = 'none';
+      pistonDent.style.display = 'none';
+      tensionerFull.style.display = 'block';
+      tensionerShards.style.display = 'none';
+      isWobbling = false;
+
+      valveInStem.setAttribute('d', 'M 415 100 L 415 205 L 385 210 L 445 210 Z');
+      valveInStem.setAttribute('fill', '#abb2bf');
+      rockerInArm.setAttribute('d', 'M 375 92 Q 415 80 445 95');
+      rockerInArm.setAttribute('stroke', '#abb2bf');
+
+      stTensioner.className = 'status-val';
+      stTiming.className = 'status-val';
+      stRocker.className = 'status-val';
+      stPiston.className = 'status-val';
+
+      if (state === 'normal_run') {
+        engineRunning = true;
+        chainPath.setAttribute('d', 'M 415 32 L 545 32 A 26 26 0 0 1 545 84 L 415 84 A 26 26 0 0 1 415 32');
+        chainPath.setAttribute('stroke', '#98d172');
+        chainPath.setAttribute('stroke-width', '5');
+        chainTag.textContent = '原廠 7mm 連動鏈條';
+        chainTag.setAttribute('fill', '#98d172');
+
+        stTensioner.textContent = '張力正常 (油壓健全)';
+        stTiming.textContent = '精準同步 (0° CA)';
+        stRocker.textContent = '正常完好 (16只)';
+        stPiston.textContent = '安全間隙 (>3mm)';
+        info.innerHTML = '<strong>【正常運轉狀態】：</strong><br>油壓調整器輸出正常推力，將 7mm 鏈條保持在最佳張力。進排氣凸輪軸精準連動，氣門與活塞交錯避開。';
+      }
+      else if (state === 'chain_stretch') {
+        engineRunning = true;
+        chainPath.setAttribute('d', 'M 415 32 Q 480 44 545 32 A 26 26 0 0 1 545 84 Q 480 98 415 84 A 26 26 0 0 1 415 32');
+        chainPath.setAttribute('stroke', '#f2c76d');
+        chainTag.textContent = '⚠️ 7mm 鏈條拉長下垂';
+        chainTag.setAttribute('fill', '#f2c76d');
+
+        stTensioner.textContent = '行程推至極限';
+        stTensioner.classList.add('warning');
+        stTiming.textContent = '相位微延遲 (-4° CA)';
+        stTiming.classList.add('warning');
+        stRocker.textContent = '承受交變衝擊';
+        stPiston.textContent = '間隙縮小 (<1.5mm)';
+        stPiston.classList.add('warning');
+        info.innerHTML = '<strong>【初期病徵：鏈條拉長】：</strong><br>7mm 鏈條疲勞拉長，調整器頂桿推到底已無法再提供足夠張力，鬆弛的鏈條開始刮擦氣門鋁合金上蓋，發出金屬敲擊異音。';
+      }
+      else if (state === 'tensioner_shattered') {
+        engineRunning = true;
+        isWobbling = true; // 啟動失張甩動
+        tensionerFull.style.display = 'none';
+        tensionerShards.style.display = 'block'; // 顯示碎裂碎片
+
+        chainPath.setAttribute('stroke', '#ff6b78');
+        chainTag.textContent = '💥 調整器粉碎！鏈條大甩動！';
+        chainTag.setAttribute('fill', '#ff6b78');
+
+        stTensioner.textContent = '💥 碎裂解體！';
+        stTensioner.classList.add('danger');
+        stTiming.textContent = '嚴重跳齒 (>30° CA)';
+        stTiming.classList.add('danger');
+        stRocker.textContent = '高頻衝擊受損';
+        stRocker.classList.add('warning');
+        stPiston.textContent = '⚠️ 即將頂氣門';
+        stPiston.classList.add('danger');
+        info.innerHTML = '<strong>【實務重大通病：調整器斷裂碎裂】：</strong><br>實務現場最常見的元兇：<strong>油壓調整器的塑膠滑靴因高溫脆化斷裂、彈片碎解！</strong>鏈條瞬間失去張緊力，在高速運轉下劇烈甩動並發生致命「大跳齒」，相位嚴重跑掉！';
+      }
+      else if (state === 'chain_snapped') {
+        engineRunning = false;
+        tensionerFull.style.display = 'none';
+        tensionerShards.style.display = 'block';
+        chainPath.setAttribute('d', 'M 415 32 L 450 40 M 490 68 L 545 84 M 415 84 L 440 88');
+        chainPath.setAttribute('stroke', '#ff6b78');
+        chainTag.textContent = '💥 鏈條被扯斷！凸輪停擺';
+        chainTag.setAttribute('fill', '#ff6b78');
+
+        valveIn.setAttribute('transform', 'translate(0, 26)');
+
+        stTensioner.textContent = '碎裂報廢';
+        stTensioner.classList.add('danger');
+        stTiming.textContent = '失去連動 (失步)';
+        stTiming.classList.add('danger');
+        stRocker.textContent = '卡滯未碎';
+        stPiston.textContent = '💥 氣門定格全開';
+        stPiston.classList.add('danger');
+        info.innerHTML = '<strong>【鏈條扯斷停擺】：</strong><br>甩動的鏈條卡死在齒盤縫隙中瞬間扯斷！排氣凸輪軸立即停轉，氣門定格在最大開啟行程無法縮回。';
+      }
+      else if (state === 'valve_strike') {
+        engineRunning = false;
+        tensionerFull.style.display = 'none';
+        tensionerShards.style.display = 'block';
+        pistonBody.setAttribute('transform', 'translate(0, -38)');
+        damageEffects.style.display = 'block';
+        pistonDent.style.display = 'block';
+        
+        valveInStem.setAttribute('d', 'M 415 100 L 410 150 L 398 205 L 375 208 L 435 212 Z');
+        valveInStem.setAttribute('fill', '#ff6b78');
+
+        rockerInArm.setAttribute('d', 'M 375 92 L 405 86 M 424 92 L 445 95');
+        rockerInArm.setAttribute('stroke', '#ff6b78');
+
+        stTensioner.textContent = '碎解報廢';
+        stTensioner.classList.add('danger');
+        stTiming.textContent = '相撞失步';
+        stTiming.classList.add('danger');
+        stRocker.textContent = '💥 滾針搖臂粉碎';
+        stRocker.classList.add('danger');
+        stPiston.textContent = '💥 氣門撞彎/活塞受傷';
+        stPiston.classList.add('danger');
+        info.innerHTML = '<strong>【相撞！氣門撞彎、搖臂粉碎】：</strong><br>活塞衝頂直接猛撞全開的氣門！氣門桿瞬間撞彎，滾針搖臂折斷炸開以吸收衝擊力。碎裂的軸承滾針與調整器碎片掉入油底殼，引擎必須吊下大修！';
+      }
+      else if (state === 'upgrade_8mm') {
+        engineRunning = true;
+        chainPath.setAttribute('d', 'M 415 32 L 545 32 A 26 26 0 0 1 545 84 L 415 84 A 26 26 0 0 1 415 32');
+        chainPath.setAttribute('stroke', '#52a9ff');
+        chainPath.setAttribute('stroke-width', '8');
+        chainTag.textContent = '原廠對策件：8mm 加固鏈條 + 改進型金屬調整器';
+        chainTag.setAttribute('fill', '#52a9ff');
+
+        stTensioner.textContent = '新版加固調整器 (健全)';
+        stTiming.textContent = '完美同步 (8mm 寬規格)';
+        stRocker.textContent = '新版強化搖臂組';
+        stPiston.textContent = '運行安全無虞';
+        info.innerHTML = '<strong>【原廠 8mm 技術升級方案】：</strong><br>原廠對策件：升級為<strong>加固型金屬油壓調整器（消除脆化斷裂風險）</strong>、加寬 8mm 鏈條、專用凸輪軸與高強度搖臂總成，徹底根除斷鏈與調整器碎裂通病！';
+      }
+    }
+  </script>
+</body>
+</html>
