@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peugeot 1.2 MHEV 進氣與配氣系統深度診斷教學系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-dark: #070c16;
+      --bg-panel: #0d1527;
+      --bg-card: #152238;
+      --border: #223554;
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.25);
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --success: #10b981;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 氣流流動關鍵影格 */
+    @keyframes airFlowStream {
+      from { stroke-dashoffset: 48; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    /* 活塞上下往復衝程動畫 (幅度拉大以對齊放大之汽缸) */
+    @keyframes pistonReciprocateAnim {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(55px); }
+      100% { transform: translateY(0px); }
+    }
+
+    /* 進氣門開閉升程動畫 */
+    @keyframes valveMotionAnim {
+      0% { transform: translateY(0px); }
+      40% { transform: translateY(16px); }
+      80% { transform: translateY(0px); }
+      100% { transform: translateY(0px); }
+    }
+
+    /* 火星塞微失火閃爍 */
+    @keyframes sparkFlickerAnim {
+      0%, 100% { opacity: 0; transform: scale(0.6); }
+      46% { opacity: 0; }
+      50% { opacity: 1; transform: scale(1.3); }
+      54% { opacity: 0; }
+    }
+
+    /* 排氣未消耗游離氧分子漂移 */
+    @keyframes bubbleFloatAnim {
+      0% { transform: translateX(0px); opacity: 0.95; }
+      100% { transform: translateX(110px); opacity: 0.1; }
+    }
+
+    /* 動態樣式分配 */
+    .flow-running {
+      stroke-dasharray: 8, 8;
+      animation: airFlowStream 0.85s linear infinite;
+    }
+    .flow-choked {
+      stroke-dasharray: 4, 8;
+      stroke: var(--danger) !important;
+      animation: airFlowStream 2.4s linear infinite;
+    }
+    .flow-normal {
+      stroke: var(--accent) !important;
+      animation-duration: 0.8s;
+    }
+
+    /* 物理完全靜態鎖死類別 (開紅火未發動嚴格專用) */
+    .flow-strictly-frozen {
+      stroke-dasharray: none !important;
+      animation: none !important;
+      stroke: #334155 !important;
+    }
+    .piston-strictly-frozen {
+      animation: none !important;
+      transform: translateY(0px) !important;
+    }
+    .valve-strictly-frozen {
+      animation: none !important;
+      transform: translateY(0px) !important;
+    }
+    .spark-strictly-hidden {
+      display: none !important;
+      animation: none !important;
+      opacity: 0 !important;
+    }
+    .bubbles-strictly-hidden {
+      display: none !important;
+      animation: none !important;
+    }
+
+    /* 運轉狀態類別 */
+    .piston-active-running {
+      animation: pistonReciprocateAnim 0.75s ease-in-out infinite;
+    }
+    .valve-active-running {
+      animation: valveMotionAnim 0.75s ease-in-out infinite;
+    }
+    .spark-active-running {
+      animation: sparkFlickerAnim 0.75s infinite;
+      transform-origin: 520px 345px;
+    }
+    .bubbles-active-running {
+      animation: bubbleFloatAnim 1.8s linear infinite;
+    }
+  </style>
+</head>
+<body class="select-none">
+
+  <header class="bg-[#030610] border-b border-[#1e2c47] px-6 py-3 flex justify-between items-center z-10 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-3.5 h-3.5 rounded-full bg-sky-400 shadow-[0_0_10px_#38bdf8]"></div>
+      <h1 class="text-base font-bold text-sky-400 tracking-wide">
+        Peugeot 1.2 MHEV 進氣與配氣系統深度診斷教學系統
+      </h1>
+      <span class="text-xs px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+        廠長實務側寫架構
+      </span>
+    </div>
+
+    <div class="flex gap-2">
+      <button id="tab-btn-flow" class="tab-btn active px-3.5 py-1.5 rounded-md text-xs font-semibold border transition-all bg-sky-500 text-slate-950 border-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.3)]" onclick="switchView('flow')">
+        視圖一：系統流場與物理因果
+      </button>
+      <button id="tab-btn-sensor" class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold border transition-all bg-slate-800 text-slate-300 border-slate-700 hover:border-sky-400" onclick="switchView('sensor')">
+        視圖二：1312 原廠線路電氣工作台 (D3IZ9XPE)
+      </button>
+      <button id="tab-btn-case408" class="tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold border transition-all bg-slate-800 text-slate-300 border-slate-700 hover:border-sky-400" onclick="switchView('case408')">
+        視圖三：408 Hybrid (P54) 實戰對照解密
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 視圖一：系統流場與物理因果模型                                             -->
+  <!-- ========================================================================= -->
+  <div id="view-flow" class="flex flex-1 overflow-hidden">
+    <!-- 左側視覺監控畫布 (提高寬度比至 flex-[1.6]) -->
+    <div class="flex-[1.6] flex flex-col bg-[#050913] border-r border-[#1e2c47] relative">
+      <!-- 頂部遙測儀表欄 -->
+      <div class="grid grid-cols-4 gap-3 p-3.5 bg-[#0b1220]/90 border-b border-[#1e2c47] backdrop-blur-sm shrink-0">
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">1312 歧管絕對壓力</div>
+          <div id="f-map" class="text-xl font-extrabold text-red-400 mt-0.5">210 mbar</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">引擎運轉狀態</div>
+          <div id="f-engine" class="text-xl font-extrabold text-amber-400 mt-0.5">滑行收油 (1592 rpm)</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">長期燃油修正 (LTFT)</div>
+          <div id="f-ltft" class="text-xl font-extrabold text-red-400 mt-0.5">+125.0 % (頂死)</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">排氣含氧感知判定</div>
+          <div id="f-o2" class="text-xl font-extrabold text-red-400 mt-0.5">偽過稀 (滿滿游離氧)</div>
+        </div>
+      </div>
+
+      <!-- 放大版全尺寸 SVG 畫布 (viewBox 擴展至 960x560，徹底拉開元件間距) -->
+      <div class="flex-1 flex items-center justify-center p-4 relative overflow-hidden">
+        <svg id="svg-flow-diagram" viewBox="0 0 960 560" fill="none" class="w-full h-full max-w-full max-h-full">
+          <rect width="960" height="560" fill="#050913" rx="10"/>
+
+          <!-- 網格背景 -->
+          <defs>
+            <pattern id="flow-grid-lg" width="24" height="24" patternUnits="userSpaceOnUse">
+              <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#0f192b" stroke-width="0.8"/>
+            </pattern>
+          </defs>
+          <rect width="960" height="560" fill="url(#flow-grid-lg)"/>
+
+          <!-- 1. 外部進氣導管與渦輪 (大幅往左延伸) -->
+          <text x="35" y="145" fill="#94a3b8" font-size="12" font-weight="700">外部大氣進氣 (1013 mbar)</text>
+          <path d="M 30 195 L 165 195" stroke="#1e293b" stroke-width="32" stroke-linecap="round"/>
+          <path id="flow-turbo-pipe" class="flow-running flow-choked" d="M 30 195 L 165 195" stroke-width="5"/>
+          <!-- 渦輪本體 -->
+          <circle cx="95" cy="195" r="26" fill="#0b1220" stroke="#334155" stroke-width="2.5"/>
+          <path d="M 95 175 L 95 215 M 75 195 L 115 195" stroke="#475569" stroke-width="2.5"/>
+          <text x="79" y="200" fill="#94a3b8" font-size="11" font-weight="700">TURBO</text>
+
+          <!-- 2. 電子節氣門總成 -->
+          <rect x="165" y="160" width="46" height="74" rx="5" fill="#111c2e" stroke="#475569" stroke-width="2.5"/>
+          <line id="vane-throttle" x1="188" y1="168" x2="188" y2="226" stroke="#ef4444" stroke-width="6" stroke-linecap="round"/>
+          <text id="txt-throttle" x="145" y="258" fill="#94a3b8" font-size="12" font-weight="600">節氣門 (0.5% 貼死)</text>
+
+          <!-- 3. 進氣歧管腔體 (寬度拉大至 480，高度充足) -->
+          <path id="manifold-cavity" d="M 211 175 L 450 175 Q 480 175 480 205 L 480 270 L 415 270 L 415 220 L 211 220 Z" fill="rgba(239, 68, 68, 0.2)" stroke="#ef4444" stroke-width="2.5"/>
+          <path id="flow-manifold-pipe" class="flow-running flow-choked" d="M 211 197 L 447 197 L 447 270" stroke-width="5"/>
+          <text id="txt-manifold" x="235" y="152" fill="#ef4444" font-size="14" font-weight="700">極致超深真空 (-800 mbar 吸力)</text>
+
+          <!-- 4. 歧管壓力感知器 1312 -->
+          <rect id="map-sensor-body" x="290" y="95" width="56" height="34" rx="5" fill="#0284c7" stroke="#38bdf8" stroke-width="2.5"/>
+          <text x="303" y="117" fill="#fff" font-size="12" font-weight="800">1312</text>
+          <line x1="318" y1="129" x2="318" y2="175" stroke="#38bdf8" stroke-width="3.5"/>
+          <text x="272" y="82" fill="#38bdf8" font-size="12" font-weight="700">MAP 壓力回饋</text>
+
+          <!-- 5. 曲軸箱 PCV 廢氣通風軟管 (向左位移至 340，與右側進氣門完全分開) -->
+          <path d="M 340 220 L 340 375 L 430 375" stroke="#334155" stroke-width="10" stroke-linecap="round"/>
+          <text x="260" y="325" fill="#94a3b8" font-size="12" font-weight="700">PCV 廢氣管</text>
+
+          <!-- 獨立夾管鉗群組 (置於 PCV 垂直管段左側，完全獨立不重疊) -->
+          <g id="clamp-tool-group" style="display: none;">
+            <rect x="322" y="260" width="36" height="22" rx="4" fill="#f8fafc" stroke="#020617" stroke-width="2"/>
+            <line x1="310" y1="271" x2="370" y2="271" stroke="#ef4444" stroke-width="4"/>
+            <!-- 提示文字框移至管路左下方，獨立空間 -->
+            <rect x="230" y="260" width="82" height="22" rx="4" fill="#991b1b" stroke="#ef4444"/>
+            <text x="238" y="275" fill="#ffffff" font-size="11" font-weight="800">【夾鉗阻斷】</text>
+          </g>
+
+          <!-- 6. 汽缸頭與配氣凸輪/VVT 電磁閥 -->
+          <rect x="415" y="270" width="240" height="50" fill="#111c2e" stroke="#475569" stroke-width="2.5"/>
+          <!-- VVT 電磁閥 (移至 580，位置寬裕) -->
+          <rect id="vvt-solenoid-box" x="575" y="220" width="46" height="50" rx="5" fill="#ef4444" stroke="#fecdd3" stroke-width="2.5"/>
+          <text x="550" y="208" fill="#fbbf24" font-size="12" font-weight="700">VVT 機油電磁閥</text>
+
+          <!-- 進氣門組件 (位於 455，垂直空間充足) -->
+          <g id="valve-assembly" class="valve-active-running">
+            <line x1="455" y1="275" x2="455" y2="315" stroke="#cbd5e1" stroke-width="6"/>
+            <circle cx="455" cy="315" r="13" fill="#cbd5e1"/>
+          </g>
+          <!-- 進氣門標籤移至汽缸外側左方，不擋汽門 -->
+          <text x="390" y="340" fill="#94a3b8" font-size="12" font-weight="700">進氣門</text>
+
+          <!-- 7. 燃燒室汽缸本體 (加大加深：寬度 170，高度 160) -->
+          <rect x="430" y="320" width="180" height="175" fill="#030712" stroke="#334155" stroke-width="3"/>
+
+          <!-- 活塞組件 (往復動態或物理完全凍結，文字絕對居中) -->
+          <g id="piston-assembly" class="piston-active-running">
+            <rect x="438" y="365" width="164" height="58" rx="6" fill="#475569" stroke="#94a3b8" stroke-width="2.5"/>
+            <!-- 活塞銷與連桿軸心 -->
+            <circle cx="520" cy="394" r="8" fill="#0f172a" stroke="#cbd5e1" stroke-width="2.5"/>
+            <!-- 活塞文字徹底居中，加大清晰 -->
+            <text x="520" y="400" fill="#f8fafc" font-size="14" font-weight="800" text-anchor="middle">活 塞</text>
+          </g>
+
+          <!-- 火星塞電極與點火火花 -->
+          <g id="spark-assembly">
+            <rect x="516" y="295" width="8" height="25" fill="#cbd5e1"/>
+            <polygon id="spark-flame" class="spark-active-running" points="520,325 532,317 528,333 538,327 523,342" fill="#fbbf24"/>
+          </g>
+
+          <!-- 8. 排氣歧管管路 (往右延伸，寬裕大方) -->
+          <path d="M 610 345 L 810 345" stroke="#1e293b" stroke-width="28" stroke-linecap="round"/>
+          <path id="flow-exhaust-pipe" class="flow-running flow-choked" d="M 610 345 L 810 345" stroke-width="5"/>
+
+          <!-- 游離氧分子泡泡群組 -->
+          <g id="oxygen-bubbles-group" class="bubbles-active-running">
+            <circle cx="635" cy="345" r="5.5" fill="#38bdf8"/>
+            <circle cx="670" cy="340" r="5.5" fill="#38bdf8"/>
+            <circle cx="705" cy="348" r="5.5" fill="#38bdf8"/>
+            <text x="640" y="385" fill="#38bdf8" font-size="12" font-weight="700">未消耗游離氧 (O₂)</text>
+          </g>
+
+          <!-- 含氧感知器 -->
+          <rect id="o2-sensor-body" x="740" y="300" width="22" height="32" rx="3" fill="#ef4444" stroke="#fecdd3" stroke-width="2.5"/>
+          <text x="715" y="290" fill="#f43f5e" font-size="12" font-weight="700">含氧感知器</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 右側因果推演操作階梯 -->
+    <div class="flex-1 flex flex-col bg-[#0d1527] overflow-y-auto">
+      <div class="text-xs font-bold text-sky-400 px-5 pt-4 pb-2 uppercase tracking-wider">
+        物理側寫階梯演繹
+      </div>
+
+      <div class="flex flex-col gap-2 p-4">
+        <!-- 情境 00 -->
+        <button class="flow-step-btn active text-left p-3.5 rounded-lg border border-[#223554] bg-[#1a2d4d] shadow-[0_0_15px_rgba(56,189,248,0.25)] transition-all hover:border-sky-400" onclick="applyFlowScenario('fault')">
+          <div class="text-[10px] font-extrabold text-sky-400 tracking-wider">SCENARIO 00・現況審視</div>
+          <div class="text-sm font-bold text-white mt-0.5">00. 故障現況：收油滑行瞬間（微喘、210 mbar）</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            轉速 1592 rpm、油門 0%。活塞硬抽深真空，進氣窒息微失火，游離氧排至排氣管，燃油修正撞牆 +125%。
+          </div>
+        </button>
+
+        <!-- 步驟 01 -->
+        <button class="flow-step-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyFlowScenario('step1')">
+          <div class="text-[10px] font-extrabold text-sky-400 tracking-wider">STEP 01・靜態基準 (完全鎖死)</div>
+          <div class="text-sm font-bold text-white mt-0.5">01. 開紅火不發動：活塞完全靜止、無氣流</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            曲軸零轉速、活塞 100% 凍結、火花熄滅、無氣流！歧管等同大氣壓 1013 mbar，1 分鐘排除電氣斷線。
+          </div>
+        </button>
+
+        <!-- 步驟 02 -->
+        <button class="flow-step-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyFlowScenario('step2')">
+          <div class="text-[10px] font-extrabold text-sky-400 tracking-wider">STEP 02・免拆驗證 (發動運轉)</div>
+          <div class="text-sm font-bold text-white mt-0.5">02. 夾死 PCV 軟管：阻斷曲軸箱暗流</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            發動怠速夾死通風管。負壓依舊卡死 210 mbar，100% 證明氣門室蓋膜片無罪，曲軸箱清白。
+          </div>
+        </button>
+
+        <!-- 步驟 03 -->
+        <button class="flow-step-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyFlowScenario('step3')">
+          <div class="text-[10px] font-extrabold text-sky-400 tracking-wider">STEP 03・核心定位 (配氣卡滯)</div>
+          <div class="text-sm font-bold text-white mt-0.5">03. 鎖定 VVT 電磁閥柱塞：進氣門提早閉死</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            柱塞微延遲 2°~3°，進氣門提早關閉。活塞在封閉汽缸硬抽高真空，引發偽過稀死循環。
+          </div>
+        </button>
+
+        <!-- 步驟 04 -->
+        <button class="flow-step-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyFlowScenario('step4')">
+          <div class="text-[10px] font-extrabold text-sky-400 tracking-wider">STEP 04・排除驗證 (健康基線)</div>
+          <div class="text-sm font-bold text-white mt-0.5">04. 柱塞復位順暢：標準物理工況全面回歸</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            配氣時機精準，負壓回升至 380 mbar，燃燒完全無游離氧，燃油修正回到健康的 +2.1%。
+          </div>
+        </button>
+      </div>
+
+      <!-- 廠長側寫深度解讀卡片 -->
+      <div class="m-4 bg-[#080e1b] border border-[#1e2d4a] rounded-lg p-4">
+        <h3 id="flow-card-title" class="text-sm font-bold text-amber-400 flex items-center gap-1.5 mb-2">
+          ⚠️ 故障現況物理剖析
+        </h3>
+        <div id="flow-card-desc" class="text-xs text-slate-300 leading-relaxed">
+          <b class="text-sky-400">為什麼 210 mbar 絕不是管路漏氣？</b><br>
+          大氣壓是 1013 mbar。如果進氣歧管有破洞外漏，外界大氣灌入只會讓壓力上升至 500、600 mbar。實測 210 mbar 代表內部被抽出了高達 -800 mbar 的超強真空！這證明進氣喉嚨被封死，活塞在密封空間硬抽。含氧感知器偵測到微失火排出的游離氧，誤報過稀狂噴油至 125%。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 視圖二：1312 原廠線路電氣工作台 (D3IZ9XPE)                                -->
+  <!-- ========================================================================= -->
+  <div id="view-sensor" class="flex flex-1 overflow-hidden" style="display: none;">
+    <!-- 左側電氣工作台 SVG (加大寬度與比例) -->
+    <div class="flex-[1.6] flex flex-col bg-[#050913] border-r border-[#1e2c47] relative">
+      <div class="grid grid-cols-4 gap-3 p-3.5 bg-[#0b1220]/90 border-b border-[#1e2c47] backdrop-blur-sm shrink-0">
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">三用電表實測讀數 (DMM)</div>
+          <div id="dmm-screen-text" class="text-xl font-extrabold text-sky-400 font-mono mt-0.5">5.01 V DC</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">量測模式與檔位</div>
+          <div id="dmm-mode-text" class="text-xl font-extrabold text-white mt-0.5">直流電壓 (DCV 20V)</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">被測原廠線號與針腳</div>
+          <div id="dmm-wire-text" class="text-xl font-extrabold text-emerald-400 mt-0.5">PIN 3 (13K1B) : + 5V</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">電氣判讀結論</div>
+          <div id="dmm-verdict-text" class="text-xl font-extrabold text-emerald-400 mt-0.5">PASS (ECU 供電正常)</div>
+        </div>
+      </div>
+
+      <div class="flex-1 flex items-center justify-center p-4 relative overflow-hidden">
+        <svg viewBox="0 0 960 560" fill="none" class="w-full h-full max-w-full max-h-full">
+          <rect width="960" height="560" fill="#050913" rx="10"/>
+
+          <!-- 1. 三用電表機身 (等比例放大) -->
+          <g transform="translate(45, 90)">
+            <rect x="0" y="0" width="200" height="340" rx="18" fill="#152238" stroke="#334155" stroke-width="3.5"/>
+            <!-- 液晶螢幕 -->
+            <rect x="20" y="25" width="160" height="85" rx="5" fill="#030712" stroke="#0284c7" stroke-width="2.5"/>
+            <text id="svg-dmm-val" x="32" y="82" fill="#38bdf8" font-size="34" font-family="monospace" font-weight="700">5.01 V</text>
+            <text x="145" y="55" fill="#38bdf8" font-size="13" font-family="monospace">DC</text>
+            <!-- 檔位旋鈕 -->
+            <circle cx="100" cy="180" r="38" fill="#030712" stroke="#475569" stroke-width="2.5"/>
+            <line x1="100" y1="180" x2="100" y2="148" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>
+            <!-- 插孔 -->
+            <circle cx="60" cy="285" r="10" fill="#ef4444"/>
+            <text x="50" y="315" fill="#94a3b8" font-size="11" font-weight="700">V/Ω</text>
+            <circle cx="140" cy="285" r="10" fill="#030712" stroke="#64748b" stroke-width="2.5"/>
+            <text x="127" y="315" fill="#94a3b8" font-size="11" font-weight="700">COM</text>
+          </g>
+
+          <!-- 2. 黑表棒接地導線 -->
+          <path id="svg-wire-black" d="M 185 375 Q 260 480 380 480" stroke="#64748b" stroke-width="4" fill="none"/>
+          <circle id="svg-term-black" cx="380" cy="480" r="6" fill="#64748b"/>
+          <text id="svg-txt-black" x="395" y="486" fill="#64748b" font-size="13" font-weight="700">車身金屬搭鐵 (GND)</text>
+
+          <!-- 3. 紅表棒動態導線與探針 -->
+          <path id="svg-wire-red" d="M 105 375 Q 280 270 480 196" stroke="#ef4444" stroke-width="4" fill="none"/>
+          <polygon id="svg-probe-red" points="475,184 498,196 475,208" fill="#ef4444"/>
+
+          <!-- 4. 1312 母插頭 (3V NR 原廠定義 D3IZ9XPE) 寬度加大 -->
+          <g transform="translate(490, 90)">
+            <rect x="0" y="0" width="190" height="340" rx="10" fill="#030712" stroke="#38bdf8" stroke-width="2.5"/>
+            <text x="14" y="34" fill="#38bdf8" font-size="13" font-weight="800">1312 (3V NR 黑色插頭)</text>
+
+            <!-- PIN 3 (+) -->
+            <g id="bench-pin3-btn" class="cursor-pointer" onclick="applyWiringScenario('pin3')">
+              <rect id="bench-pin3-rect" x="14" y="60" width="162" height="62" rx="5" fill="#152238" stroke="#fbbf24" stroke-width="2.5"/>
+              <text x="26" y="86" fill="#fbbf24" font-size="13" font-weight="800">PIN 3 (+ 5V 供電)</text>
+              <text x="26" y="106" fill="#94a3b8" font-size="11">線號: 13K1B (對接 ECU PIN 9)</text>
+            </g>
+
+            <!-- PIN 2 (-) -->
+            <g id="bench-pin2-btn" class="cursor-pointer" onclick="applyWiringScenario('pin2')">
+              <rect id="bench-pin2-rect" x="14" y="145" width="162" height="62" rx="5" fill="#152238" stroke="#475569" stroke-width="2.5"/>
+              <text x="26" y="171" fill="#cbd5e1" font-size="13" font-weight="800">PIN 2 (- 感知器接地)</text>
+              <text x="26" y="191" fill="#94a3b8" font-size="11">線號: 1364B (對接 ECU PIN 8)</text>
+            </g>
+
+            <!-- PIN 1 (S) -->
+            <g id="bench-pin1-btn" class="cursor-pointer" onclick="applyWiringScenario('pin1')">
+              <rect id="bench-pin1-rect" x="14" y="230" width="162" height="62" rx="5" fill="#152238" stroke="#475569" stroke-width="2.5"/>
+              <text x="26" y="256" fill="#38bdf8" font-size="13" font-weight="800">PIN 1 (S 訊號回饋)</text>
+              <text x="26" y="276" fill="#94a3b8" font-size="11">線號: 1363B (對接 ECU PIN 10)</text>
+            </g>
+          </g>
+
+          <!-- 5. 引擎控制電腦 1320 (120V NR) 端子座 -->
+          <g transform="translate(720, 90)">
+            <rect x="0" y="0" width="205" height="340" rx="10" fill="#080e1b" stroke="#64748b" stroke-width="2.5"/>
+            <text x="16" y="34" fill="#94a3b8" font-size="13" font-weight="800">1320 (ECU 120V NR 插座)</text>
+
+            <rect x="14" y="60" width="177" height="62" rx="5" fill="#152238" stroke="#334155"/>
+            <text x="24" y="86" fill="#fbbf24" font-size="13" font-weight="800">PIN 9 (5V 穩壓端)</text>
+            <text x="24" y="106" fill="#94a3b8" font-size="11">微處理器穩壓晶片輸出</text>
+
+            <rect x="14" y="145" width="177" height="62" rx="5" fill="#152238" stroke="#334155"/>
+            <text x="24" y="171" fill="#cbd5e1" font-size="13" font-weight="800">PIN 8 (邏輯搭鐵端)</text>
+            <text x="24" y="191" fill="#94a3b8" font-size="11">ECU 內部接地銅箔迴路</text>
+
+            <rect x="14" y="230" width="177" height="62" rx="5" fill="#152238" stroke="#334155"/>
+            <text x="24" y="256" fill="#38bdf8" font-size="13" font-weight="800">PIN 10 (MAP ADC 端)</text>
+            <text x="24" y="276" fill="#94a3b8" font-size="11">類比壓力/數位運算晶片</text>
+          </g>
+
+          <!-- 跨接線束示意 -->
+          <line x1="652" y1="181" x2="734" y2="181" stroke="#fbbf24" stroke-width="3.5"/>
+          <line x1="652" y1="266" x2="734" y2="266" stroke="#64748b" stroke-width="3.5"/>
+          <line x1="652" y1="351" x2="734" y2="351" stroke="#38bdf8" stroke-width="3.5"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 右側量測選單與判讀標準 -->
+    <div class="flex-1 flex flex-col bg-[#0d1527] overflow-y-auto">
+      <div class="text-xs font-bold text-sky-400 px-5 pt-4 pb-2 uppercase tracking-wider">
+        原廠線路量測指引 (D3IZ9XPE)
+      </div>
+
+      <div class="flex flex-col gap-2 p-4">
+        <!-- 量測 PIN 3 -->
+        <button class="wiring-btn active text-left p-3.5 rounded-lg border border-[#223554] bg-[#1a2d4d] shadow-[0_0_15px_rgba(56,189,248,0.25)] transition-all hover:border-sky-400" onclick="applyWiringScenario('pin3')">
+          <div class="text-[10px] font-extrabold text-amber-400 tracking-wider">原廠針腳 3・供電端 (線號 13K1B)</div>
+          <div class="text-sm font-bold text-white mt-0.5">PIN 3 (+)：5V 參考電源量測</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            拔下插頭開紅火。紅棒接 PIN 3，黑棒接車身搭鐵，量測 ECU PIN 9 供電基準。
+          </div>
+        </button>
+
+        <!-- 量測 PIN 2 -->
+        <button class="wiring-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyWiringScenario('pin2')">
+          <div class="text-[10px] font-extrabold text-slate-300 tracking-wider">原廠針腳 2・接地端 (線號 1364B)</div>
+          <div class="text-sm font-bold text-white mt-0.5">PIN 2 (-)：感知器搭鐵與電腦內部地</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            對地電阻法（&lt; 0.5Ω）與紅火通電壓降法（&lt; 30mV），不拆電腦抓接地浮動。
+          </div>
+        </button>
+
+        <!-- 量測 PIN 1 -->
+        <button class="wiring-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyWiringScenario('pin1')">
+          <div class="text-[10px] font-extrabold text-sky-400 tracking-wider">原廠針腳 1・訊號端 (線號 1363B)</div>
+          <div class="text-sm font-bold text-white mt-0.5">PIN 1 (S)：背刺壓力訊號動態電壓</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            插頭插上細針背刺。紅火大氣壓 4.02V；發動怠速若抽至 210 mbar，輸出跌至 1.15V。
+          </div>
+        </button>
+
+        <!-- 插頭對接導通測試 -->
+        <button class="wiring-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyWiringScenario('harness')">
+          <div class="text-[10px] font-extrabold text-emerald-400 tracking-wider">雙端斷電・線束純導通測試</div>
+          <div class="text-sm font-bold text-white mt-0.5">插頭對插頭端子導通與對地短路量測</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            兩端全拔（1312 3V NR 與 ECU 120V NR），蜂鳴檔量測 1-10、2-8、3-9 端子導通。
+          </div>
+        </button>
+      </div>
+
+      <div class="m-4 bg-[#080e1b] border border-[#1e2d4a] rounded-lg p-4">
+        <h3 id="wiring-card-title" class="text-sm font-bold text-amber-400 flex items-center gap-1.5 mb-2">
+          📌 PIN 3 (線號 13K1B) 5V 參考電源標準
+        </h3>
+        <div id="wiring-card-desc" class="text-xs text-slate-300 leading-relaxed">
+          <b>量測步驟：</b><br>
+          1. 拔下 1312 母插頭（3V NR 黑色插頭）。<br>
+          2. 電門開紅火（Ignition ON，不發動）。<br>
+          3. 三用電表轉至直流電壓檔（DCV 20V），黑表棒接電瓶負極。<br>
+          4. 紅表棒測量插頭 <b>PIN 3（線號 13K1B）</b>。<br><br>
+          <b>判定標準：</b><br>
+          標準電壓為 <b>5.0V ± 0.1V</b>。若電壓正常，直接證明 ECU 1320 PIN 9 供電晶片與線路完好無損。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 視圖三：408 Hybrid (P54) 實戰對照解密                                      -->
+  <!-- ========================================================================= -->
+  <div id="view-case408" class="flex flex-1 overflow-hidden" style="display: none;">
+    <!-- 左側機構剖面與病灶圖解 (加大視覺寬度) -->
+    <div class="flex-[1.6] flex flex-col bg-[#050913] border-r border-[#1e2c47] relative">
+      <div class="grid grid-cols-4 gap-3 p-3.5 bg-[#0b1220]/90 border-b border-[#1e2c47] backdrop-blur-sm shrink-0">
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">比對車型 (VIN)</div>
+          <div class="text-sm font-extrabold text-sky-400 mt-0.5 truncate">408 (VR3FPHPY8SY538187)</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">曲軸-凸輪軸同步 (P0016)</div>
+          <div id="p408-sync-status" class="text-xl font-extrabold text-red-400 mt-0.5">相位偏差 &gt; 8°</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">高壓油軌壓力 (P0087)</div>
+          <div id="p408-fuel-status" class="text-xl font-extrabold text-red-400 mt-0.5">壓力過低 (凸輪脫節)</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-2.5">
+          <div class="text-[11px] text-slate-400 uppercase tracking-wider">混合比與歧管壓力</div>
+          <div id="p408-mix-status" class="text-xl font-extrabold text-red-400 mt-0.5">P0172過濃 / P0105</div>
+        </div>
+      </div>
+
+      <div class="flex-1 flex items-center justify-center p-4 relative overflow-hidden">
+        <svg viewBox="0 0 960 560" fill="none" class="w-full h-full max-w-full max-h-full">
+          <rect width="960" height="560" fill="#050913" rx="10"/>
+
+          <!-- 凸輪軸鏈輪與液壓相位器本體 (大型化) -->
+          <circle cx="310" cy="280" r="170" fill="#0b1220" stroke="#334155" stroke-width="4.5"/>
+          <!-- 正時鏈輪外齒示意 -->
+          <g stroke="#64748b" stroke-width="3.5">
+            <line x1="310" y1="105" x2="310" y2="118"/><line x1="310" y1="442" x2="310" y2="455"/>
+            <line x1="135" y1="280" x2="148" y2="280"/><line x1="472" y1="280" x2="485" y2="280"/>
+            <line x1="186" y1="156" x2="195" y2="165"/><line x1="425" y1="395" x2="434" y2="404"/>
+          </g>
+          <text x="165" y="125" fill="#94a3b8" font-size="13" font-weight="700">正時鏈條外齒盤 (由曲軸鏈條驅動)</text>
+
+          <!-- 內部液壓葉片轉子 (Phaser Rotor) -->
+          <g id="p408-phaser-rotor" transform="rotate(22, 310, 280)">
+            <circle cx="310" cy="280" r="105" fill="#152238" stroke="#38bdf8" stroke-width="2.5"/>
+            <rect x="298" y="185" width="24" height="55" rx="4" fill="#0284c7"/>
+            <rect x="298" y="320" width="24" height="55" rx="4" fill="#0284c7"/>
+            <rect x="215" y="268" width="55" height="24" rx="4" fill="#0284c7"/>
+            <rect x="350" y="268" width="55" height="24" rx="4" fill="#0284c7"/>
+            <!-- 凸輪軸心固定端 -->
+            <circle cx="310" cy="280" r="38" fill="#030712" stroke="#cbd5e1" stroke-width="3.5"/>
+            <text x="286" y="286" fill="#cbd5e1" font-size="13" font-weight="800">凸輪軸</text>
+          </g>
+
+          <!-- 現場實車照片黑圈關鍵處：內部機械鎖止銷 (Lock Pin) 卡死標記 -->
+          <g id="p408-lock-pin-box" transform="translate(370, 210)">
+            <rect x="0" y="0" width="45" height="32" rx="5" fill="#ef4444" stroke="#fecdd3" stroke-width="2.5"/>
+            <text x="7" y="21" fill="#fff" font-size="11" font-weight="800">鎖止銷</text>
+            <circle cx="22" cy="16" r="26" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="4,4"/>
+          </g>
+          <text x="430" y="218" fill="#ef4444" font-size="13" font-weight="800">← 照片黑圈：鎖止銷微卡死處</text>
+
+          <!-- 排氣凸輪軸後端驅動高壓燃油泵 (HPFP) -->
+          <g transform="translate(600, 160)">
+            <rect x="0" y="0" width="240" height="155" rx="10" fill="#111c2e" stroke="#475569" stroke-width="2.5"/>
+            <text x="18" y="32" fill="#94a3b8" font-size="13" font-weight="800">高壓油泵 (HPFP) 驅動端</text>
+            <!-- 凸輪旋轉驅動柱塞 -->
+            <ellipse id="p408-cam-lobe" cx="60" cy="90" rx="36" ry="22" fill="#334155" stroke="#cbd5e1" stroke-width="2.5" transform="rotate(45, 60, 90)"/>
+            <rect x="105" y="78" width="55" height="24" rx="4" fill="#64748b"/>
+            <path d="M 160 90 L 210 90" stroke="#ef4444" stroke-width="5"/>
+            <text id="p408-hpfp-text" x="18" y="136" fill="#ef4444" font-size="12" font-weight="700">相位跑偏：泵油行程脫節 (P0087)</text>
+          </g>
+
+          <!-- 氣門重疊反衝倒灌歧管 -->
+          <g transform="translate(600, 345)">
+            <rect x="0" y="0" width="240" height="135" rx="10" fill="#111c2e" stroke="#475569" stroke-width="2.5"/>
+            <text x="18" y="30" fill="#fbbf24" font-size="13" font-weight="800">氣門重疊反衝 (P0172 / P0105)</text>
+            <path d="M 35 75 Q 115 40 205 75" stroke="#fbbf24" stroke-width="3.5" fill="none" stroke-dasharray="5,5"/>
+            <text id="p408-overlap-text" x="18" y="112" fill="#fbbf24" font-size="12" font-weight="600">未燃廢氣倒灌進氣歧管 → 過濃</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 右側 408 實戰分析面板 -->
+    <div class="flex-1 flex flex-col bg-[#0d1527] overflow-y-auto">
+      <div class="text-xs font-bold text-sky-400 px-5 pt-4 pb-2 uppercase tracking-wider">
+        實戰案例對照與濃稀對稱解密
+      </div>
+
+      <div class="flex flex-col gap-2 p-4">
+        <button class="case-btn active text-left p-3.5 rounded-lg border border-[#223554] bg-[#1a2d4d] shadow-[0_0_15px_rgba(56,189,248,0.25)] transition-all hover:border-sky-400" onclick="applyCaseScenario('408_case')">
+          <div class="text-[10px] font-extrabold text-red-400 tracking-wider">408 HYBRID 實戰・四碼合一</div>
+          <div class="text-sm font-bold text-white mt-0.5">408：齒盤卡死在氣門延遲 (引發過濃 P0172)</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            鎖止銷卡死。並發 P0016(同步) + P0087(油壓) + P0172(過濃) + P0105(歧管合理性)。
+          </div>
+        </button>
+
+        <button class="case-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyCaseScenario('208_case')">
+          <div class="text-[10px] font-extrabold text-sky-400 tracking-wider">208 MHEV 對照・濃稀對稱</div>
+          <div class="text-sm font-bold text-white mt-0.5">208：柱塞微卡在氣門早閉 (引發過稀 P0171)</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            未達 P0016 門檻。進氣門提早閉死，活塞硬抽 210 mbar 深真空，未燃氧氣外洩報過稀。
+          </div>
+        </button>
+
+        <button class="case-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]" onclick="applyCaseScenario('repaired')">
+          <div class="text-[10px] font-extrabold text-emerald-400 tracking-wider">處置措施・現場機械撥正</div>
+          <div class="text-sm font-bold text-white mt-0.5">調整進排氣閥門機構與柱塞復位驗證</div>
+          <div class="text-xs text-slate-400 mt-1 leading-relaxed">
+            拆開側蓋檢修孔，手動撥動柱塞/銷消除微卡澀。清除 DTC 後路試定速與動力完全正常。
+          </div>
+        </button>
+      </div>
+
+      <div class="m-4 bg-[#080e1b] border border-[#1e2d4a] rounded-lg p-4">
+        <h3 id="case-card-title" class="text-sm font-bold text-amber-400 flex items-center gap-1.5 mb-2">
+          ⚙️ 408 複合故障碼因果閉環
+        </h3>
+        <div id="case-card-desc" class="text-xs text-slate-300 leading-relaxed">
+          <b>為什麼單一處卡滯牽連四個系統？</b><br>
+          1. <b>P0016 28</b>：照片黑圈處鎖止銷卡死，凸輪軸與曲軸相位偏差超過容差線。<br>
+          2. <b>P0087 21</b>：高壓油泵由凸輪軸驅動，相位跑偏使加壓時機脫節，油軌失壓。<br>
+          3. <b>P0172 64</b>：氣門重疊過大，廢氣反衝歧管，含氧感知器量無氧氣報過濃。<br>
+          4. <b>P0105 29</b>：反衝氣流破壞歧管負壓模型，觸發訊號合理性錯誤。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab 視圖切換
+    function switchView(viewName) {
+      document.getElementById('view-flow').style.display = (viewName === 'flow') ? 'flex' : 'none';
+      document.getElementById('view-sensor').style.display = (viewName === 'sensor') ? 'flex' : 'none';
+      document.getElementById('view-case408').style.display = (viewName === 'case408') ? 'flex' : 'none';
+
+      const tabBtns = [
+        { id: 'tab-btn-flow', target: 'flow' },
+        { id: 'tab-btn-sensor', target: 'sensor' },
+        { id: 'tab-btn-case408', target: 'case408' }
+      ];
+
+      tabBtns.forEach(item => {
+        const btn = document.getElementById(item.id);
+        if (item.target === viewName) {
+          btn.className = 'tab-btn active px-3.5 py-1.5 rounded-md text-xs font-semibold border transition-all bg-sky-500 text-slate-950 border-sky-400 shadow-[0_0_12px_rgba(56,189,248,0.3)]';
+        } else {
+          btn.className = 'tab-btn px-3.5 py-1.5 rounded-md text-xs font-semibold border transition-all bg-slate-800 text-slate-300 border-slate-700 hover:border-sky-400';
+        }
+      });
+    }
+
+    // =========================================================================
+    // 視圖一：系統流場情境邏輯
+    // =========================================================================
+    const flowScenarios = {
+      fault: {
+        map: '210 mbar',
+        engine: '滑行收油 (1592 rpm)',
+        ltft: '+125.0 % (頂死)',
+        o2: '偽過稀 (滿滿游離氧)',
+        mapAlert: true,
+        pistonRun: true,
+        sparkRun: true,
+        flowRun: true,
+        bubblesRun: true,
+        clampTool: false,
+        throttleDeg: 0,
+        throttleTxt: '節氣門 (0.5% 貼死)',
+        cavityFill: 'rgba(239, 68, 68, 0.2)',
+        cavityStroke: '#ef4444',
+        cavityTxt: '極致超深真空 (-800 mbar 吸力)',
+        vvtColor: '#ef4444',
+        title: '⚠️ SCENARIO 00：收油滑行切換點物理崩潰',
+        desc: '<b>為什麼 210 mbar 絕不是管路漏氣？</b><br>大氣壓是 1013 mbar。如果進氣歧管破洞外漏，外界大氣灌入只會讓壓力上升至 500、600 mbar。實測 210 mbar 代表內部被抽出了高達 -800 mbar 的超強真空！這證明進氣喉嚨被封死，活塞在密封空間硬抽。含氧感知器偵測到微失火排出的游離氧，誤報過稀狂噴油至 125%。'
+      },
+      step1: {
+        map: '1013 mbar',
+        engine: '完全靜止 (0 rpm)',
+        ltft: '0.0 % (靜態未啟用)',
+        o2: '常態常溫大氣 (未點火)',
+        mapAlert: false,
+        // 開紅火未發動：活塞、氣流、火花、氧分子徹底凍結
+        pistonRun: false,
+        sparkRun: false,
+        flowRun: false,
+        bubblesRun: false,
+        clampTool: false,
+        throttleDeg: 0,
+        throttleTxt: '節氣門 (未開度 0%)',
+        cavityFill: 'rgba(56, 189, 248, 0.08)',
+        cavityStroke: '#38bdf8',
+        cavityTxt: '大氣壓力平衡腔 (1013 mbar / 0 吸力)',
+        vvtColor: '#64748b',
+        title: '⚡ STEP 01：靜態大氣壓驗證（活塞與氣流完全靜止）',
+        desc: '<b>嚴謹物理常識：沒發動引擎，活塞絕對不會動！</b><br>開紅火不發動時，曲軸零轉速、活塞死死定在上死點、無任何進排氣流。此時進氣歧管內部完全等同於環境大氣。若此時 1312 讀數精準為 1013 mbar，三用電表測得 PIN 3 為 5.0V、PIN 1 為 4.02V，直接 100% 證明「感知器晶片、5V 供電、接地回路與電腦通訊」毫無問題！1 分鐘釘死電氣無罪。'
+      },
+      step2: {
+        map: '210 mbar (無變化)',
+        engine: '發動怠速 (850 rpm)',
+        ltft: '+125.0 % (無回降)',
+        o2: '偽過稀 (滿滿游離氧)',
+        mapAlert: true,
+        pistonRun: true,
+        sparkRun: true,
+        flowRun: true,
+        bubblesRun: true,
+        clampTool: true,
+        throttleDeg: 2,
+        throttleTxt: '節氣門 (怠速微開 1%)',
+        cavityFill: 'rgba(239, 68, 68, 0.2)',
+        cavityStroke: '#ef4444',
+        cavityTxt: '夾管後真空依舊卡死 (-800 mbar)',
+        vvtColor: '#ef4444',
+        title: '🧪 STEP 02：PCV 夾管反證結果（氣門室蓋無罪）',
+        desc: '<b>反證法排除曲軸箱暗漏：</b><br>用管夾將 PCV 軟管完全夾死封閉後，歧管絕對壓力依然死死咬在 210 mbar、燃油修正完全沒動。這直接證明超強真空並非曲軸箱膜片吸穿造成。曲軸箱通風宣告清白，焦點全數鎖定配氣門閉合時機。'
+      },
+      step3: {
+        map: '210 ~ 300 mbar (波動)',
+        engine: '發動怠速 (偶發微喘)',
+        ltft: '+115.0 %',
+        o2: '未燃游離氧外洩',
+        mapAlert: true,
+        pistonRun: true,
+        sparkRun: true,
+        flowRun: true,
+        bubblesRun: true,
+        clampTool: false,
+        throttleDeg: 2,
+        throttleTxt: '節氣門 (怠速 1%)',
+        cavityFill: 'rgba(245, 158, 11, 0.2)',
+        cavityStroke: '#f59e0b',
+        cavityTxt: '進氣門提早閉合・活塞封閉硬抽',
+        vvtColor: '#ef4444',
+        title: '⚙️ STEP 03：核心真相──VVT 機油電磁閥柱塞微卡滯',
+        desc: '<b>為什麼電腦沒報凸輪軸故障碼？</b><br>凸輪軸故障碼需連續偏差 5°~10° 數秒才會觸發。VVT 電磁閥柱塞微卡滯時僅延遲或微偏 2°~3°，剛好處於報碼容差盲區內；但進氣門提早閉死，活塞在密閉汽缸內硬抽，直接拉出 210 mbar 深負壓，引發缺氣微失火與假過稀。'
+      },
+      step4: {
+        map: '380 mbar',
+        engine: '標準熱車怠速 (750 rpm)',
+        ltft: '+2.1 % (正常健康)',
+        o2: '完全化學計量平衡',
+        mapAlert: false,
+        pistonRun: true,
+        sparkRun: true,
+        flowRun: true,
+        bubblesRun: false,
+        clampTool: false,
+        throttleDeg: 6,
+        throttleTxt: '節氣門 (正常怠速 3.5%)',
+        cavityFill: 'rgba(16, 185, 129, 0.12)',
+        cavityStroke: '#10b981',
+        cavityTxt: '正常怠速負壓腔 (380 mbar)',
+        vvtColor: '#10b981',
+        title: '✅ STEP 04：邏輯勝利──標準物理工況全面恢復',
+        desc: '<b>物理機制恢復順暢：</b><br>清洗並手動拉順 VVT 柱塞（或對調）後，進氣門準確開啟閉合。活塞下行順暢充填新鮮空氣，怠速絕對壓力穩定在 380 mbar（真空度約 -630 mbar）。汽缸燃燒充分，排氣管無多餘游離氧，燃油修正回到健康的 +2.1%，P0105 與 P0171 自動解除！'
+      }
+    };
+
+    function applyFlowScenario(key) {
+      const data = flowScenarios[key];
+
+      document.getElementById('f-map').innerText = data.map;
+      document.getElementById('f-map').className = 'text-xl font-extrabold mt-0.5 ' + (data.mapAlert ? 'text-red-400' : 'text-emerald-400');
+      document.getElementById('f-engine').innerText = data.engine;
+      document.getElementById('f-ltft').innerText = data.ltft;
+      document.getElementById('f-ltft').className = 'text-xl font-extrabold mt-0.5 ' + (data.mapAlert ? 'text-red-400' : 'text-emerald-400');
+      document.getElementById('f-o2').innerText = data.o2;
+
+      document.getElementById('flow-card-title').innerHTML = data.title;
+      document.getElementById('flow-card-desc').innerHTML = data.desc;
+
+      // 活塞控制：開紅火完全鎖死在原位
+      const pistonEl = document.getElementById('piston-assembly');
+      const valveEl = document.getElementById('valve-assembly');
+      if (data.pistonRun) {
+        pistonEl.className = 'piston-active-running';
+        valveEl.className = 'valve-active-running';
+      } else {
+        pistonEl.className = 'piston-strictly-frozen';
+        valveEl.className = 'valve-strictly-frozen';
+      }
+
+      // 火星塞火花
+      const sparkEl = document.getElementById('spark-flame');
+      sparkEl.className = data.sparkRun ? 'spark-active-running' : 'spark-strictly-hidden';
+
+      // 氣流粒子流動
+      const turboFlow = document.getElementById('flow-turbo-pipe');
+      const manifoldFlow = document.getElementById('flow-manifold-pipe');
+      const exhaustFlow = document.getElementById('flow-exhaust-pipe');
+
+      if (data.flowRun) {
+        turboFlow.className = 'flow-running ' + (data.mapAlert ? 'flow-choked' : 'flow-normal');
+        manifoldFlow.className = 'flow-running ' + (data.mapAlert ? 'flow-choked' : 'flow-normal');
+        exhaustFlow.className = 'flow-running ' + (data.mapAlert ? 'flow-choked' : 'flow-normal');
+      } else {
+        turboFlow.className = 'flow-strictly-frozen';
+        manifoldFlow.className = 'flow-strictly-frozen';
+        exhaustFlow.className = 'flow-strictly-frozen';
+      }
+
+      // 游離氧分子
+      const bubblesEl = document.getElementById('oxygen-bubbles-group');
+      bubblesEl.className = data.bubblesRun ? 'bubbles-active-running' : 'bubbles-strictly-hidden';
+
+      // 歧管腔體與文字
+      const cavityEl = document.getElementById('manifold-cavity');
+      cavityEl.setAttribute('fill', data.cavityFill);
+      cavityEl.setAttribute('stroke', data.cavityStroke);
+      document.getElementById('txt-manifold').innerText = data.cavityTxt;
+      document.getElementById('txt-manifold').setAttribute('fill', data.cavityStroke);
+
+      // 節氣門開合 (旋轉中心對準放大後的 188, 197)
+      const throttleBlade = document.getElementById('vane-throttle');
+      throttleBlade.setAttribute('transform', `rotate(${data.throttleDeg}, 188, 197)`);
+      document.getElementById('txt-throttle').innerText = data.throttleTxt;
+
+      // 夾管鉗顯示
+      document.getElementById('clamp-tool-group').style.display = data.clampTool ? 'inline' : 'none';
+
+      // VVT 電磁閥與含氧感知器狀態
+      document.getElementById('vvt-solenoid-box').setAttribute('fill', data.vvtColor);
+      document.getElementById('o2-sensor-body').setAttribute('fill', data.bubblesRun ? '#ef4444' : '#10b981');
+
+      // 更新按鈕 active
+      const buttons = document.querySelectorAll('.flow-step-btn');
+      buttons.forEach(btn => {
+        btn.className = 'flow-step-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]';
+      });
+      event.currentTarget.className = 'flow-step-btn active text-left p-3.5 rounded-lg border border-[#223554] bg-[#1a2d4d] shadow-[0_0_15px_rgba(56,189,248,0.25)] transition-all hover:border-sky-400';
+    }
+
+    // =========================================================================
+    // 視圖二：原廠線路量測邏輯 (D3IZ9XPE)
+    // =========================================================================
+    const wiringData = {
+      pin3: {
+        screen: '5.01 V',
+        mode: '直流電壓 (DCV 20V)',
+        wire: 'PIN 3 (線號 13K1B) : + 5V',
+        verdict: 'PASS (ECU 供電正常)',
+        probeY: 196,
+        blackMode: 'gnd',
+        rectId: 'bench-pin3-rect',
+        title: '📌 PIN 3 (線號 13K1B) 5V 參考電源量測標準',
+        desc: '<b>量測步驟：</b><br>1. 拔下 1312 母插頭（3V NR 黑色插頭）。<br>2. 電門開紅火（Ignition ON，不發動）。<br>3. 三用電表打至直流電壓檔（DCV 20V），黑表棒接電瓶負極搭鐵。<br>4. 紅表棒測量插頭 <b>PIN 3（線號 13K1B）</b>。<br><br><b>判定標準：</b><br>必須穩定顯示 <b>5.0V ± 0.1V</b>。若電壓正常，證明 ECU 1320 PIN 9 之穩壓供電晶片與線路無罪。'
+      },
+      pin2: {
+        screen: '0.01 Ω / 0.00 V',
+        mode: '電阻檔 / 動態壓降檔',
+        wire: 'PIN 2 (線號 1364B) : - 接地',
+        verdict: 'PASS (內部搭鐵 < 0.5Ω)',
+        probeY: 281,
+        blackMode: 'gnd',
+        rectId: 'bench-pin2-rect',
+        title: '📌 PIN 2 (線號 1364B) 感知器接地與電腦內部地檢驗',
+        desc: '<b>如何不拆電腦檢驗內部接地？</b><br>1. <b>斷電電阻法</b>：拔下插頭量 PIN 2 對車身電阻，必須 <b>&lt; 0.5 Ω</b>。<br>2. <b>通電壓降法</b>：插頭插上開紅火，量 PIN 2 對車身電壓，必須 <b>&lt; 30 mV (接近 0.00V)</b>。<br><br><b>結論：</b>若電壓高於 0.2V，代表 ECU 內部接地晶片損壞或搭鐵不良，會虛假墊高訊號讀數。'
+      },
+      pin1: {
+        screen: '1.15 V (實測深真空)',
+        mode: '訊號電壓檔 (DCV 20V)',
+        wire: 'PIN 1 (線號 1363B) : S 訊號',
+        verdict: '動態電壓對應 210 mbar',
+        probeY: 366,
+        blackMode: 'gnd',
+        rectId: 'bench-pin1-rect',
+        title: '📌 PIN 1 (線號 1363B) 訊號動態電壓背刺量測',
+        desc: '<b>訊號線真的量得到嗎？</b><br>插頭插著，用細針從後方防水膠塞背刺 PIN 1：<br>• <b>未發動開紅火（1013 mbar 大氣壓）</b>：輸出約 <b>4.0V 左右</b>。<br>• <b>發動怠速（實測 210 mbar 深真空）</b>：輸出跌至 <b>1.1V ~ 1.2V</b>。<br><br><b>結論：</b>電表量出 1.15V 且診斷電腦顯示 210 mbar，<b>100% 證明感知器與線路誠實無欺，歧管內確實存在超強物理吸力！</b>'
+      },
+      harness: {
+        screen: '0.1 Ω (蜂鳴響起)',
+        mode: '端子導通檔 (蜂鳴檔)',
+        wire: '1312 ⟷ 1320 端子對接',
+        verdict: 'PASS (線束無斷路/短路)',
+        probeY: 281,
+        blackMode: 'ecu',
+        rectId: 'bench-pin2-rect',
+        title: '📌 插頭對插頭端子導通與短路量測',
+        desc: '<b>抓線束是否斷路或破皮：</b><br>拔下 1312 (3V NR) 與 ECU 1320 (120V NR) 兩端插頭：<br>1. <b>導通測試</b>：PIN 1 對 10、PIN 2 對 8、PIN 3 對 9，阻值必須均 <b>&lt; 0.5 Ω</b>。<br>2. <b>對地短路測試</b>：量各針腳對車身搭鐵，必須為無限大（OL）。'
+      }
+    };
+
+    function applyWiringScenario(key) {
+      const data = wiringData[key];
+
+      document.getElementById('dmm-screen-text').innerText = data.screen;
+      document.getElementById('svg-dmm-val').textContent = data.screen.split(' ')[0];
+      document.getElementById('dmm-mode-text').innerText = data.mode;
+      document.getElementById('dmm-wire-text').innerText = data.wire;
+      document.getElementById('dmm-verdict-text').innerText = data.verdict;
+
+      document.getElementById('wiring-card-title').innerHTML = data.title;
+      document.getElementById('wiring-card-desc').innerHTML = data.desc;
+
+      // 紅表棒導線與探針精準移動
+      const probeRed = document.getElementById('svg-probe-red');
+      probeRed.setAttribute('points', `475,${data.probeY-12} 498,${data.probeY} 475,${data.probeY+12}`);
+      const wireRed = document.getElementById('svg-wire-red');
+      wireRed.setAttribute('d', `M 105 375 Q 280 270 480 ${data.probeY}`);
+
+      // 黑表棒導線移動 (接搭鐵 vs 接 ECU 插座)
+      const wireBlack = document.getElementById('svg-wire-black');
+      const termBlack = document.getElementById('svg-term-black');
+      const txtBlack = document.getElementById('svg-txt-black');
+
+      if (data.blackMode === 'ecu') {
+        wireBlack.setAttribute('d', 'M 185 375 Q 450 510 735 366');
+        termBlack.setAttribute('cx', '735');
+        termBlack.setAttribute('cy', '366');
+        txtBlack.setAttribute('x', '610');
+        txtBlack.setAttribute('y', '505');
+        txtBlack.textContent = 'ECU 1320 120V NR 插座';
+      } else {
+        wireBlack.setAttribute('d', 'M 185 375 Q 260 480 380 480');
+        termBlack.setAttribute('cx', '380');
+        termBlack.setAttribute('cy', '480');
+        txtBlack.setAttribute('x', '395');
+        txtBlack.setAttribute('y', '486');
+        txtBlack.textContent = '車身金屬搭鐵 (GND)';
+      }
+
+      // 更新母插頭針腳高亮
+      ['bench-pin1-rect', 'bench-pin2-rect', 'bench-pin3-rect'].forEach(id => {
+        document.getElementById(id).setAttribute('stroke', '#475569');
+      });
+      document.getElementById(data.rectId).setAttribute('stroke', '#38bdf8');
+
+      // 更新按鈕 active
+      const buttons = document.querySelectorAll('.wiring-btn');
+      buttons.forEach(btn => {
+        btn.className = 'wiring-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]';
+      });
+      event.currentTarget.className = 'wiring-btn active text-left p-3.5 rounded-lg border border-[#223554] bg-[#1a2d4d] shadow-[0_0_15px_rgba(56,189,248,0.25)] transition-all hover:border-sky-400';
+    }
+
+    // =========================================================================
+    // 視圖三：408 Hybrid 實戰案例邏輯
+    // =========================================================================
+    const caseData = {
+      '408_case': {
+        sync: '相位偏差 > 8° (P0016)',
+        hpfp: '油壓過低 (P0087)',
+        mix: 'P0172過濃 / P0105',
+        rotorDeg: 28,
+        lobeDeg: 65,
+        pinColor: '#ef4444',
+        title: '⚙️ 408 實戰：鎖止銷卡死引發四碼合一',
+        desc: '<b>為什麼單一處卡滯牽連四個系統？</b><br>1. <b>P0016 28</b>：照片黑圈處鎖止銷卡死，凸輪軸與曲軸相位偏差超過容差線。<br>2. <b>P0087 21</b>：高壓油泵由凸輪軸驅動，相位跑偏使加壓時機脫節，油軌失壓。<br>3. <b>P0172 64</b>：氣門重疊過大，廢氣反衝歧管，含氧感知器量無氧氣報過濃。<br>4. <b>P0105 29</b>：反衝氣流破壞歧管負壓模型，觸發訊號合理性錯誤。'
+      },
+      '208_case': {
+        sync: '未達報碼門檻 (無 P0016)',
+        hpfp: '油軌壓力正常',
+        mix: 'P0171過稀 / P0105',
+        rotorDeg: -14,
+        lobeDeg: 12,
+        pinColor: '#ef4444',
+        title: '⚖️ 208 對照：柱塞微卡在氣門早閉 (過稀)',
+        desc: '<b>濃稀對稱的物理哲學：</b><br>408 卡在「氣門延遲/重疊過大」引發反衝過濃（P0172）；而這台 208 則是柱塞在收油瞬間微卡滯，進氣門提早閉死。活塞硬拉抽出 <b>210 mbar 極限深負壓</b>，缺氣微失火造成氧氣未燃排出，含氧感知器誤報過稀（P0171）。'
+      },
+      repaired: {
+        sync: '偏差 < 1° (PASS)',
+        hpfp: '油壓正常 (精準加壓)',
+        mix: 'PASS (無故障碼)',
+        rotorDeg: 0,
+        lobeDeg: 0,
+        pinColor: '#10b981',
+        title: '✅ 處置驗證：機械撥正後全面復原',
+        desc: '<b>現場調校與驗證成果：</b><br>拆開檢修孔蓋，手動針對進排氣閥門機構與柱塞進行撥動復位，消除微小卡澀。清除適應值後執行道路路試：定速巡航與急加速動力完全恢復，P0016、P0087、P0172、P0105 全數排除未再復發！'
+      }
+    };
+
+    function applyCaseScenario(key) {
+      const data = caseData[key];
+
+      document.getElementById('p408-sync-status').innerText = data.sync;
+      document.getElementById('p408-fuel-status').innerText = data.hpfp;
+      document.getElementById('p408-mix-status').innerText = data.mix;
+
+      document.getElementById('case-card-title').innerHTML = data.title;
+      document.getElementById('case-card-desc').innerHTML = data.desc;
+
+      // 旋轉葉片與油泵凸輪角度動態轉動 (中心對準 310, 280)
+      document.getElementById('p408-phaser-rotor').setAttribute('transform', `rotate(${data.rotorDeg}, 310, 280)`);
+      document.getElementById('p408-cam-lobe').setAttribute('transform', `rotate(${data.lobeDeg}, 60, 90)`);
+      document.getElementById('p408-lock-pin-box').querySelector('rect').setAttribute('fill', data.pinColor);
+
+      const buttons = document.querySelectorAll('.case-btn');
+      buttons.forEach(btn => {
+        btn.className = 'case-btn text-left p-3.5 rounded-lg border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 hover:bg-[#1a2b47]';
+      });
+      event.currentTarget.className = 'case-btn active text-left p-3.5 rounded-lg border border-[#223554] bg-[#1a2d4d] shadow-[0_0_15px_rgba(56,189,248,0.25)] transition-all hover:border-sky-400';
+    }
+  </script>
+</body>
+</html>
