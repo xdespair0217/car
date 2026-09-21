@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peugeot 1.2 MHEV 空氣進氣拓撲與蒸發系統流體物理模擬</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg-dark: #070c16;
+      --bg-panel: #0d1527;
+      --border: #1e2c47;
+      --accent: #38bdf8;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+      --success: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Noto Sans TC", sans-serif;
+      background: var(--bg-dark);
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 順向氣流動畫 */
+    @keyframes airFlowForward {
+      from { stroke-dashoffset: 48; }
+      to { stroke-dashoffset: 0; }
+    }
+    /* 逆向氣流動畫 (倒抽專用) */
+    @keyframes airFlowReverse {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: 48; }
+    }
+    /* 活塞往復動畫 */
+    @keyframes pistonMotion {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(32px); }
+    }
+
+    .flow-normal {
+      stroke-dasharray: 8, 8;
+      stroke: var(--accent) !important;
+      animation: airFlowForward 0.9s linear infinite;
+    }
+    .flow-choked {
+      stroke-dasharray: 4, 8;
+      stroke: var(--danger) !important;
+      animation: airFlowForward 2.4s linear infinite;
+    }
+    .flow-fuel-leak {
+      stroke-dasharray: 6, 6;
+      stroke: var(--warn) !important;
+      animation: airFlowForward 0.7s linear infinite;
+    }
+    .flow-reverse-leak {
+      stroke-dasharray: 6, 6;
+      stroke: #f43f5e !important;
+      animation: airFlowReverse 0.7s linear infinite;
+    }
+    .flow-idle-closed {
+      stroke-dasharray: none !important;
+      animation: none !important;
+      stroke: #334155 !important;
+    }
+
+    .piston-running { animation: pistonMotion 0.8s ease-in-out infinite; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #070c16; }
+    ::-webkit-scrollbar-thumb { background: #1e2c47; border-radius: 3px; }
+  </style>
+</head>
+<body class="select-none">
+
+  <!-- 頂部標題列 -->
+  <header class="bg-[#030610] border-b border-[#1e2c47] px-6 py-3.5 flex justify-between items-center z-10 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-3.5 h-3.5 rounded-full bg-sky-400 shadow-[0_0_10px_#38bdf8]"></div>
+      <h1 class="text-base font-bold text-sky-400 tracking-wide">
+        Peugeot 1.2 MHEV：進氣迴圈拓撲與燃油蒸發暗流物理模擬
+      </h1>
+    </div>
+    <div class="text-xs text-slate-400 bg-slate-900 border border-slate-700 px-3 py-1 rounded">
+      發動機流體力學與控制工程架構
+    </div>
+  </header>
+
+  <!-- 主顯示區 (左右分割：左側 SVG 拓撲圖、右側情境切換) -->
+  <div class="flex flex-1 overflow-hidden">
+    
+    <!-- 左側 SVG 動態物理拓撲圖 -->
+    <div class="flex-[1.7] flex flex-col bg-[#050913] border-r border-[#1e2c47] relative">
+      
+      <!-- 頂部遙測數值 -->
+      <div class="grid grid-cols-4 gap-3 p-3.5 bg-[#0b1220]/90 border-b border-[#1e2c47] shrink-0">
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-3">
+          <div class="text-xs text-slate-400">進氣歧管絕對壓力 (MAP 1312)</div>
+          <div id="m-map" class="text-2xl font-black text-emerald-400 mt-1">380 mbar</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-3">
+          <div class="text-xs text-slate-400">電子節氣門開度</div>
+          <div id="m-throttle" class="text-2xl font-black text-emerald-400 mt-1">3.5 % (正常怠速)</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-3">
+          <div class="text-xs text-slate-400">長期燃油修正 (LTFT)</div>
+          <div id="m-ltft" class="text-2xl font-black text-emerald-400 mt-1">+2.1 % (正常)</div>
+        </div>
+        <div class="bg-[#121c2e] border border-[#1e2c47] rounded-lg p-3">
+          <div class="text-xs text-slate-400">系統工作工況結論</div>
+          <div id="m-status" class="text-lg font-black text-emerald-400 mt-1 truncate">標準健康物理基線</div>
+        </div>
+      </div>
+
+      <!-- SVG 畫布：三條幹道完全分離，絕不互相壓字、絕不重疊管線 -->
+      <div class="flex-1 flex items-center justify-center p-3 relative overflow-hidden">
+        <svg viewBox="0 0 1000 620" fill="none" class="w-full h-full max-w-full max-h-full">
+          <rect width="1000" height="620" fill="#050913" rx="10"/>
+
+          <!-- ============================================================== -->
+          <!-- 第一層：空氣主幹道（空氣濾清器 ➔ 渦輪 ➔ 中冷器 ➔ 節氣門）        -->
+          <!-- ============================================================== -->
+          
+          <!-- 1. 空氣濾清器箱體 -->
+          <rect x="30" y="70" width="100" height="60" rx="6" fill="#111c2e" stroke="#38bdf8" stroke-width="2"/>
+          <text x="80" y="96" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="middle">空氣濾清器</text>
+          <text x="80" y="114" fill="#94a3b8" font-size="10" text-anchor="middle">1013 mbar 大氣</text>
+
+          <!-- 空濾到渦輪主管路 -->
+          <path d="M 130 100 L 220 100" stroke="#1e293b" stroke-width="22" stroke-linecap="round"/>
+          <path id="pipe-air-in" class="flow-running flow-normal" d="M 130 100 L 220 100" stroke-width="4"/>
+
+          <!-- 2. 渦輪增壓器 (壓氣機端) -->
+          <g transform="translate(220, 70)">
+            <circle cx="30" cy="30" r="28" fill="#0b1220" stroke="#334155" stroke-width="2.5"/>
+            <path d="M 30 10 L 30 50 M 10 30 L 50 30" stroke="#475569" stroke-width="2"/>
+            <text x="30" y="34" fill="#cbd5e1" font-size="10" font-weight="900" text-anchor="middle">TURBO</text>
+            <text x="30" y="72" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">增壓壓氣機</text>
+          </g>
+
+          <!-- 渦輪到中冷器管路 -->
+          <path d="M 278 100 L 370 100" stroke="#1e293b" stroke-width="22" stroke-linecap="round"/>
+          <path id="pipe-turbo-out" class="flow-running flow-normal" d="M 278 100 L 370 100" stroke-width="4"/>
+
+          <!-- 3. 中冷器 (Intercooler 冷卻增壓空氣) -->
+          <g transform="translate(370, 65)">
+            <rect width="110" height="70" rx="6" fill="#0f233a" stroke="#0284c7" stroke-width="2"/>
+            <!-- 散熱鰭片線條 -->
+            <line x1="30" y1="15" x2="30" y2="55" stroke="#0369a1" stroke-width="2"/>
+            <line x1="55" y1="15" x2="55" y2="55" stroke="#0369a1" stroke-width="2"/>
+            <line x1="80" y1="15" x2="80" y2="55" stroke="#0369a1" stroke-width="2"/>
+            <text x="55" y="32" fill="#38bdf8" font-size="12" font-weight="800" text-anchor="middle">中冷器</text>
+            <text x="55" y="48" fill="#94a3b8" font-size="9" text-anchor="middle">(Intercooler)</text>
+          </g>
+
+          <!-- 中冷器到節氣門管路 -->
+          <path d="M 480 100 L 580 100" stroke="#1e293b" stroke-width="22" stroke-linecap="round"/>
+          <path id="pipe-intercooler-out" class="flow-running flow-normal" d="M 480 100 L 580 100" stroke-width="4"/>
+
+          <!-- 4. 電子節氣門 (Throttle Body) -->
+          <g transform="translate(580, 68)">
+            <rect width="50" height="64" rx="4" fill="#111c2e" stroke="#475569" stroke-width="2"/>
+            <line id="vane-throttle" x1="25" y1="10" x2="25" y2="54" stroke="#10b981" stroke-width="5" stroke-linecap="round"/>
+            <text x="25" y="80" fill="#94a3b8" font-size="11" font-weight="700" text-anchor="middle">節氣門</text>
+          </g>
+
+          <!-- ============================================================== -->
+          <!-- 第二層：核心腔體（進氣歧管 ➔ MAP 1312 ➔ 汽缸 ➔ 排氣）         -->
+          <!-- ============================================================== -->
+
+          <!-- 5. 進氣歧管本體 (封閉箱體) -->
+          <g transform="translate(630, 75)">
+            <path id="manifold-body" d="M 0 10 L 200 10 Q 220 10 220 30 L 220 100 L 160 100 L 160 40 L 0 40 Z" fill="rgba(16, 185, 129, 0.12)" stroke="#10b981" stroke-width="2.5"/>
+            <path id="pipe-manifold-stream" class="flow-running flow-normal" d="M 0 25 L 195 25 L 195 100" stroke-width="4"/>
+            <text id="txt-manifold-press" x="90" y="-5" fill="#10b981" font-size="13" font-weight="900">歧管正常負壓 (380 mbar)</text>
+
+            <!-- 1312 MAP 壓力感知器 (安裝於歧管頂部) -->
+            <rect x="80" y="-38" width="55" height="28" rx="4" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5"/>
+            <text x="107" y="-20" fill="#ffffff" font-size="11" font-weight="800" text-anchor="middle">MAP 1312</text>
+            <line x1="107" y1="-10" x2="107" y2="10" stroke="#38bdf8" stroke-width="2"/>
+
+            <!-- 接口 g (燃油蒸氣唯一接入歧管之大節點，位於節氣門後方下方) -->
+            <circle id="node-g-circle" cx="30" cy="40" r="7" fill="#fbbf24" stroke="#d97706" stroke-width="2"/>
+            <text x="30" y="60" fill="#fbbf24" font-size="11" font-weight="800" text-anchor="middle">★ 接口 g</text>
+          </g>
+
+          <!-- 6. 燃燒室、活塞與排氣系統 -->
+          <g transform="translate(770, 185)">
+            <!-- 汽缸體 -->
+            <rect width="130" height="130" fill="#030712" stroke="#334155" stroke-width="2"/>
+            <!-- 活塞 -->
+            <g id="piston-box" class="piston-running">
+              <rect x="10" y="45" width="110" height="40" rx="4" fill="#475569" stroke="#94a3b8" stroke-width="2"/>
+              <text x="65" y="70" fill="#f8fafc" font-size="12" font-weight="800" text-anchor="middle">活 塞</text>
+            </g>
+            <text x="65" y="146" fill="#94a3b8" font-size="11" text-anchor="middle">發動機燃燒室</text>
+          </g>
+
+          <!-- 排氣管路 -->
+          <path d="M 900 220 L 980 220" stroke="#1e293b" stroke-width="20" stroke-linecap="round"/>
+          <path id="pipe-exhaust-stream" class="flow-running flow-normal" d="M 900 220 L 980 220" stroke-width="4"/>
+          <text x="940" y="250" fill="#94a3b8" font-size="11" text-anchor="middle">排氣管</text>
+
+          <!-- ============================================================== -->
+          <!-- 第三層：燃油蒸氣回收系統（渦輪前支路 ＋ 三通閥 ＋ 電磁閥 ＋ 碳罐）-->
+          <!-- ============================================================== -->
+
+          <rect x="30" y="380" width="940" height="210" rx="8" fill="#080f1e" stroke="#1e2c47" stroke-width="1.5"/>
+          <text x="50" y="405" fill="#38bdf8" font-size="13" font-weight="800">
+            【燃油蒸氣回收控制系統 (EVAP Topology)】
+          </text>
+
+          <!-- 支路一：自空濾後/渦輪前取氣之專用支路 (自 X: 170 垂直直達三通閥) -->
+          <path d="M 170 110 L 170 480 L 260 480" stroke="#334155" stroke-width="6" stroke-linecap="round" fill="none"/>
+          <path id="pipe-turbo-evap-bypass" class="flow-running flow-idle-closed" d="M 170 110 L 170 480 L 260 480" stroke-width="3" fill="none"/>
+          <text x="180" y="300" fill="#94a3b8" font-size="11" font-weight="700">渦輪前取氣管路</text>
+
+          <!-- 支路二：自接口 g 垂直向下直通三通閥的導管 -->
+          <path d="M 660 115 L 660 350 L 390 350 L 390 440" stroke="#f59e0b" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path id="pipe-g-downstream" class="flow-running flow-idle-closed" d="M 390 440 L 390 350 L 660 350 L 660 115" stroke-width="4" fill="none"/>
+
+          <!-- 7. 三通/四通分配閥 (標號 5) -->
+          <g transform="translate(260, 440)">
+            <rect id="box-valve5" width="160" height="90" rx="6" fill="#111c2e" stroke="#38bdf8" stroke-width="2"/>
+            <text x="80" y="28" fill="#38bdf8" font-size="13" font-weight="900" text-anchor="middle">三通分配閥 (5)</text>
+            <text id="txt-valve5-state" x="80" y="52" fill="#10b981" font-size="11" font-weight="800" text-anchor="middle">內部單向閥正常</text>
+            <text id="txt-valve5-sub" x="80" y="72" fill="#64748b" font-size="10" text-anchor="middle">靠管路壓差自動導流</text>
+          </g>
+
+          <!-- 支路三：右下角那根管子 (三通閥與碳罐電磁閥之間的連通管) -->
+          <path d="M 420 485 L 590 485" stroke="#f59e0b" stroke-width="8" stroke-linecap="round" fill="none"/>
+          <path id="pipe-right-lower" class="flow-running flow-idle-closed" d="M 590 485 L 420 485" stroke-width="4" fill="none"/>
+          <text x="505" y="470" fill="#fbbf24" font-size="12" font-weight="800" text-anchor="middle">★ 右下角那根管子</text>
+
+          <!-- 8. 前端碳罐電磁閥 (Purge Valve) -->
+          <g transform="translate(590, 440)">
+            <rect id="box-purge-valve" width="170" height="90" rx="6" fill="#111c2e" stroke="#10b981" stroke-width="2"/>
+            <text x="85" y="28" fill="#ffffff" font-size="13" font-weight="900" text-anchor="middle">碳罐電磁閥</text>
+            <text id="txt-purge-state" x="85" y="54" fill="#10b981" font-size="12" font-weight="800" text-anchor="middle">【受控關閉・正常】</text>
+            <text id="txt-purge-sub" x="85" y="74" fill="#94a3b8" font-size="10" text-anchor="middle">無燃油蒸氣暗流</text>
+          </g>
+
+          <!-- 電磁閥通往油箱碳罐之管路 -->
+          <path d="M 760 485 L 830 485" stroke="#334155" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path id="pipe-tank-line" class="flow-running flow-idle-closed" d="M 830 485 L 760 485" stroke-width="3" fill="none"/>
+
+          <!-- 9. 車底活性碳罐與油箱 -->
+          <g transform="translate(830, 445)">
+            <rect width="120" height="80" rx="6" fill="#0b1220" stroke="#475569" stroke-width="2"/>
+            <text x="60" y="38" fill="#94a3b8" font-size="12" font-weight="800" text-anchor="middle">活性碳罐</text>
+            <text x="60" y="58" fill="#64748b" font-size="10" text-anchor="middle">(油箱燃油蒸氣)</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- 右側三個核心按鈕與物理機制解讀 -->
+    <div class="flex-1 flex flex-col bg-[#0d1527] overflow-y-auto p-5">
+      <div class="text-xs font-bold text-sky-400 uppercase tracking-wider mb-3">
+        物理進氣與故障流向模擬切換
+      </div>
+
+      <!-- 按鈕一 -->
+      <button id="btn-mode-1" class="mode-btn active text-left p-4 rounded-xl border border-sky-400 bg-[#162744] shadow-[0_0_15px_rgba(56,189,248,0.25)] transition-all mb-3" onclick="selectPhysicsMode(1)">
+        <div class="text-xs font-black text-sky-400 tracking-wider">BUTTON 01・正常進氣原理</div>
+        <div class="text-sm font-bold text-white mt-1">標準全進氣迴路（渦輪增壓 ➔ 中冷器 ➔ 節氣門）</div>
+        <div class="text-xs text-slate-300 mt-2 leading-relaxed">
+          外界大氣（1013 mbar）經由空濾吸入，經由渦輪壓氣機壓縮升溫，再流入中冷器降溫增密，最後由電子節氣門依油門踏板指令（怠速約 3.5%）充入進氣歧管。
+        </div>
+      </button>
+
+      <!-- 按鈕二 -->
+      <button id="btn-mode-2" class="mode-btn text-left p-4 rounded-xl border border-[#223554] bg-[#152238] transition-all hover:border-amber-400 mb-3" onclick="selectPhysicsMode(2)">
+        <div class="text-xs font-black text-amber-400 tracking-wider">BUTTON 02・碳罐電磁閥故障</div>
+        <div class="text-sm font-bold text-white mt-1">電磁閥卡死常開（油氣被硬抽 ➔ 210 mbar 深真空）</div>
+        <div class="text-xs text-slate-300 mt-2 leading-relaxed">
+          電磁閥閥芯卡滯無法緊閉。油箱蒸氣順著右下角管路一路狂灌入接口 g，電腦被迫將節氣門掐死在 0.586%，活塞硬抽拉出 -800 mbar 超深真空！
+        </div>
+      </button>
+
+      <!-- 按鈕三 -->
+      <button id="btn-mode-3" class="mode-btn text-left p-4 rounded-xl border border-[#223554] bg-[#152238] transition-all hover:border-red-400 mb-3" onclick="selectPhysicsMode(3)">
+        <div class="text-xs font-black text-red-400 tracking-wider">BUTTON 03・三通分配閥故障</div>
+        <div class="text-sm font-bold text-white mt-1">電磁閥正常常閉，但三通閥內部單向閥破裂倒抽</div>
+        <div class="text-xs text-slate-300 mt-2 leading-relaxed">
+          電磁閥緊閉無罪！但三通分配閥內部單向閥破裂，歧管強大的真空吸力，直接將「渦輪前進氣管」的大氣整坨逆向倒抽溜進接口 g！
+        </div>
+      </button>
+
+      <!-- 即時物理原理詳細解析卡片 -->
+      <div class="mt-auto bg-[#080e1b] border border-[#1e2d4a] rounded-xl p-4">
+        <h3 id="panel-title" class="text-sm font-bold text-sky-400 flex items-center gap-1.5 mb-2">
+          📘 按鈕一：標準空氣進氣物理迴圈
+        </h3>
+        <div id="panel-desc" class="text-xs text-slate-300 leading-relaxed space-y-2">
+          <div><b>1. 氣流主動線：</b>空氣濾清器 ➔ 渦輪增壓器壓縮 ➔ 中冷器冷卻降溫 ➔ 節氣門調節開度 ➔ 進氣歧管穩壓 ➔ 汽缸活塞吸入燃燒。</div>
+          <div><b>2. 真空度狀態：</b>標準熱車怠速絕對壓力穩定於 <b>380 mbar</b>（真空度約 -630 mbar）。節氣門開度約 3.5%，充氣量精準，長期燃油修正 LTFT 為健康的 <b>+2.1%</b>。</div>
+          <div><b>3. 蒸發管路狀態：</b>怠速時碳罐電磁閥維持受控常閉，三通分配閥內部單向閥緊密關閉，外界蒸發系統無任何暗流干涉歧管。</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function selectPhysicsMode(mode) {
+      // 更新按鈕樣式
+      for (let i = 1; i <= 3; i++) {
+        const btn = document.getElementById(`btn-mode-${i}`);
+        if (i === mode) {
+          btn.className = 'mode-btn active text-left p-4 rounded-xl border border-sky-400 bg-[#162744] shadow-[0_0_15px_rgba(56,189,248,0.25)] transition-all mb-3';
+        } else {
+          btn.className = 'mode-btn text-left p-4 rounded-xl border border-[#223554] bg-[#152238] transition-all hover:border-sky-400 mb-3';
+        }
+      }
+
+      // 取得關鍵 SVG 元件
+      const mapVal = document.getElementById('m-map');
+      const throttleVal = document.getElementById('m-throttle');
+      const ltftVal = document.getElementById('m-ltft');
+      const statusVal = document.getElementById('m-status');
+
+      const panelTitle = document.getElementById('panel-title');
+      const panelDesc = document.getElementById('panel-desc');
+
+      const vaneThrottle = document.getElementById('vane-throttle');
+      const manifoldBody = document.getElementById('manifold-body');
+      const txtManifoldPress = document.getElementById('txt-manifold-press');
+
+      // 主進氣與蒸發管路氣流
+      const pipeAirIn = document.getElementById('pipe-air-in');
+      const pipeTurboOut = document.getElementById('pipe-turbo-out');
+      const pipeIntercoolerOut = document.getElementById('pipe-intercooler-out');
+      const pipeManifoldStream = document.getElementById('pipe-manifold-stream');
+
+      const pipeTurboBypass = document.getElementById('pipe-turbo-evap-bypass');
+      const pipeGDownstream = document.getElementById('pipe-g-downstream');
+      const pipeRightLower = document.getElementById('pipe-right-lower');
+      const pipeTankLine = document.getElementById('pipe-tank-line');
+
+      const boxValve5 = document.getElementById('box-valve5');
+      const txtValve5State = document.getElementById('txt-valve5-state');
+      const txtValve5Sub = document.getElementById('txt-valve5-sub');
+
+      const boxPurgeValve = document.getElementById('box-purge-valve');
+      const txtPurgeState = document.getElementById('txt-purge-state');
+      const txtPurgeSub = document.getElementById('txt-purge-sub');
+
+      if (mode === 1) {
+        // ==========================================
+        // 模式一：標準空氣進氣原理
+        // ==========================================
+        mapVal.innerText = '380 mbar';
+        mapVal.className = 'text-2xl font-black text-emerald-400 mt-1';
+        throttleVal.innerText = '3.5 % (正常怠速)';
+        throttleVal.className = 'text-2xl font-black text-emerald-400 mt-1';
+        ltftVal.innerText = '+2.1 % (正常)';
+        ltftVal.className = 'text-2xl font-black text-emerald-400 mt-1';
+        statusVal.innerText = '標準健康物理基線';
+        statusVal.className = 'text-lg font-black text-emerald-400 mt-1 truncate';
+
+        panelTitle.innerHTML = '📘 按鈕一：標準空氣進氣物理迴圈';
+        panelTitle.className = 'text-sm font-bold text-sky-400 flex items-center gap-1.5 mb-2';
+        panelDesc.innerHTML = `
+          <div><b>1. 氣流主動線：</b>外界大氣 (1013 mbar) ➔ 空濾 ➔ 渦輪壓縮 ➔ 中冷器降溫增密 ➔ 節氣門調節開度 (3.5%) ➔ 充入進氣歧管 ➔ 汽缸活塞吸入燃燒。</div>
+          <div><b>2. 真空度狀態：</b>標準怠速絕對壓力穩定在 <b>380 mbar</b>（真空度約 -630 mbar），節氣門保持微開，供氣充沛，長期燃油修正 LTFT 為 <b>+2.1%</b>。</div>
+          <div><b>3. 蒸發管路狀態：</b>怠速時電磁閥受控常閉，三通分配器內部單向止回閥緊密密封，蒸發管路無任何外來暗流進入歧管。</div>
+        `;
+
+        // 節氣門正常開度 (旋轉 8 度)
+        vaneThrottle.setAttribute('transform', 'rotate(8, 25, 32)');
+        vaneThrottle.setAttribute('stroke', '#10b981');
+
+        // 歧管腔體健康綠
+        manifoldBody.setAttribute('fill', 'rgba(16, 185, 129, 0.12)');
+        manifoldBody.setAttribute('stroke', '#10b981');
+        txtManifoldPress.innerText = '歧管正常負壓 (380 mbar)';
+        txtManifoldPress.setAttribute('fill', '#10b981');
+
+        // 主進氣管路順暢藍色
+        pipeAirIn.className = 'flow-running flow-normal';
+        pipeTurboOut.className = 'flow-running flow-normal';
+        pipeIntercoolerOut.className = 'flow-running flow-normal';
+        pipeManifoldStream.className = 'flow-running flow-normal';
+
+        // 蒸發管路無氣流 (完全靜止)
+        pipeTurboBypass.className = 'flow-running flow-idle-closed';
+        pipeGDownstream.className = 'flow-running flow-idle-closed';
+        pipeRightLower.className = 'flow-running flow-idle-closed';
+        pipeTankLine.className = 'flow-running flow-idle-closed';
+
+        // 三通閥與電磁閥狀態
+        boxValve5.setAttribute('stroke', '#38bdf8');
+        txtValve5State.innerText = '內部單向閥正常';
+        txtValve5State.setAttribute('fill', '#10b981');
+        txtValve5Sub.innerText = '靠管路壓差自動導流';
+
+        boxPurgeValve.setAttribute('stroke', '#10b981');
+        txtPurgeState.innerText = '【受控關閉・正常】';
+        txtPurgeState.setAttribute('fill', '#10b981');
+        txtPurgeSub.innerText = '無燃油蒸氣暗流';
+
+      } else if (mode === 2) {
+        // ==========================================
+        // 模式二：碳罐電磁閥卡死常開
+        // ==========================================
+        mapVal.innerText = '210 mbar';
+        mapVal.className = 'text-2xl font-black text-red-400 mt-1';
+        throttleVal.innerText = '0.586 % (貼死掐緊)';
+        throttleVal.className = 'text-2xl font-black text-red-400 mt-1';
+        ltftVal.innerText = '+125.0 % (撞牆頂死)';
+        ltftVal.className = 'text-2xl font-black text-red-400 mt-1';
+        statusVal.innerText = '電磁閥卡死常開 (暗流湧入)';
+        statusVal.className = 'text-lg font-black text-red-400 mt-1 truncate';
+
+        panelTitle.innerHTML = '🔥 按鈕二：碳罐電磁閥卡死常開（油氣被硬抽）';
+        panelTitle.className = 'text-sm font-bold text-amber-400 flex items-center gap-1.5 mb-2';
+        panelDesc.innerHTML = `
+          <div><b>1. 氣流流動方式：</b>油箱與碳罐的燃油蒸氣，經由卡死的電磁閥，源源不絕灌入<b>「右下角那根管子」</b>，穿過三通分配閥，順著<b>接口 g</b> 直衝進氣歧管！</div>
+          <div><b>2. 真空度與節氣門巨變：</b>為了阻止額外氣流拉高怠速，電腦強制將節氣門<b>貼死掐緊至 0.586%</b>。活塞在喉嚨被完全掐死的密封歧管內死命硬抽，將絕對壓力一路抽至 <b>210 mbar 極端深真空（吸力達 -800 mbar）</b>！</div>
+          <div><b>3. 燃油修正崩潰：</b>進氣掐死引發缸內動態微失火，游離氧排至排氣管誤導含氧感知器報太稀，電腦將 LTFT 長期燃油修正補償<b>頂死在 +125% 極限</b>！</div>
+        `;
+
+        // 節氣門貼死 (轉向 0 度)
+        vaneThrottle.setAttribute('transform', 'rotate(0, 25, 32)');
+        vaneThrottle.setAttribute('stroke', '#ef4444');
+
+        // 歧管腔體警示紅
+        manifoldBody.setAttribute('fill', 'rgba(239, 68, 68, 0.25)');
+        manifoldBody.setAttribute('stroke', '#ef4444');
+        txtManifoldPress.innerText = '歧管超深真空 (210 mbar / -800 mbar)';
+        txtManifoldPress.setAttribute('fill', '#ef4444');
+
+        // 主進氣管路窒息
+        pipeAirIn.className = 'flow-running flow-choked';
+        pipeTurboOut.className = 'flow-running flow-choked';
+        pipeIntercoolerOut.className = 'flow-running flow-choked';
+        pipeManifoldStream.className = 'flow-running flow-choked';
+
+        // 蒸氣暗流狂灌 (油箱 ➔ 電磁閥 ➔ 右下角管路 ➔ 三通閥 ➔ 接口 g ➔ 歧管)
+        pipeTurboBypass.className = 'flow-running flow-idle-closed';
+        pipeTankLine.className = 'flow-running flow-fuel-leak';
+        pipeRightLower.className = 'flow-running flow-fuel-leak';
+        pipeGDownstream.className = 'flow-running flow-fuel-leak';
+
+        // 三通閥與電磁閥狀態
+        boxValve5.setAttribute('stroke', '#f59e0b');
+        txtValve5State.innerText = '單向閥導流中';
+        txtValve5State.setAttribute('fill', '#f59e0b');
+        txtValve5Sub.innerText = '右下角暗流通過中';
+
+        boxPurgeValve.setAttribute('stroke', '#ef4444');
+        txtPurgeState.innerText = '【閥芯機械卡死常開】';
+        txtPurgeState.setAttribute('fill', '#ef4444');
+        txtPurgeSub.innerText = '油箱油氣失控灌入';
+
+      } else if (mode === 3) {
+        // ==========================================
+        // 模式三：電磁閥正常，但三通分配閥破裂倒抽
+        // ==========================================
+        mapVal.innerText = '210 mbar';
+        mapVal.className = 'text-2xl font-black text-red-400 mt-1';
+        throttleVal.innerText = '0.586 % (貼死掐緊)';
+        throttleVal.className = 'text-2xl font-black text-red-400 mt-1';
+        ltftVal.innerText = '+125.0 % (撞牆頂死)';
+        ltftVal.className = 'text-2xl font-black text-red-400 mt-1';
+        statusVal.innerText = '三通閥單向閥破裂 (渦輪端倒抽)';
+        statusVal.className = 'text-lg font-black text-red-400 mt-1 truncate';
+
+        panelTitle.innerHTML = '💥 按鈕三：電磁閥正常常閉，三通分配閥破裂倒抽';
+        panelTitle.className = 'text-sm font-bold text-red-400 flex items-center gap-1.5 mb-2';
+        panelDesc.innerHTML = `
+          <div><b>1. 氣流流動方式（暗流逆向倒抽！）：</b>此時碳罐電磁閥<b>完全緊閉且清白無辜</b>！但三通分配閥 (5) 內部的單向止回閥片破裂失效。歧管強大的負壓，直接把<b>「渦輪前取氣管」</b>內的大氣<b>逆向倒抽過來</b>，經由三通閥鑽進接口 g！</div>
+          <div><b>2. 真空度表現：</b>與按鈕二相同！外界空氣被源源不絕倒抽進歧管，電腦同樣判定有暗流，將節氣門掐死在 0.586%，活塞硬抽拉出 <b>210 mbar 極端深真空</b>。</div>
+          <div><b>3. 現場診斷真諦：</b>若拔除電磁閥插頭斷電依然漏氣，盲目換電磁閥無法解決！唯有<b>阻斷右下角那根管子</b>，發現依舊漏氣，才能直接定罪為三通分配閥破裂！</div>
+        `;
+
+        // 節氣門貼死
+        vaneThrottle.setAttribute('transform', 'rotate(0, 25, 32)');
+        vaneThrottle.setAttribute('stroke', '#ef4444');
+
+        // 歧管腔體警示紅
+        manifoldBody.setAttribute('fill', 'rgba(239, 68, 68, 0.25)');
+        manifoldBody.setAttribute('stroke', '#ef4444');
+        txtManifoldPress.innerText = '歧管超深真空 (210 mbar / 渦輪端倒抽)';
+        txtManifoldPress.setAttribute('fill', '#ef4444');
+
+        // 主進氣管路窒息
+        pipeAirIn.className = 'flow-running flow-choked';
+        pipeTurboOut.className = 'flow-running flow-choked';
+        pipeIntercoolerOut.className = 'flow-running flow-choked';
+        pipeManifoldStream.className = 'flow-running flow-choked';
+
+        // 蒸氣管路倒抽氣流 (渦輪前管路 ➔ 逆向抽進三通閥 ➔ 接口 g ➔ 歧管)
+        pipeTurboBypass.className = 'flow-running flow-reverse-leak';
+        pipeGDownstream.className = 'flow-running flow-fuel-leak';
+        // 電磁閥端完全無氣流
+        pipeRightLower.className = 'flow-running flow-idle-closed';
+        pipeTankLine.className = 'flow-running flow-idle-closed';
+
+        // 三通閥與電磁閥狀態
+        boxValve5.setAttribute('stroke', '#ef4444');
+        txtValve5State.innerText = '【止回閥破裂失效】';
+        txtValve5State.setAttribute('fill', '#ef4444');
+        txtValve5Sub.innerText = '渦輪前大氣逆向倒抽中';
+
+        boxPurgeValve.setAttribute('stroke', '#10b981');
+        txtPurgeState.innerText = '【受控常閉・無辜】';
+        txtPurgeState.setAttribute('fill', '#10b981');
+        txtPurgeSub.innerText = '電磁閥並未漏氣';
+      }
+    }
+  </script>
+</body>
+</html>
