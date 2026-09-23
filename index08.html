@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peugeot e-2008 高壓絕緣診斷模擬器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes pulseOrange {
+      0%, 100% { stroke: #f97316; stroke-width: 4; filter: drop-shadow(0 0 3px #f97316); }
+      50% { stroke: #fb923c; stroke-width: 6; filter: drop-shadow(0 0 8px #fb923c); }
+    }
+    @keyframes pulseRed {
+      0%, 100% { stroke: #ef4444; stroke-width: 4; filter: drop-shadow(0 0 4px #ef4444); }
+      50% { stroke: #b91c1c; stroke-width: 6; filter: drop-shadow(0 0 12px #ef4444); }
+    }
+    .flow-hv {
+      stroke-dasharray: 8 6;
+      animation: dash 1s linear infinite;
+    }
+    @keyframes dash {
+      to { stroke-dashoffset: -14; }
+    }
+    .lcd-screen {
+      font-family: 'Courier New', Courier, monospace;
+      background: #7a9a83;
+      color: #1a2e22;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.5);
+    }
+    .led-blink {
+      animation: blink 0.5s infinite alternate;
+    }
+    @keyframes blink {
+      from { opacity: 0.2; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1.1); filter: drop-shadow(0 0 6px #ef4444); }
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans select-none">
+
+  <!-- Header -->
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex items-center justify-between shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="bg-amber-500 text-slate-950 px-2 py-1 rounded font-black text-sm tracking-widest flex items-center">
+        <i class="fa-solid fa-bolt mr-1"></i> Stellantis EV
+      </div>
+      <h1 class="text-xl font-bold tracking-tight text-white flex items-center">
+        e-2008 高壓電路與絕緣檢測模擬系統
+        <span class="ml-3 text-xs bg-slate-800 border border-slate-700 text-slate-400 px-2.5 py-0.5 rounded-full">工單: VR3UKZKXZNJ637235</span>
+      </h1>
+    </div>
+    <div class="flex items-center space-x-4">
+      <div id="safety-badge" class="px-3 py-1 bg-red-950 border border-red-700 text-red-300 text-xs font-bold rounded-full flex items-center shadow-inner">
+        <span class="w-2 h-2 rounded-full bg-red-500 mr-2 animate-ping"></span> 高壓帶電中 (危險)
+      </div>
+      <button onclick="resetSystem()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded border border-slate-600 transition flex items-center">
+        <i class="fa-solid fa-arrow-rotate-left mr-1.5"></i> 重置系統
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 grid grid-cols-12 gap-4 p-4 max-w-[1750px] w-full mx-auto">
+
+    <!-- LEFT: Technical Guide & Virtual Megohmmeter (Col 4) -->
+    <div class="col-span-4 flex flex-col space-y-4">
+      
+      <!-- Virtual Megohmmeter (兆歐表) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex flex-col">
+        <div class="flex justify-between items-center mb-3">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">ONE H TOO 絕緣測試儀</span>
+            <span class="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">特工 500V 專用</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-[11px] text-slate-400">高壓輸出</span>
+            <div id="meter-led" class="w-3.5 h-3.5 rounded-full bg-red-950 border border-red-800"></div>
+          </div>
+        </div>
+
+        <!-- LCD Screen -->
+        <div class="lcd-screen rounded-lg p-3 relative h-28 flex flex-col justify-between border-2 border-slate-700">
+          <div class="flex justify-between text-[11px] font-bold text-slate-800 border-b border-slate-700/30 pb-1">
+            <span id="lcd-status">待機就緒 (READY)</span>
+            <span id="lcd-range">檔位: 500V 直流</span>
+          </div>
+          <div class="flex items-baseline justify-end space-x-2 my-auto">
+            <span id="lcd-val" class="text-4xl font-extrabold tracking-wider">--.--</span>
+            <span id="lcd-unit" class="text-lg font-bold">MΩ</span>
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-800 pt-1">
+            <span id="lcd-subtext">放電自動安全迴路 ON</span>
+            <span id="lcd-ground">接地: 良好車身裸鐵</span>
+          </div>
+        </div>
+
+        <!-- Meter Controls & Probes -->
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <button id="btn-measure" onclick="triggerMeasurement()" class="col-span-2 py-3 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-slate-950 font-black rounded-lg shadow-lg flex items-center justify-center space-x-2 transition disabled:opacity-40 disabled:cursor-not-allowed">
+            <i class="fa-solid fa-bolt"></i>
+            <span>執行 500V 絕緣量測 (TEST)</span>
+          </button>
+
+          <!-- Probe Connectors info -->
+          <div class="bg-slate-950 border border-slate-800 rounded p-2 text-xs flex items-center space-x-2">
+            <div class="w-3 h-3 rounded-full bg-red-600 shrink-0"></div>
+            <div class="overflow-hidden">
+              <span class="text-slate-400 block text-[10px]">紅棒 (L 端子)</span>
+              <span id="red-probe-target" class="font-bold text-red-400 truncate block">尚未連接元件</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 border border-slate-800 rounded p-2 text-xs flex items-center justify-between">
+            <div class="flex items-center space-x-2 overflow-hidden">
+              <div class="w-3 h-3 rounded-full bg-slate-900 border border-slate-500 shrink-0"></div>
+              <div class="overflow-hidden">
+                <span class="text-slate-400 block text-[10px]">黑棒 (E 接地)</span>
+                <span id="ground-type" class="font-bold text-emerald-400 truncate block">無漆車身裸金屬</span>
+              </div>
+            </div>
+            <button onclick="toggleGroundPoint()" class="text-[10px] bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded border border-slate-700 text-amber-300">
+              切換
+            </button>
+          </div>
+        </div>
+
+        <div id="meter-result-box" class="mt-3 p-2.5 rounded text-xs border hidden">
+          <!-- Dynamic Result Banner -->
+        </div>
+      </div>
+
+      <!-- Diagnostic Reference & Instructions -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex-1 overflow-y-auto space-y-3 text-xs shadow-xl">
+        <h3 class="font-bold text-slate-200 text-sm flex items-center border-b border-slate-800 pb-2">
+          <i class="fa-solid fa-book-open-reader text-amber-400 mr-2"></i> 原廠絕緣診斷標準手冊
+        </h3>
+        
+        <div class="space-y-2">
+          <div class="bg-slate-950 p-2.5 rounded border border-slate-800">
+            <div class="text-slate-400 font-bold mb-1 flex items-center">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5"></span> 原廠合格阻抗標準
+            </div>
+            <p class="text-slate-300 leading-relaxed pl-3">
+              高壓元件對地絕緣阻抗必須 <span class="text-emerald-400 font-bold">&gt; 2.5 MΩ (2500 kΩ)</span>。<br>
+              若讀值顯示 <span class="text-emerald-400 font-mono font-bold">1. MΩ</span>，代表超過 200 MΩ（阻抗無限大），代表<span class="text-emerald-400 font-bold">絕緣合格極佳</span>。
+            </p>
+          </div>
+
+          <div class="bg-slate-950 p-2.5 rounded border border-slate-800">
+            <div class="text-slate-400 font-bold mb-1 flex items-center">
+              <span class="w-1.5 h-1.5 rounded-full bg-red-400 mr-1.5"></span> 現場避坑重點 (大師備忘錄)
+            </div>
+            <ul class="text-slate-300 space-y-1.5 list-disc list-inside pl-1 leading-relaxed">
+              <li><strong class="text-amber-300">黑棒搭鐵避開貼紙與烤漆：</strong> 若黑棒夾在零件標籤貼紙或漆面，因貼紙不導電會誤測出「無限大」虛假合格。</li>
+              <li><strong class="text-amber-300">正負極各自量測：</strong> 正極 (+) 與負極 (-) 均須單獨對外殼金屬量測一次。</li>
+              <li><strong class="text-amber-300">電動壓縮機專用油：</strong> 必須嚴格使用 POE 高絕緣冷凍油。若誤注 PAG 導電油，全車阻抗將直接被拉低崩潰。</li>
+            </ul>
+          </div>
+
+          <div class="bg-slate-950 p-2.5 rounded border border-slate-800">
+            <div class="text-slate-400 font-bold mb-1 flex items-center">
+              <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1.5"></span> 水箱 vs. Chiller 熱管理
+            </div>
+            <p class="text-slate-300 leading-relaxed pl-3">
+              水箱僅能散熱至接近外氣溫；當夏季室外高達 38°C 或快充高熱時，系統必須依賴冷氣壓縮機搭配 <strong class="text-cyan-300">Chiller (冷媒對水熱交換器)</strong> 主動將水溫壓低至 10~15°C。若冷氣故障，電池無法冷卻，車輛將強制限制動力或鎖死。
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CENTER: SVG High Voltage Topology Map (Col 5) -->
+    <div class="col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col shadow-xl relative overflow-hidden">
+      <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-800">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-diagram-project text-amber-400"></i>
+          <span class="font-bold text-sm text-slate-200">高壓系統拓撲接線圖 (架構仿真)</span>
+        </div>
+        <span class="text-xs text-slate-400">點擊模組可設定為量測目標</span>
+      </div>
+
+      <!-- SVG Topology Canvas -->
+      <div class="flex-1 flex items-center justify-center bg-slate-950/70 rounded-lg p-2 relative">
+        <svg id="topo-svg" viewBox="0 0 600 520" class="w-full h-full max-h-[500px]">
+          <!-- High Voltage Cable Paths (Orange Bus) -->
+          <!-- BEPR to 1708 -->
+          <path id="wire-bepr-1708" d="M 330 70 C 130 70 120 300 220 300" fill="none" stroke="#f97316" stroke-width="4" class="flow-hv"/>
+          <!-- BEPR to 1778 -->
+          <path id="wire-bepr-1778" d="M 330 90 L 310 130" fill="none" stroke="#f97316" stroke-width="4" class="flow-hv"/>
+          <!-- 1778 to 1708 -->
+          <path id="wire-1778-1708" d="M 310 210 L 310 260" fill="none" stroke="#f97316" stroke-width="4" class="flow-hv"/>
+          <!-- 1778 to 80G5 (Optional PTC2) -->
+          <path id="wire-1778-80g5" d="M 350 160 C 370 160 370 135 410 135" fill="none" stroke="#f97316" stroke-width="3" stroke-dasharray="4 3"/>
+          <!-- 1708 to 1917 -->
+          <path id="wire-1708-1917" d="M 260 260 C 260 210 230 180 230 180" fill="none" stroke="#f97316" stroke-width="4" class="flow-hv"/>
+          <!-- 1708 to 8020 (A/C Compressor) -->
+          <path id="wire-1708-8020" d="M 330 260 C 350 240 370 205 410 205" fill="none" stroke="#f97316" stroke-width="4" class="flow-hv"/>
+          <!-- 1708 to 80F5 (PTC1 Heater) -->
+          <path id="wire-1708-80f5" d="M 330 330 C 360 340 370 365 410 365" fill="none" stroke="#f97316" stroke-width="4" class="flow-hv"/>
+          <!-- 1708 to 12V Battery -->
+          <path d="M 350 295 L 400 295" fill="none" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow)"/>
+
+          <!-- Marker -->
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+            </marker>
+          </defs>
+
+          <!-- COMPONENT 1: BEPR (Charging socket) -->
+          <g id="node-bepr" onclick="selectComponent('BEPR')" class="cursor-pointer group">
+            <rect x="330" y="40" width="85" height="70" rx="8" fill="#334155" stroke="#64748b" stroke-width="2" class="group-hover:stroke-amber-400 transition"/>
+            <text x="340" y="60" fill="#94a3b8" font-size="11" font-weight="bold">BEPR</text>
+            <polygon points="390,45 405,70 375,70" fill="#eab308"/>
+            <text x="388" y="66" fill="#000" font-size="9" font-weight="black">!</text>
+            <text x="420" y="60" fill="#cbd5e1" font-size="11" font-weight="bold">AC</text>
+            <text x="420" y="90" fill="#cbd5e1" font-size="11" font-weight="bold">DC</text>
+            <line x1="395" y1="65" x2="350" y2="65" stroke="#cbd5e1" stroke-width="1.5"/>
+            <line x1="395" y1="85" x2="350" y2="85" stroke="#cbd5e1" stroke-width="1.5"/>
+          </g>
+
+          <!-- COMPONENT 2: 1778 (Traction Battery) -->
+          <g id="node-1778" onclick="selectComponent('1778')" class="cursor-pointer group">
+            <rect x="270" y="130" width="85" height="75" rx="8" fill="#334155" stroke="#64748b" stroke-width="2" class="group-hover:stroke-amber-400 transition"/>
+            <text x="295" y="152" fill="#e2e8f0" font-size="12" font-weight="bold">1778</text>
+            <polygon points="312,160 327,188 297,188" fill="#eab308"/>
+            <text x="310" y="184" fill="#000" font-size="11" font-weight="black">⚡</text>
+          </g>
+
+          <!-- COMPONENT 3: 1917 (Inverter MCU) -->
+          <g id="node-1917" onclick="selectComponent('1917')" class="cursor-pointer group">
+            <rect x="150" y="145" width="85" height="75" rx="8" fill="#334155" stroke="#64748b" stroke-width="2" class="group-hover:stroke-amber-400 transition"/>
+            <text x="175" y="167" fill="#e2e8f0" font-size="12" font-weight="bold">1917</text>
+            <polygon points="172,175 187,203 157,203" fill="#eab308"/>
+            <text x="170" y="199" fill="#000" font-size="11" font-weight="black">⚡</text>
+            <!-- Fuse box -->
+            <rect x="180" y="175" width="40" height="15" fill="#f8fafc" rx="2"/>
+            <text x="195" y="186" fill="#0f172a" font-size="9" font-weight="bold">F</text>
+          </g>
+
+          <!-- COMPONENT 4: 1708 (OBC / Junction Box) -->
+          <g id="node-1708" onclick="selectComponent('1708')" class="cursor-pointer group">
+            <rect x="215" y="260" width="135" height="75" rx="8" fill="#334155" stroke="#64748b" stroke-width="2" class="group-hover:stroke-amber-400 transition"/>
+            <text x="230" y="315" fill="#e2e8f0" font-size="12" font-weight="bold">1708</text>
+            <polygon points="232,275 247,303 217,303" fill="#eab308"/>
+            <text x="230" y="299" fill="#000" font-size="11" font-weight="black">⚡</text>
+            <!-- Fuses inside -->
+            <rect x="270" y="275" width="35" height="12" fill="#f8fafc" rx="2"/>
+            <text x="284" y="284" fill="#0f172a" font-size="8" font-weight="bold">F</text>
+            <rect x="270" y="295" width="35" height="12" fill="#f8fafc" rx="2"/>
+            <text x="284" y="304" fill="#0f172a" font-size="8" font-weight="bold">F</text>
+            <text x="355" y="290" fill="#ef4444" font-size="11" font-weight="bold">12V</text>
+          </g>
+
+          <!-- COMPONENT 5: 8020 (Electric A/C Compressor) -->
+          <g id="node-8020" onclick="selectComponent('8020')" class="cursor-pointer group">
+            <rect id="rect-8020" x="410" y="180" width="75" height="55" rx="8" fill="#334155" stroke="#64748b" stroke-width="2" class="group-hover:stroke-amber-400 transition"/>
+            <polygon points="425,193 438,216 412,216" fill="#eab308"/>
+            <text x="423" y="212" fill="#000" font-size="9" font-weight="black">⚡</text>
+            <text x="442" y="210" fill="#e2e8f0" font-size="11" font-weight="bold">8020</text>
+            <text x="495" y="210" fill="#94a3b8" font-size="9">冷氣壓縮機</text>
+          </g>
+
+          <!-- COMPONENT 6: 80F5 (PTC1 Water Heater) -->
+          <g id="node-80f5" onclick="selectComponent('80F5')" class="cursor-pointer group">
+            <rect x="410" y="335" width="75" height="55" rx="8" fill="#334155" stroke="#64748b" stroke-width="2" class="group-hover:stroke-amber-400 transition"/>
+            <polygon points="425,348 438,371 412,371" fill="#eab308"/>
+            <text x="423" y="367" fill="#000" font-size="9" font-weight="black">⚡</text>
+            <text x="442" y="365" fill="#e2e8f0" font-size="11" font-weight="bold">80F5</text>
+            <text x="495" y="365" fill="#94a3b8" font-size="9">PTC1 水暖</text>
+          </g>
+
+          <!-- COMPONENT 7: 80G5 (PTC2 Optional) -->
+          <g id="node-80g5" onclick="selectComponent('80G5')" class="cursor-pointer group opacity-60">
+            <rect x="410" y="110" width="75" height="50" rx="8" fill="#1e293b" stroke="#64748b" stroke-dasharray="3 3" stroke-width="1.5"/>
+            <polygon points="425,123 438,146 412,146" fill="#eab308"/>
+            <text x="423" y="142" fill="#000" font-size="9" font-weight="black">⚡</text>
+            <text x="442" y="140" fill="#cbd5e1" font-size="10" font-weight="bold">80G5</text>
+          </g>
+
+          <!-- Auxiliary 12V Battery -->
+          <g id="node-12v" class="opacity-80">
+            <rect x="415" y="275" width="45" height="35" rx="4" fill="#0f172a" stroke="#ef4444" stroke-width="1.5"/>
+            <text x="424" y="297" fill="#ef4444" font-size="10" font-weight="bold">12V</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Component Legend -->
+      <div class="mt-3 bg-slate-950/80 p-2.5 rounded-lg border border-slate-800 text-[11px] grid grid-cols-2 gap-x-4 gap-y-1 text-slate-400">
+        <div><strong class="text-slate-300">BEPR:</strong> 充電插座 (AC/DC)</div>
+        <div><strong class="text-slate-300">8020:</strong> 高壓電動冷氣壓縮機</div>
+        <div><strong class="text-slate-300">1708:</strong> 車載充電機 OBC / 分線盒</div>
+        <div><strong class="text-slate-300">80F5:</strong> PTC1 水加熱器</div>
+        <div><strong class="text-slate-300">1778:</strong> 動力牽引大電池包</div>
+        <div><strong class="text-slate-300">80G5:</strong> PTC2 水加熱器 (選配)</div>
+        <div><strong class="text-slate-300">1917:</strong> 逆變器 / 馬達控制 (MCU)</div>
+        <div><strong class="text-slate-300">F:</strong> 不可更換型高壓保險絲</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Operation Console & Scenario Control (Col 3) -->
+    <div class="col-span-3 flex flex-col space-y-4">
+      
+      <!-- Safe Power-Down 5 Steps SOP -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+        <h3 class="font-bold text-sm text-slate-200 mb-2 flex items-center justify-between">
+          <span><i class="fa-solid fa-shield-halved text-emerald-400 mr-1.5"></i> 安全斷電標準 5 步驟</span>
+          <span id="sop-progress" class="text-xs text-amber-400 font-mono">0 / 5</span>
+        </h3>
+        <p class="text-[11px] text-slate-400 mb-3">依序執行下列步驟，解鎖高壓兆歐表量測權限：</p>
+        
+        <div class="space-y-2 text-xs">
+          <button id="sop-btn-1" onclick="executeSOP(1)" class="w-full text-left p-2 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center justify-between transition">
+            <span>1. 降車窗、鑰匙遠離待 5 分鐘</span>
+            <i id="sop-icon-1" class="fa-regular fa-circle text-slate-500"></i>
+          </button>
+          <button id="sop-btn-2" onclick="executeSOP(2)" disabled class="w-full text-left p-2 rounded bg-slate-800/50 border border-slate-800/80 text-slate-500 flex items-center justify-between transition disabled:cursor-not-allowed">
+            <span>2. 拔開引擎室斷開器並上鎖 (e)</span>
+            <i id="sop-icon-2" class="fa-regular fa-circle text-slate-500"></i>
+          </button>
+          <button id="sop-btn-3" onclick="executeSOP(3)" disabled class="w-full text-left p-2 rounded bg-slate-800/50 border border-slate-800/80 text-slate-500 flex items-center justify-between transition disabled:cursor-not-allowed">
+            <span>3. 拆除 12V 輔助電瓶正極</span>
+            <i id="sop-icon-3" class="fa-regular fa-circle text-slate-500"></i>
+          </button>
+          <button id="sop-btn-4" onclick="executeSOP(4)" disabled class="w-full text-left p-2 rounded bg-slate-800/50 border border-slate-800/80 text-slate-500 flex items-center justify-between transition disabled:cursor-not-allowed">
+            <span>4. 靜置等待 2 分鐘 (電容放電)</span>
+            <i id="sop-icon-4" class="fa-regular fa-circle text-slate-500"></i>
+          </button>
+          <button id="sop-btn-5" onclick="executeSOP(5)" disabled class="w-full text-left p-2 rounded bg-slate-800/50 border border-slate-800/80 text-slate-500 flex items-center justify-between transition disabled:cursor-not-allowed">
+            <span>5. 驗電確認高壓殘電 &lt; 60V</span>
+            <i id="sop-icon-5" class="fa-regular fa-circle text-slate-500"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Failure & Oil Condition Setup -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl space-y-3">
+        <h3 class="font-bold text-sm text-slate-200 flex items-center">
+          <i class="fa-solid fa-sliders text-amber-400 mr-2"></i> 故障模擬情境切換
+        </h3>
+
+        <div>
+          <label class="text-[11px] text-slate-400 block mb-1">壓縮機 (8020) 絕緣健康狀態：</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button id="btn-status-fault" onclick="setCompStatus('fault')" class="py-2 px-3 rounded font-bold border border-red-600 bg-red-950/70 text-red-200 transition">
+              <i class="fa-solid fa-triangle-exclamation mr-1"></i> 絕緣擊穿 (0.06MΩ)
+            </button>
+            <button id="btn-status-ok" onclick="setCompStatus('ok')" class="py-2 px-3 rounded font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white transition">
+              <i class="fa-solid fa-check mr-1"></i> 正常新機 (&gt;200MΩ)
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 block mb-1">冷媒迴路冷凍機油規範：</label>
+          <select id="oil-select" onchange="changeOilType()" class="w-full bg-slate-950 border border-slate-700 text-xs rounded p-2 text-slate-200 focus:outline-none focus:border-amber-400">
+            <option value="poe">POE 專用高絕緣油 (符合原廠規範)</option>
+            <option value="pag">PAG 傳統油車潤滑油 (導電/吸水受潮)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-[11px] text-slate-400 block mb-1">快速選取受測元件端子：</label>
+          <div class="grid grid-cols-3 gap-1.5 text-xs">
+            <button onclick="selectComponent('8020')" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center font-bold">8020 壓縮機</button>
+            <button onclick="selectComponent('1708')" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center font-bold">1708 OBC</button>
+            <button onclick="selectComponent('1917')" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center font-bold">1917 MCU</button>
+            <button onclick="selectComponent('1778')" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center font-bold">1778 電池</button>
+            <button onclick="selectComponent('80F5')" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center font-bold">80F5 水暖</button>
+            <button onclick="selectComponent('BEPR')" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center font-bold">BEPR 充電</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vehicle DTC & Action Output -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl flex-1 flex flex-col justify-between text-xs">
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-slate-300">DiagBox 系統診斷碼</span>
+            <span id="dtc-badge" class="px-2 py-0.5 rounded text-[10px] bg-red-900/60 text-red-300 border border-red-700">牽引異常鎖死</span>
+          </div>
+          <div id="dtc-text" class="bg-slate-950 p-2 rounded text-red-400 font-mono text-[11px] border border-slate-800 leading-tight">
+            P0AA6: 高壓電氣絕緣阻抗過低<br>
+            狀態: 牽引電池主繼電器強制切斷，禁止 READY 行駛
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-slate-800">
+          <button id="btn-fix" onclick="fixVehicle()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow transition flex items-center justify-center space-x-1.5">
+            <i class="fa-solid fa-wrench"></i>
+            <span>執行更換 8020 壓縮機與清除故障碼</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <script>
+    // State management
+    const state = {
+      sopStep: 0,
+      isPoweredDown: false,
+      selectedComponent: '8020',
+      groundType: 'metal', // 'metal' or 'sticker'
+      compStatus: 'fault', // 'fault' or 'ok'
+      oilType: 'poe',
+      isMeasuring: false
+    };
+
+    function executeSOP(step) {
+      if (step !== state.sopStep + 1) return;
+      state.sopStep = step;
+      document.getElementById(`sop-icon-${step}`).className = "fa-solid fa-circle-check text-emerald-400";
+      document.getElementById(`sop-btn-${step}`).classList.add("border-emerald-500", "bg-emerald-950/20");
+      document.getElementById('sop-progress').textContent = `${step} / 5`;
+
+      if (step < 5) {
+        const nextBtn = document.getElementById(`sop-btn-${step + 1}`);
+        nextBtn.removeAttribute('disabled');
+        nextBtn.classList.remove('bg-slate-800/50', 'text-slate-500');
+        nextBtn.classList.add('bg-slate-800', 'text-slate-200');
+      } else {
+        // Complete SOP
+        state.isPoweredDown = true;
+        const badge = document.getElementById('safety-badge');
+        badge.className = "px-3 py-1 bg-emerald-950 border border-emerald-700 text-emerald-300 text-xs font-bold rounded-full flex items-center shadow-inner";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 mr-2"></span> 安全已斷電 (&lt;60V 殘電確認)`;
+        
+        // Disable flow animations on SVG
+        document.querySelectorAll('.flow-hv').forEach(el => el.classList.remove('flow-hv'));
+        document.getElementById('lcd-status').textContent = "安全斷電完成 - 可量測";
+      }
+    }
+
+    function selectComponent(comp) {
+      state.selectedComponent = comp;
+      document.getElementById('red-probe-target').textContent = `${comp} 插針端子`;
+
+      // Visual highlight on SVG
+      document.querySelectorAll('#topo-svg rect').forEach(r => r.classList.remove('stroke-amber-400', 'stroke-[3px]'));
+      const targetGroup = document.getElementById(`node-${comp.toLowerCase()}`);
+      if (targetGroup) {
+        const rect = targetGroup.querySelector('rect');
+        if (rect) {
+          rect.classList.add('stroke-amber-400', 'stroke-[3px]');
+        }
+      }
+      resetMeterDisplay();
+    }
+
+    function toggleGroundPoint() {
+      if (state.groundType === 'metal') {
+        state.groundType = 'sticker';
+        document.getElementById('ground-type').textContent = "原廠紙貼紙 / 烤漆層 (錯誤)";
+        document.getElementById('ground-type').className = "font-bold text-red-400 truncate block";
+        document.getElementById('lcd-ground').textContent = "接地: 絕緣漆/貼紙 (量測失效)";
+      } else {
+        state.groundType = 'metal';
+        document.getElementById('ground-type').textContent = "無漆車身裸金屬";
+        document.getElementById('ground-type').className = "font-bold text-emerald-400 truncate block";
+        document.getElementById('lcd-ground').textContent = "接地: 良好車身裸鐵";
+      }
+      resetMeterDisplay();
+    }
+
+    function setCompStatus(status) {
+      state.compStatus = status;
+      const btnFault = document.getElementById('btn-status-fault');
+      const btnOk = document.getElementById('btn-status-ok');
+      
+      if (status === 'fault') {
+        btnFault.className = "py-2 px-3 rounded font-bold border border-red-600 bg-red-950/70 text-red-200 transition";
+        btnOk.className = "py-2 px-3 rounded font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white transition";
+        document.getElementById('rect-8020').setAttribute('stroke', '#ef4444');
+      } else {
+        btnOk.className = "py-2 px-3 rounded font-bold border border-emerald-600 bg-emerald-950/70 text-emerald-200 transition";
+        btnFault.className = "py-2 px-3 rounded font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white transition";
+        document.getElementById('rect-8020').setAttribute('stroke', '#64748b');
+      }
+      resetMeterDisplay();
+    }
+
+    function changeOilType() {
+      state.oilType = document.getElementById('oil-select').value;
+      resetMeterDisplay();
+    }
+
+    function resetMeterDisplay() {
+      document.getElementById('lcd-val').textContent = "--.--";
+      document.getElementById('meter-result-box').className = "mt-3 p-2.5 rounded text-xs border hidden";
+      document.getElementById('meter-led').className = "w-3.5 h-3.5 rounded-full bg-red-950 border border-red-800";
+    }
+
+    function triggerMeasurement() {
+      if (!state.isPoweredDown) {
+        alert("【致命危險警告】請先完成安全斷電 5 步驟！未放電驗電前嚴禁施加 500V 高壓測試！");
+        return;
+      }
+
+      state.isMeasuring = true;
+      const btn = document.getElementById('btn-measure');
+      const led = document.getElementById('meter-led');
+      const lcdVal = document.getElementById('lcd-val');
+      const lcdStatus = document.getElementById('lcd-status');
+      
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>500V 灌注加壓中 (請勿觸碰探棒)...</span>`;
+      led.className = "w-3.5 h-3.5 rounded-full bg-red-600 led-blink";
+      lcdStatus.textContent = "500V DC 高壓輸出中...";
+      lcdVal.textContent = "...";
+
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-bolt"></i><span>執行 500V 絕緣量測 (TEST)</span>`;
+        led.className = "w-3.5 h-3.5 rounded-full bg-red-950 border border-red-800";
+        lcdStatus.textContent = "測試完成 (已自動放電)";
+        evaluateResult();
+      }, 1500);
+    }
+
+    function evaluateResult() {
+      const lcdVal = document.getElementById('lcd-val');
+      const resultBox = document.getElementById('meter-result-box');
+      resultBox.classList.remove('hidden');
+
+      // 1. Ground Trap
+      if (state.groundType === 'sticker') {
+        lcdVal.textContent = "1.";
+        resultBox.className = "mt-3 p-2.5 rounded text-xs border border-amber-600 bg-amber-950/40 text-amber-200";
+        resultBox.innerHTML = `
+          <strong><i class="fa-solid fa-triangle-exclamation mr-1"></i> 【嚴重量測失效陷阱】</strong><br>
+          探棒夾在「貼紙或烤漆」上造成斷路，儀表顯示虛假 1. (無限大)。請將黑棒夾在無漆裸金屬上重新量測！
+        `;
+        return;
+      }
+
+      // 2. Oil Trap
+      if (state.oilType === 'pag' && state.selectedComponent === '8020') {
+        lcdVal.textContent = "0.02";
+        resultBox.className = "mt-3 p-2.5 rounded text-xs border border-red-600 bg-red-950/60 text-red-200";
+        resultBox.innerHTML = `
+          <strong><i class="fa-solid fa-skull-crossbones mr-1"></i> 【冷凍油污染崩潰】 0.02 MΩ (20 kΩ)</strong><br>
+          系統使用了導電吸水的 PAG 燃油車冷凍油，高壓電動馬達線圈遭污染短路，必須全系統清洗並更換壓縮機！
+        `;
+        return;
+      }
+
+      // 3. Normal Components
+      if (state.selectedComponent !== '8020') {
+        lcdVal.textContent = "1.";
+        resultBox.className = "mt-3 p-2.5 rounded text-xs border border-emerald-600 bg-emerald-950/40 text-emerald-200";
+        resultBox.innerHTML = `
+          <strong><i class="fa-solid fa-circle-check mr-1"></i> 【合格】 絕緣極佳 (&gt; 200 MΩ)</strong><br>
+          模組 ${state.selectedComponent} 內部絕緣健全，完全符合原廠 &gt; 2.5 MΩ 標準。
+        `;
+        return;
+      }
+
+      // 4. 8020 Component evaluation
+      if (state.compStatus === 'fault') {
+        lcdVal.textContent = "0.06";
+        resultBox.className = "mt-3 p-2.5 rounded text-xs border border-red-600 bg-red-950/60 text-red-200";
+        resultBox.innerHTML = `
+          <strong><i class="fa-solid fa-circle-xmark mr-1"></i> 【擊穿嚴重損壞】 0.06 MΩ (60 kΩ)</strong><br>
+          實測數值遠低於原廠標準 (2.5 MΩ / 2500 kΩ)！確認為電動冷氣壓縮機線圈對地絕緣擊穿，導致 BMS 切斷全車牽引動力！
+        `;
+      } else {
+        lcdVal.textContent = "1.";
+        resultBox.className = "mt-3 p-2.5 rounded text-xs border border-emerald-600 bg-emerald-950/40 text-emerald-200";
+        resultBox.innerHTML = `
+          <strong><i class="fa-solid fa-circle-check mr-1"></i> 【合格】 絕緣極佳 (&gt; 200 MΩ)</strong><br>
+          新更換之 8020 壓縮機絕緣阻抗正常合格，牽引迴路已恢復絕緣保護防線！
+        `;
+      }
+    }
+
+    function fixVehicle() {
+      setCompStatus('ok');
+      document.getElementById('oil-select').value = 'poe';
+      state.oilType = 'poe';
+      
+      const dtcBadge = document.getElementById('dtc-badge');
+      const dtcText = document.getElementById('dtc-text');
+      
+      dtcBadge.className = "px-2 py-0.5 rounded text-[10px] bg-emerald-900/60 text-emerald-300 border border-emerald-700";
+      dtcBadge.textContent = "系統正常 (NO DTC)";
+      
+      dtcText.className = "bg-slate-950 p-2 rounded text-emerald-400 font-mono text-[11px] border border-slate-800 leading-tight";
+      dtcText.innerHTML = "故障碼已清除，VSM / BMS 牽引繼電器已解鎖。<br>冷氣散熱與 Chiller 熱交換機能正常，車輛可正常進入 READY 狀態。";
+      
+      alert("【完工處置】已更換高壓電動冷氣壓縮機 (8020)、抽真空充填 POE 專用冷凍油與冷媒，並使用診斷儀重置絕緣故障碼！請再次進行 500V 測試複驗。");
+    }
+
+    function resetSystem() {
+      location.reload();
+    }
+
+    // Initialize
+    selectComponent('8020');
+  </script>
+</body>
+</html>
