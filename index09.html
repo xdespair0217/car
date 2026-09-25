@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stellantis 1.2 PureTech (EB2) 氣流、增壓與 EVAP 三通工程透視系統</title>
+  <style>
+    :root {
+      --bg: #03060d;
+      --panel-bg: rgba(8, 14, 25, 0.96);
+      --border: #142238;
+      --border-bright: #223c63;
+      --accent-blue: #00d2ff;
+      --accent-orange: #ff6a00;
+      --accent-cyan: #00ffaa;
+      --accent-red: #ff3366;
+      --accent-gold: #ffc400;
+      --accent-purple: #e040fb;
+      --text: #e2e8f0;
+      --text-dim: #8ba2bf;
+      --grid: rgba(0, 210, 255, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      overflow: hidden;
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    #canvas-container {
+      position: relative;
+      flex: 1;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 45% 45%, #0b172a 0%, #010307 100%),
+        linear-gradient(to right, var(--grid) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+      background-size: 100% 100%, 42px 42px, 42px 42px;
+      overflow: hidden;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hud-header {
+      position: absolute;
+      top: 24px;
+      left: 28px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border-bright);
+      backdrop-filter: blur(16px);
+      padding: 16px 26px;
+      border-radius: 12px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.75);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .hud-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hud-badge {
+      font-size: 0.78rem;
+      padding: 4px 12px;
+      border-radius: 6px;
+      background: rgba(0, 210, 255, 0.12);
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      font-weight: 700;
+      font-family: monospace;
+      letter-spacing: 0.5px;
+    }
+
+    .hud-sub {
+      font-size: 0.88rem;
+      color: var(--text-dim);
+      margin-top: 8px;
+      font-weight: 500;
+    }
+
+    #control-panel {
+      width: 440px;
+      height: 100%;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border-bright);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      padding: 26px;
+      gap: 18px;
+      box-shadow: -15px 0 45px rgba(0,0,0,0.8);
+      z-index: 10;
+      overflow-y: auto;
+    }
+
+    .panel-section-title {
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-bright);
+      color: var(--text);
+      padding: 14px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 0.96rem;
+      font-weight: 700;
+      text-align: left;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn:hover {
+      background: rgba(0, 210, 255, 0.08);
+      border-color: var(--accent-blue);
+      transform: translateY(-2px);
+    }
+
+    .btn.active {
+      background: linear-gradient(90deg, rgba(0, 210, 255, 0.22) 0%, rgba(0, 210, 255, 0.04) 100%);
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+      box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+    }
+
+    .btn.boost.active {
+      background: linear-gradient(90deg, rgba(255, 106, 0, 0.25) 0%, rgba(255, 106, 0, 0.04) 100%);
+      border-color: var(--accent-orange);
+      color: var(--accent-orange);
+      box-shadow: 0 0 22px rgba(255, 106, 0, 0.35);
+    }
+
+    .btn-doc {
+      background: linear-gradient(90deg, rgba(0, 210, 255, 0.15) 0%, rgba(224, 64, 251, 0.1) 100%) !important;
+      border: 1px solid var(--accent-blue) !important;
+      color: #fff !important;
+      box-shadow: 0 0 15px rgba(0, 210, 255, 0.2);
+    }
+
+    .btn-doc:hover {
+      background: linear-gradient(90deg, rgba(0, 210, 255, 0.25) 0%, rgba(224, 64, 251, 0.2) 100%) !important;
+      border-color: #fff !important;
+    }
+
+    .telemetry-card {
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .metric-name {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      font-weight: 600;
+    }
+
+    .metric-value {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'Courier New', Courier, monospace;
+      margin-top: 2px;
+    }
+
+    .legend-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: rgba(0,0,0,0.35);
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .legend-indicator {
+      width: 14px;
+      height: 7px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    .info-pane {
+      background: rgba(12, 20, 36, 0.8);
+      border-left: 3px solid var(--accent-cyan);
+      padding: 14px 16px;
+      border-radius: 0 8px 8px 0;
+      font-size: 0.85rem;
+      line-height: 1.65;
+      color: #cbd5e1;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(2, 4, 8, 0.88);
+      backdrop-filter: blur(14px);
+      z-index: 100;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .modal-content {
+      width: 100%;
+      max-width: 820px;
+      max-height: 88vh;
+      background: #09111e;
+      border: 1px solid var(--border-bright);
+      border-radius: 16px;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 20px 26px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(13, 22, 38, 0.6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 1.18rem;
+      font-weight: 800;
+      color: var(--accent-blue);
+      letter-spacing: 0.8px;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 1.6rem;
+      cursor: pointer;
+      line-height: 1;
+      transition: color 0.2s ease;
+    }
+
+    .modal-close:hover { color: var(--accent-red); }
+
+    .modal-body {
+      padding: 28px 32px;
+      overflow-y: auto;
+      color: #d1dced;
+      font-size: 0.92rem;
+      line-height: 1.85;
+    }
+
+    .modal-body h3 {
+      color: #fff;
+      font-size: 1.05rem;
+      margin: 22px 0 8px 0;
+      border-left: 3px solid var(--accent-blue);
+      padding-left: 10px;
+    }
+
+    .modal-body h3:first-child { margin-top: 0; }
+
+    .modal-body p { margin-bottom: 12px; }
+
+    .modal-body strong { color: #fff; }
+
+    .modal-body ul {
+      margin-left: 20px;
+      margin-bottom: 14px;
+    }
+
+    .modal-body li { margin-bottom: 6px; }
+
+    .modal-body .note-box {
+      background: rgba(16, 26, 44, 0.7);
+      border: 1px solid var(--border-bright);
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin: 14px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="canvas-container">
+    <canvas id="engineCanvas"></canvas>
+    
+    <div class="hud-header">
+      <div class="hud-title">
+        <span>STELLANTIS 1.2 PURETECH</span>
+        <span class="hud-badge" id="badgeStatus">怠速真空工況</span>
+      </div>
+      <div class="hud-sub" id="hudSubText">
+        汽門室蓋暗道導通 ➔ 碳罐三通抽入歧管 ➔ 渦輪微轉待命
+      </div>
+    </div>
+  </div>
+
+  <div id="control-panel">
+    <div class="panel-section-title">工程文檔與說明書 (Documentation)</div>
+    <div class="btn-group">
+      <button class="btn btn-doc" onclick="openDocModal()">
+        <span>📖 系統運作原理解析說明書</span>
+        <span style="font-size:0.75rem; color:var(--accent-blue);">[點擊查閱]</span>
+      </button>
+    </div>
+
+    <div class="panel-section-title">工況動力切換 (Dynamic State)</div>
+    <div class="btn-group">
+      <button class="btn active" id="btnIdle" onclick="switchState('idle')">
+        <span>① 怠速 / 巡航低負載</span>
+        <span style="font-size:0.75rem; color:var(--accent-blue);">[歧管負壓]</span>
+      </button>
+      <button class="btn boost" id="btnBoost" onclick="switchState('boost')">
+        <span>② 全負荷渦輪增壓</span>
+        <span style="font-size:0.75rem; color:var(--accent-orange);">[歧管正壓]</span>
+      </button>
+    </div>
+
+    <div class="panel-section-title">流體壓力與遙測 (Telemetry)</div>
+    <div class="telemetry-card">
+      <div>
+        <div class="metric-name">進氣歧管壓力 (MAP)</div>
+        <div class="metric-value" id="dispMap">-0.68 bar</div>
+      </div>
+      <div>
+        <div class="metric-name">渦輪增壓值 (Boost)</div>
+        <div class="metric-value" id="dispBoost">0.00 bar</div>
+      </div>
+      <div>
+        <div class="metric-name">曲軸引擎轉速</div>
+        <div class="metric-value" id="dispRpm">820 RPM</div>
+      </div>
+      <div>
+        <div class="metric-name">渦輪葉輪轉速</div>
+        <div class="metric-value" id="dispTurbo">18,500 RPM</div>
+      </div>
+    </div>
+
+    <div class="panel-section-title">動態流體色譜 (Stream Spectrum)</div>
+    <div class="legend-box">
+      <div class="legend-item">
+        <div class="legend-indicator" style="background: var(--accent-blue); box-shadow: 0 0 8px var(--accent-blue);"></div>
+        <span>車頭大氣冷空氣 (1.0 bar 常溫進氣)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-indicator" style="background: var(--accent-orange); box-shadow: 0 0 8px var(--accent-orange);"></div>
+        <span>渦輪增壓高溫壓縮氣 (120~150°C 衝向中冷)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-indicator" style="background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan);"></div>
+        <span>中冷降溫高含氧空氣 (約 45°C 灌入汽缸)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-indicator" style="background: var(--accent-gold); box-shadow: 0 0 8px var(--accent-gold);"></div>
+        <span>曲軸箱微油霧吹漏氣 (PCV Blow-by)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-indicator" style="background: var(--accent-purple); box-shadow: 0 0 8px var(--accent-purple);"></div>
+        <span>油箱活性碳罐脫附氣流 (EVAP Purge Vapour)</span>
+      </div>
+    </div>
+
+    <div class="panel-section-title">多迴路物理邏輯實況</div>
+    <div class="info-pane" id="dispDesc">
+      <b>怠速低負載作動中：</b><br>
+      • <b>主進氣：</b>節氣門微開，歧管呈強負壓吸力。<br>
+      • <b>PCV 廢氣：</b>由汽門室蓋經頂部暗道直接吸入歧管。<br>
+      • <b>EVAP 脫附：</b>碳罐電磁閥氣體進入三通，直接被歧管真空吸入。
+    </div>
+  </div>
+
+  <!-- 說明書 Modal -->
+  <div class="modal-overlay" id="docModal" onclick="closeDocModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title">技術解析：EB2 1.2 PureTech 進氣、增壓、PCV 與 EVAP 整合運作說明</div>
+        <button class="modal-close" onclick="closeDocModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="note-box">
+          我從現場維修與實車解構的視角來觀察這顆 <strong>Stellantis 1.2 PureTech (EB2 系列)</strong> 渦輪引擎，很多人常被引擎室裡交錯的管路誤導，甚至把氣流方向標反。事實上，這套系統的所有走線，都是圍繞著渦輪引擎最根本的物理特質——<strong>「進氣歧管在怠速時是負壓（抽真空），在增壓時是正壓（高壓噴射）」</strong>——所做出的雙模態切換設計。
+        </div>
+
+        <h3>一、 主進氣與渦輪增壓冷卻迴路</h3>
+        <p>引擎的主進氣並不是單向直通，而是一個環繞引擎本體的逆時針大循環：</p>
+        <ul>
+          <li><strong>冷空氣吸入：</strong> 車頭迎風面常溫空氣從<strong>右前水箱架導流口</strong>進入，沿著右側粗管<strong>由前往後</strong>吸入位於引擎後上方的空氣濾清器集氣箱（Air Filter Box）。</li>
+          <li><strong>渦輪進氣端：</strong> 過濾後的乾淨空氣從集氣箱出風口，經波紋軟管<strong>由後往前</strong>被抽入位於排氣歧管下方的渦輪增壓器（Compressor Inlet）。</li>
+          <li><strong>壓縮與冷卻：</strong> 空氣經葉輪高速加壓後溫度驟升至 120°C~150°C，從前方金屬/耐壓硬管<strong>由右向左</strong>排出，直接打入安裝在車頭左前下方的前置中冷器（Intercooler）。</li>
+          <li><strong>回灌燃燒室：</strong> 空氣降溫冷卻至約 45°C（氧密度提高）後，經由左側耐壓管<strong>由前往後</strong>送往電子節氣門，分配進入三缸燃燒室。</li>
+        </ul>
+
+        <h3>二、 PCV 曲軸箱通風：雙模態切換機制</h3>
+        <p>EB2 引擎為了保持極致緊湊，將 PCV 系統分為「缸頂暗道」與「外部管路」兩條路徑：</p>
+        <ul>
+          <li><strong>低負載 / 怠速（歧管負壓約 -0.68 bar）：</strong><br>
+            節氣門微開，進氣歧管內吸力極大。活塞環竄出的吹漏氣進入汽門室蓋，經由頂部的多道金屬迷宮擋板冷凝機油滴，純氣體透過整合在內部的直立單向閥，<strong>直接走汽缸蓋頂端貼合面的內鑄金屬暗道進入進氣歧管</strong>。此路徑位於汽缸上方，絕不穿越活塞與燃燒室。外觀完全看不到通往歧管的外接軟管。此時外部呼吸管兩端幾無壓差，處於休眠狀態。
+          </li>
+          <li><strong>全負荷 / 渦輪增壓（歧管正壓約 +1.30 bar）：</strong><br>
+            歧管充滿高壓壓縮空氣，缸頂暗道的單向閥受正壓推擠<strong>瞬間閉鎖</strong>，防止增壓空氣逆灌炸裂曲軸箱油封。此時高速運轉的渦輪進口端因氣流快速抽吸形成微負壓（文氏效應），曲軸箱氣體轉向，改由引擎中央外露的<strong>外部呼吸軟管（Breather Hose）由左向右，匯入空濾至渦輪之間的進氣導管側壁接口</strong>，被強吸入渦輪壓縮機前端，與大氣混合後再次增壓燃燒。
+          </li>
+        </ul>
+
+        <h3>三、 歧管後方 EVAP 碳罐三通管（Ejector Tee）雙向脫附機制</h3>
+        <p>實車在進氣歧管後方設有一組<strong>整合了雙單向閥與文氏管的三通管總成（Ejector Tee Pipe）</strong>，它將碳罐電磁閥送出的燃油蒸氣進行換向分配：</p>
+        <ul>
+          <li><strong>第一端（來向）：</strong> 接收來自油箱活性碳罐電磁閥送來的汽油蒸氣。</li>
+          <li><strong>第二端（歧管端）：</strong> 直插進氣歧管後方的專用抽氣接頭。<strong>怠速工況下</strong>歧管真空直接將油氣從三通管吸入燃燒；增壓時內建止回閥閉鎖防止倒灌。</li>
+          <li><strong>第三端（渦輪端）：</strong> 延伸至<strong>空濾出風口與渦輪之間的進氣導管側壁</strong>。<strong>增壓工況下</strong>歧管端關閉，高速進氣產生的負壓將油氣自三通管抽向渦輪前端，隨新鮮空氣一併壓入汽缸。</li>
+        </ul>
+
+        <div class="note-box" style="border-color: var(--accent-cyan);">
+          <strong>總結結論：</strong><br>
+          只要掌握「怠速靠歧管真空吸入暗道與歧管三通；增壓靠渦輪前端進氣導管抽吸呼吸管與三通換向」這一原則，整顆 EB2 引擎的氣流、壓力儀表以及油氣分離原理就能完全吻合，所有標註方向也就不會再出現逆向顛倒的錯誤。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('engineCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let w, h;
+    function resize() {
+      w = canvas.width = canvas.offsetWidth;
+      h = canvas.height = canvas.offsetHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    let state = 'idle';
+    let engineCycle = 0;
+    let turboAngle = 0;
+
+    function openDocModal() {
+      document.getElementById('docModal').style.display = 'flex';
+    }
+
+    function closeDocModal(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('docModal').style.display = 'none';
+    }
+
+    function switchState(newState) {
+      state = newState;
+      document.getElementById('btnIdle').classList.toggle('active', state === 'idle');
+      document.getElementById('btnBoost').classList.toggle('active', state === 'boost');
+
+      const badge = document.getElementById('badgeStatus');
+      const sub = document.getElementById('hudSubText');
+      const map = document.getElementById('dispMap');
+      const boost = document.getElementById('dispBoost');
+      const rpm = document.getElementById('dispRpm');
+      const turbo = document.getElementById('dispTurbo');
+      const desc = document.getElementById('dispDesc');
+
+      if (state === 'idle') {
+        badge.textContent = '怠速真空工況';
+        badge.style.borderColor = 'var(--accent-blue)';
+        badge.style.color = 'var(--accent-blue)';
+        badge.style.background = 'rgba(0, 210, 255, 0.12)';
+        sub.textContent = '汽門室蓋暗道導通 ➔ 碳罐三通抽入歧管 ➔ 渦輪微轉待命';
+        map.textContent = '-0.68 bar';
+        boost.textContent = '0.00 bar';
+        rpm.textContent = '820 RPM';
+        turbo.textContent = '18,500 RPM';
+        desc.innerHTML = '<b>怠速低負載作動中：</b><br>• <b>主進氣：</b>節氣門微開，歧管呈強負壓吸力。<br>• <b>PCV 廢氣：</b>由汽門室蓋經頂部暗道直接吸入歧管。<br>• <b>EVAP 脫附：</b>碳罐電磁閥氣體進入三通，直接被歧管真空吸入。';
+      } else {
+        badge.textContent = '全負荷渦輪增壓';
+        badge.style.borderColor = 'var(--accent-orange)';
+        badge.style.color = 'var(--accent-orange)';
+        badge.style.background = 'rgba(255, 106, 0, 0.16)';
+        sub.textContent = '暗道止回閥閉鎖 ➔ 渦輪進氣管文氏負壓 ➔ 外部呼吸管與碳罐三通強抽';
+        map.textContent = '+1.30 bar';
+        boost.textContent = '+1.30 bar';
+        rpm.textContent = '4,500 RPM';
+        turbo.textContent = '175,000 RPM';
+        desc.innerHTML = '<b>全負荷增壓作動中：</b><br>• <b>歧管正壓：</b>缸頂暗道與三通歧管端止回閥閉鎖防逆衝。<br>• <b>PCV 強制換向：</b>由外部軟管匯入渦輪前進氣導管。<br>• <b>EVAP 換向：</b>三通管轉向將油氣導入渦輪進氣導管二次壓縮。';
+      }
+    }
+
+    class Particle {
+      constructor(path, color, speedBase, size = 5) {
+        this.path = path;
+        this.color = color;
+        this.speedBase = speedBase;
+        this.size = size;
+        this.t = Math.random();
+      }
+
+      update(mult) {
+        this.t += this.speedBase * mult;
+        if (this.t > 1) this.t = 0;
+      }
+
+      draw() {
+        if (!this.path || this.path.length < 2) return;
+        const segs = this.path.length - 1;
+        const s = this.t * segs;
+        const idx = Math.floor(s);
+        const sub = s - idx;
+
+        if (idx >= segs) return;
+        const p1 = this.path[idx];
+        const p2 = this.path[idx + 1];
+
+        const x = p1.x + (p2.x - p1.x) * sub;
+        const y = p1.y + (p2.y - p1.y) * sub;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 12;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    let streams = [];
+
+    function getPipes(ox, oy) {
+      const teeX = ox - 70;
+      const teeY = oy - 250;
+
+      return {
+        coldInlet: [
+          { x: ox + 490, y: oy + 290 },
+          { x: ox + 490, y: oy - 260 },
+          { x: ox + 330, y: oy - 260 }
+        ],
+        airBoxToTurbo: [
+          { x: ox + 250, y: oy - 260 },
+          { x: ox + 205, y: oy - 100 },
+          { x: ox + 265, y: oy + 150 }
+        ],
+        hotCharge: [
+          { x: ox + 205, y: oy + 150 },
+          { x: ox - 120, y: oy + 150 },
+          { x: ox - 370, y: oy + 270 }
+        ],
+        coldCharge: [
+          { x: ox - 370, y: oy + 225 },
+          { x: ox - 370, y: oy - 230 },
+          { x: ox - 190, y: oy - 230 }
+        ],
+        breatherHose: [
+          { x: ox - 110, y: oy - 145 },
+          { x: ox + 80, y: oy - 20 },
+          { x: ox + 225, y: oy + 35 }
+        ],
+        internalPcv: [
+          { x: ox - 150, y: oy - 190 },
+          { x: ox - 150, y: oy - 240 }
+        ],
+        evapFromTank: [
+          { x: ox + 20, y: oy - 310 },
+          { x: ox + 45, y: oy - 260 }
+        ],
+        evapToTee: [
+          { x: ox + 45, y: oy - 260 },
+          { x: teeX, y: teeY }
+        ],
+        evapTeeToManifold: [
+          { x: teeX, y: teeY },
+          { x: ox - 130, y: oy - 245 }
+        ],
+        evapTeeToTurbo: [
+          { x: teeX, y: teeY },
+          { x: ox + 175, y: oy - 140 },
+          { x: ox + 215, y: oy - 15 }
+        ]
+      };
+    }
+
+    function initStreams(ox, oy) {
+      streams = [];
+      const p = getPipes(ox, oy);
+
+      for (let i = 0; i < 24; i++) streams.push(new Particle(p.coldInlet, '#00d2ff', 0.003, 5.5));
+      for (let i = 0; i < 24; i++) streams.push(new Particle(p.airBoxToTurbo, '#00d2ff', 0.0035, 5.5));
+      for (let i = 0; i < 30; i++) streams.push(new Particle(p.hotCharge, '#ff6a00', 0.0048, 6));
+      for (let i = 0; i < 30; i++) streams.push(new Particle(p.coldCharge, '#00ffaa', 0.0048, 6));
+
+      for (let i = 0; i < 18; i++) {
+        let pt = new Particle(p.breatherHose, '#ffc400', 0.0032, 4.5);
+        pt.isBreather = true;
+        streams.push(pt);
+      }
+      for (let i = 0; i < 18; i++) {
+        let pt = new Particle(p.internalPcv, '#ffc400', 0.0032, 4.5);
+        pt.isInternal = true;
+        streams.push(pt);
+      }
+
+      for (let i = 0; i < 10; i++) streams.push(new Particle(p.evapFromTank, '#e040fb', 0.0035, 4.5));
+      for (let i = 0; i < 12; i++) streams.push(new Particle(p.evapToTee, '#e040fb', 0.004, 4.5));
+
+      for (let i = 0; i < 14; i++) {
+        let pt = new Particle(p.evapTeeToManifold, '#e040fb', 0.0045, 4.5);
+        pt.isEvapIdle = true;
+        streams.push(pt);
+      }
+      for (let i = 0; i < 16; i++) {
+        let pt = new Particle(p.evapTeeToTurbo, '#e040fb', 0.0045, 4.5);
+        pt.isEvapBoost = true;
+        streams.push(pt);
+      }
+    }
+
+    function drawTechPipe(path, outerColor, innerColor, width = 42) {
+      if (path.length < 2) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(path[0].x, path[0].y);
+      for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.strokeStyle = outerColor;
+      ctx.lineWidth = width;
+      ctx.stroke();
+
+      ctx.strokeStyle = innerColor;
+      ctx.lineWidth = width * 0.28;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawClearLabel(x, y, text, subText, color = '#00d2ff') {
+      ctx.save();
+      ctx.font = 'bold 14px -apple-system, sans-serif';
+      const mainWidth = ctx.measureText(text).width;
+      ctx.font = '11px monospace';
+      const subWidth = subText ? ctx.measureText(subText).width : 0;
+      const boxW = Math.max(mainWidth, subWidth) + 26;
+      const boxH = subText ? 44 : 28;
+
+      ctx.fillStyle = 'rgba(5, 10, 20, 0.95)';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.roundRect(x - boxW/2, y - boxH/2, boxW, boxH, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px -apple-system, sans-serif';
+      ctx.fillText(text, x, subText ? y - 8 : y);
+
+      if (subText) {
+        ctx.fillStyle = color;
+        ctx.font = '11px monospace';
+        ctx.fillText(subText, x, y + 11);
+      }
+      ctx.restore();
+    }
+
+    function drawEngineModel(ox, oy) {
+      const bW = 400;
+      const bH = 260;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(45, 85, 140, 0.7)';
+      ctx.lineWidth = 2.4;
+      ctx.fillStyle = 'rgba(8, 16, 30, 0.85)';
+      ctx.beginPath();
+      ctx.roundRect(ox - 200, oy - 130, bW, bH, 20);
+      ctx.fill();
+      ctx.stroke();
+
+      const cylGap = 105;
+      for (let i = 0; i < 3; i++) {
+        const cx = ox - 105 + i * cylGap;
+        const phase = i * (Math.PI * 2 / 3);
+        const pDisp = Math.sin(engineCycle + phase) * 28;
+        const pistonY = oy + pDisp + 15;
+
+        ctx.strokeStyle = 'rgba(0, 210, 255, 0.35)';
+        ctx.strokeRect(cx - 36, oy - 65, 72, 130);
+
+        ctx.fillStyle = 'rgba(32, 65, 105, 0.95)';
+        ctx.fillRect(cx - 34, pistonY, 68, 28);
+        ctx.strokeStyle = '#00d2ff';
+        ctx.strokeRect(cx - 34, pistonY, 68, 28);
+
+        ctx.strokeStyle = 'rgba(140, 180, 230, 0.6)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(cx, pistonY + 28);
+        ctx.lineTo(cx + Math.cos(engineCycle + phase) * 16, oy + 105);
+        ctx.stroke();
+
+        const vLift = Math.max(0, Math.sin(engineCycle + phase)) * 12;
+        ctx.strokeStyle = vLift > 2 ? '#00ffaa' : 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(cx - 14, oy - 65);
+        ctx.lineTo(cx - 14, oy - 65 + vLift);
+        ctx.stroke();
+      }
+
+      // 汽門室蓋 (內建迷宮分離腔)
+      ctx.strokeStyle = '#ffc400';
+      ctx.fillStyle = 'rgba(255, 196, 0, 0.08)';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.roundRect(ox - 180, oy - 190, 360, 54, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255, 196, 0, 0.45)';
+      ctx.lineWidth = 2;
+      for (let mx = ox - 140; mx <= ox + 140; mx += 26) {
+        ctx.beginPath();
+        ctx.moveTo(mx, oy - 184);
+        ctx.lineTo(mx, oy - 142);
+        ctx.stroke();
+      }
+
+      // 空氣濾清器
+      ctx.fillStyle = 'rgba(0, 210, 255, 0.09)';
+      ctx.strokeStyle = '#00d2ff';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.roundRect(ox + 250, oy - 310, 150, 95, 14);
+      ctx.fill();
+      ctx.stroke();
+      for (let fx = ox + 268; fx < ox + 385; fx += 13) {
+        ctx.strokeStyle = 'rgba(0, 210, 255, 0.35)';
+        ctx.beginPath();
+        ctx.moveTo(fx, oy - 298);
+        ctx.lineTo(fx, oy - 228);
+        ctx.stroke();
+      }
+
+      // 前置中冷器
+      ctx.fillStyle = 'rgba(0, 255, 170, 0.09)';
+      ctx.strokeStyle = '#00f0aa';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.roundRect(ox - 440, oy + 160, 140, 145, 14);
+      ctx.fill();
+      ctx.stroke();
+      for (let fy = oy + 175; fy < oy + 295; fy += 12) {
+        ctx.strokeStyle = 'rgba(0, 255, 170, 0.35)';
+        ctx.beginPath();
+        ctx.moveTo(ox - 428, fy);
+        ctx.lineTo(ox - 312, fy);
+        ctx.stroke();
+      }
+
+      // 渦輪增壓器
+      const tx = ox + 240;
+      const ty = oy + 150;
+      ctx.fillStyle = 'rgba(255, 106, 0, 0.18)';
+      ctx.strokeStyle = '#ff6a00';
+      ctx.lineWidth = 2.8;
+      ctx.beginPath();
+      ctx.arc(tx, ty, 52, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(tx, ty);
+      ctx.rotate(turboAngle);
+      for (let b = 0; b < 6; b++) {
+        ctx.rotate((Math.PI * 2) / 6);
+        ctx.strokeStyle = '#ffc400';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(18, -25, 42, -12);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // 進氣歧管
+      ctx.fillStyle = state === 'idle' ? 'rgba(0, 210, 255, 0.16)' : 'rgba(255, 106, 0, 0.2)';
+      ctx.strokeStyle = state === 'idle' ? '#00d2ff' : '#ff6a00';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.roundRect(ox - 190, oy - 275, 120, 68, 12);
+      ctx.fill();
+      ctx.stroke();
+
+      // EVAP 碳罐電磁閥
+      const evX = ox + 45;
+      const evY = oy - 260;
+      ctx.fillStyle = 'rgba(224, 64, 251, 0.22)';
+      ctx.strokeStyle = '#e040fb';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.roundRect(evX - 26, evY - 18, 52, 36, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      // 實體三通管節點
+      const teeX = ox - 70;
+      const teeY = oy - 250;
+      ctx.fillStyle = '#e040fb';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(teeX, teeY, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // ==================== 徹底避讓、絕不遮擋的全新標籤座標 ====================
+      
+      // 1. 新鮮空氣入口 (右下邊界淨空區)
+      drawClearLabel(ox + 490, oy + 325, "新鮮冷空氣入口", "右前格柵導流鼻", "#00d2ff");
+      
+      // 2. 空氣濾清器總成 (右上頂部淨空區)
+      drawClearLabel(ox + 325, oy - 335, "空氣濾清器總成", "Air Filter Box", "#00d2ff");
+      
+      // 3. 渦輪增壓器 (右下渦輪外側)
+      drawClearLabel(tx, ty + 80, "渦輪增壓器", "Compressor", "#ff6a00");
+      
+      // 4. 前置中冷器 (左下中冷器下方)
+      drawClearLabel(ox - 370, oy + 335, "前置中冷器", "Intercooler", "#00ffaa");
+      
+      // 5. 進氣歧管 (移至歧管金屬框正上方，徹底與三通拉開距離)
+      drawClearLabel(ox - 130, oy - 305, "進氣歧管", state === 'idle' ? "-0.68 bar 真空" : "+1.30 bar 增壓", state === 'idle' ? '#00d2ff' : '#ff6a00');
+      
+      // 6. EVAP 碳罐電磁閥 (移至電磁閥右上淨空區)
+      drawClearLabel(evX + 65, evY - 35, "EVAP 碳罐電磁閥", "PWM 控制脫附", "#e040fb");
+
+      // 7. 歧管後方三通管 (獨立移至三通節點正上方空域，不擋歧管也不擋電磁閥)
+      drawClearLabel(teeX, teeY - 35, "歧管後方三通管", state === 'idle' ? "向左抽入歧管" : "向右換向抽入導管", "#e040fb");
+
+      // 8. 汽門室蓋 (下移至迷宮板正中央清晰處)
+      drawClearLabel(ox, oy - 165, "汽門室蓋 (油氣分離室)", "Oil Separator Chamber", "#ffc400");
+
+      // 9. 缸頂暗道單向止回閥 (移至左側暗道管路外側淨空區，不再壓在汽門室蓋頭頂)
+      const vStatus = state === 'idle' ? "✓ 暗道PCV開啟 (歧管吸入)" : "✕ 暗道PCV閉鎖 (正壓防衝)";
+      const vColor = state === 'idle' ? "#00ffaa" : "#ff3366";
+      drawClearLabel(ox - 240, oy - 195, "缸頂暗道單向止回閥", vStatus, vColor);
+
+      // 10. 外部呼吸軟管 (移出汽缸活塞區域，放在右下方管路旁空地，活塞動作完整可見)
+      drawClearLabel(ox + 110, oy + 30, "外部呼吸軟管", state === 'boost' ? "高增壓強抽" : "低速休眠", "#ffc400");
+
+      ctx.restore();
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, w, h);
+
+      const ox = w * 0.44;
+      const oy = h * 0.50;
+
+      const cycleStep = state === 'boost' ? 0.22 : 0.06;
+      engineCycle += cycleStep;
+      turboAngle += state === 'boost' ? 0.38 : 0.09;
+
+      if (streams.length === 0) initStreams(ox, oy);
+
+      const p = getPipes(ox, oy);
+
+      // 主進氣與增壓氣流
+      drawTechPipe(p.coldInlet, 'rgba(0, 210, 255, 0.12)', 'rgba(0, 210, 255, 0.45)', 42);
+      drawTechPipe(p.airBoxToTurbo, 'rgba(0, 210, 255, 0.15)', 'rgba(0, 210, 255, 0.55)', 40);
+      drawTechPipe(p.hotCharge, 'rgba(255, 106, 0, 0.16)', 'rgba(255, 106, 0, 0.55)', 42);
+      drawTechPipe(p.coldCharge, 'rgba(0, 255, 170, 0.16)', 'rgba(0, 255, 170, 0.55)', 42);
+
+      // PCV 呼吸管
+      drawTechPipe(p.breatherHose, state === 'boost' ? 'rgba(255, 196, 0, 0.3)' : 'rgba(255, 196, 0, 0.05)', 'rgba(255, 196, 0, 0.7)', 18);
+      drawTechPipe(p.internalPcv, state === 'idle' ? 'rgba(0, 255, 170, 0.35)' : 'rgba(255, 51, 102, 0.06)', 'rgba(0, 255, 170, 0.7)', 16);
+
+      // EVAP 脫附管線
+      drawTechPipe(p.evapFromTank, 'rgba(224, 64, 251, 0.25)', 'rgba(224, 64, 251, 0.7)', 12);
+      drawTechPipe(p.evapToTee, 'rgba(224, 64, 251, 0.35)', 'rgba(224, 64, 251, 0.8)', 12);
+      drawTechPipe(p.evapTeeToManifold, state === 'idle' ? 'rgba(224, 64, 251, 0.35)' : 'rgba(224, 64, 251, 0.04)', 'rgba(224, 64, 251, 0.8)', 12);
+      drawTechPipe(p.evapTeeToTurbo, state === 'boost' ? 'rgba(224, 64, 251, 0.35)' : 'rgba(224, 64, 251, 0.04)', 'rgba(224, 64, 251, 0.8)', 12);
+
+      drawEngineModel(ox, oy);
+
+      const speedMult = state === 'boost' ? 2.5 : 1.0;
+      streams.forEach(pt => {
+        if (pt.isBreather && state === 'idle') return;
+        if (pt.isInternal && state === 'boost') return;
+        if (pt.isEvapIdle && state === 'boost') return;
+        if (pt.isEvapBoost && state === 'idle') return;
+
+        pt.update(speedMult);
+        pt.draw();
+      });
+
+      requestAnimationFrame(render);
+    }
+
+    window.addEventListener('resize', () => {
+      resize();
+      const ox = w * 0.44;
+      const oy = h * 0.50;
+      initStreams(ox, oy);
+    });
+
+    render();
+  </script>
+</body>
+</html>
