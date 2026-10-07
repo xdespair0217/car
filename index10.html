@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alfa Romeo 容積傳感器故障 B1073-96 漏電診斷與電錶量測教學平台</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brandDark: '#080c14',
+                        panelDark: '#0f172a',
+                        cardDark: '#172033',
+                        alfaRed: '#e51a2e',
+                        cyanGlow: '#00e5ff',
+                        amberWarn: '#f59e0b',
+                        emeraldOk: '#10b981'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'Microsoft JhengHei', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @keyframes pulseGlow {
+            0%, 100% { filter: drop-shadow(0 0 4px rgba(0, 229, 255, 0.4)); }
+            50% { filter: drop-shadow(0 0 16px rgba(0, 229, 255, 0.85)); }
+        }
+        @keyframes alertFlash {
+            0%, 100% { opacity: 0.95; }
+            50% { opacity: 0.35; }
+        }
+        @keyframes flowLine {
+            0% { stroke-dashoffset: 40; }
+            100% { stroke-dashoffset: 0; }
+        }
+        .anim-glow { animation: pulseGlow 2.5s infinite ease-in-out; }
+        .anim-alert { animation: alertFlash 1.2s infinite ease-in-out; }
+        .current-flow {
+            stroke-dasharray: 6 4;
+            animation: flowLine 1.2s linear infinite;
+        }
+        .current-leak {
+            stroke-dasharray: 8 4;
+            animation: flowLine 0.45s linear infinite;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-brandDark text-slate-100 min-h-screen flex flex-col font-sans select-none overflow-x-hidden">
+
+    <!-- Top Unified Header Navigation -->
+    <header class="h-14 bg-panelDark/95 backdrop-blur border-b border-slate-800 px-3 md:px-6 flex items-center justify-between sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <div class="w-3.5 h-3.5 rounded-full bg-alfaRed shadow-[0_0_12px_#e51a2e]"></div>
+            <span class="text-xs font-mono font-bold tracking-widest text-alfaRed uppercase border border-alfaRed/40 px-2 py-0.5 rounded hidden sm:inline-block">FCA Te.Se.O SOP</span>
+            <h1 class="text-xs sm:text-sm md:text-base font-bold text-white flex items-center gap-2">
+                <span>BCM B1073-96 容積傳感器故障 &amp; 靜態漏電量測全功能平台</span>
+            </h1>
+        </div>
+
+        <div class="flex items-center gap-2 font-mono text-xs">
+            <span class="text-slate-400 text-[11px] hidden md:inline">切換控制器設於右側欄位 ➔</span>
+            <button id="quickResetBtn" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition active:scale-95 text-[11px]">
+                重置當前狀態
+            </button>
+        </div>
+    </header>
+
+    <!-- Unified Master Dashboard Workspace -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden max-w-full">
+
+        <!-- ======================= LEFT: DYNAMIC ANIMATED TECHNICAL SVG CANVAS ======================= -->
+        <section class="lg:w-7/12 xl:w-2/3 p-3 md:p-5 flex flex-col bg-brandDark/90 border-b lg:border-b-0 lg:border-r border-slate-800 relative min-h-[460px] lg:min-h-auto justify-between">
+            
+            <!-- Canvas HUD Bar -->
+            <div class="flex items-center justify-between bg-cardDark/85 backdrop-blur border border-slate-700/70 rounded-lg p-2.5 px-3 mb-2 z-10">
+                <div class="flex items-center gap-2">
+                    <div class="p-1 rounded bg-slate-900 border border-slate-700 text-cyanGlow">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400 font-mono tracking-wider" id="canvasDomainTag">SOP 實境診斷模擬</div>
+                        <div id="canvasActiveTitle" class="text-xs sm:text-sm font-bold text-white tracking-wide">單元 1: 車輛進廠現象與基礎電源量測</div>
+                    </div>
+                </div>
+
+                <!-- Scene-specific mini toggles on top of SVG canvas -->
+                <div class="flex items-center gap-1.5" id="canvasInteractiveControls">
+                    <!-- Injected dynamically based on current step -->
+                </div>
+            </div>
+
+            <!-- SVG Visualizer Stage -->
+            <div class="relative flex-1 w-full bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-center p-2 overflow-hidden shadow-inner min-h-[380px]">
+                <div class="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40"></div>
+                
+                <svg id="primarySvgCanvas" viewBox="0 0 880 500" class="w-full h-full max-h-[520px] select-none z-10 drop-shadow-lg" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <linearGradient id="panelGrad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#1e293b"/>
+                            <stop offset="100%" stop-color="#0f172a"/>
+                        </linearGradient>
+                        <linearGradient id="roofMatGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#334155"/>
+                            <stop offset="100%" stop-color="#1e293b"/>
+                        </linearGradient>
+                        <filter id="neonCyan" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                        </filter>
+                        <filter id="neonRed" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+                        </filter>
+                    </defs>
+
+                    <!-- DYNAMIC INJECTED SVG CONTENT -->
+                    <g id="svgDynamicStage"></g>
+                </svg>
+
+                <!-- Floating Diagnostic HUD badge -->
+                <div id="hudTelemetryBadge" class="absolute bottom-3 left-3 bg-slate-900/90 border border-slate-700/90 backdrop-blur rounded-lg px-3 py-1.5 text-[11px] font-mono flex items-center gap-3 z-20 shadow-md">
+                    <span class="flex items-center gap-1.5 text-slate-300">
+                        <span class="w-2 h-2 rounded-full bg-cyanGlow animate-ping"></span>
+                        <span id="hudParam1Label">系統連線</span>: <strong id="hudParam1Val" class="text-cyanGlow">wiTECH 2 正常</strong>
+                    </span>
+                    <span class="text-slate-600">|</span>
+                    <span class="flex items-center gap-1.5 text-slate-300">
+                        <span id="hudParam2Dot" class="w-2 h-2 rounded-full bg-amberWarn"></span>
+                        <span id="hudParam2Label">靜態電流狀態</span>: <strong id="hudParam2Val" class="text-amberWarn">檢測中...</strong>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Canvas Bottom Status Text -->
+            <div class="mt-2.5 flex items-center justify-between text-xs text-slate-400 font-mono">
+                <span id="canvasBottomHint">💡 請利用右側按鈕切換各排查步驟或實務電錶工法</span>
+                <span id="canvasStepNumber" class="text-cyanGlow font-bold">項目 1 / 6</span>
+            </div>
+        </section>
+
+        <!-- ======================= RIGHT: INTERACTIVE BUTTON DECK & LEARNING CONSOLE ======================= -->
+        <section class="lg:w-5/12 xl:w-1/3 flex flex-col bg-panelDark overflow-y-auto max-h-[calc(100vh-3.5rem)] border-t lg:border-t-0 p-3.5 space-y-3.5">
+            
+            <!-- Context Header Banner -->
+            <div class="p-3 rounded-lg border border-slate-800 bg-cardDark/60 flex items-center justify-between">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-mono text-cyanGlow font-bold uppercase tracking-wider">TECHNICIAN CONTROL DECK</span>
+                    </div>
+                    <h2 class="text-sm md:text-base font-bold text-white mt-0.5">右側快捷操作控制台</h2>
+                </div>
+                <div class="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-cyanGlow">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </div>
+            </div>
+
+            <!-- RIGHT-SIDE MODE SELECTOR BUTTONS (SOP vs Multimeter) -->
+            <div class="bg-slate-900 p-1 rounded-xl border border-slate-700/80 grid grid-cols-2 gap-1 shadow-md">
+                <button id="rightSwitchCaseBtn" class="py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-cyanGlow text-black shadow">
+                    <span>📋 松江案例 SOP</span>
+                </button>
+                <button id="rightSwitchDrainBtn" class="py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white">
+                    <span class="text-amberWarn">⚡</span> <span>實務電錶量測</span>
+                </button>
+            </div>
+
+            <!-- RIGHT-SIDE ACTION BUTTON DECK (Quick Tap Steps) -->
+            <div class="bg-cardDark/90 border border-slate-700/80 rounded-xl p-3 shadow-md">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="buttonDeckTitle" class="text-xs font-mono font-bold text-cyanGlow flex items-center gap-1.5">
+                        <span>▶</span> 快速切換步驟按鈕 (點擊切換)
+                    </span>
+                    <span id="buttonDeckCounter" class="text-[10px] font-mono text-slate-400">步驟 1/6</span>
+                </div>
+                <!-- Step Buttons injected here -->
+                <div id="rightStepButtonsContainer" class="grid grid-cols-2 gap-1.5"></div>
+
+                <!-- Prev/Next Quick Navigation Buttons -->
+                <div class="grid grid-cols-2 gap-2 mt-2.5 pt-2.5 border-t border-slate-800">
+                    <button id="rightPrevBtn" class="py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-slate-300 transition active:scale-95 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center gap-1">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        <span>上一個</span>
+                    </button>
+                    <button id="rightNextBtn" class="py-1.5 px-3 rounded-lg bg-alfaRed hover:bg-red-600 text-white border border-red-500 text-xs font-bold transition active:scale-95 shadow disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center gap-1">
+                        <span>下一個</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- DETAILED STEP EXPLANATION CARD (Updates on button click) -->
+            <div id="rightActiveDetailCard" class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 shadow-md space-y-2">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Bottom Master Workshop Warning Box -->
+            <div class="border border-amberWarn/30 bg-amber-950/20 rounded-xl p-3 shadow-md mt-auto">
+                <div class="flex items-center gap-2 text-amberWarn font-bold text-xs mb-1">
+                    <svg class="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+                    <span>松江廠核心心法（不踩坑準則）</span>
+                </div>
+                <p id="bottomNoteText" class="text-[11px] text-slate-300 leading-relaxed font-sans">
+                    換完頂部控制器或調整橡皮後，上鎖測試靜態電流至少要跑 45 分鐘！確認無再漏電 (降至 0.05A 以下) 才可以交車。
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <!-- ======================= JAVASCRIPT STATE MACHINE & RENDERING LOGIC ======================= -->
+    <script>
+        // Active Domain: 'case' | 'drain'
+        let currentDomain = 'case';
+        let currentCaseStep = 0; // 0 to 5
+        let currentDrainMethod = 'series'; // 'series' | 'clamp' | 'fuse'
+
+        // Interactive States
+        let keyBatteryVolts = 2.7; // <3.0V vs >=3.0V
+        let carCurrentAmps = 0.85; // 0.85A leak vs 0.045A normal
+        let swVersion = '0.8.1'; // '0.8.1' | '0.8.2' | '94X'
+        let rubberInstalled = false; // false = groove defect, true = seated properly
+        let drainSimState = 'leak'; // 'leak' | 'sleep'
+        let bypassSwitchClosed = true; // DMM jumper switch
+
+        // ================= Case SOP Curriculum Data =================
+        const caseStepsData = [
+            {
+                id: 1,
+                title: "進廠症狀與基礎電源檢查",
+                short: "1. 鑰匙與電瓶初檢",
+                badge: "初步排查",
+                desc: "容積傳感器的故障，通常會伴隨著車主無法發動的抱怨，我這邊碰到的客人通常都是拖吊進廠。若讀出 BCM B1073-96 容積傳感器的故障，首要先確認鑰匙電量與電瓶電壓是否正常。",
+                rule: "鑰匙電量需具備 3.0V 以上（基本上 3.0V 就會請客人換掉！）。12V 電瓶測試電壓是否正常並充滿電。",
+                hud1: "BCM 碼: B1073-96",
+                hud2: "鑰匙/12V 電壓檢測"
+            },
+            {
+                id: 2,
+                title: "充滿電上鎖量測靜態電流",
+                short: "2. 靜態電流量測",
+                badge: "暗電流判定",
+                desc: "充滿電後上鎖量測靜態電流，如果靜態電流過高（高於標準 0.05A ~ 0.07A），我就會依故障碼往頂部控制器檢查。",
+                rule: "正常標準為 0.05A ~ 0.07A。若高於此門檻（例如量出 0.4A ~ 0.85A），判定持續放電，往車頂控制器檢查！",
+                hud1: "靜態電流量測",
+                hud2: "標準: 0.05A~0.07A"
+            },
+            {
+                id: 3,
+                title: "BCM 防盜歷史與天窗偽報警記錄",
+                short: "3. BCM 天窗偽報警",
+                badge: "診斷儀讀取",
+                desc: "可以進入到 BCM 看他防盜曾經觸發的原因，基本上異常的都會報警天窗被打開。之前跟 Holmes 看第一台的時候，還會伴隨著超聲波感測器異常。",
+                rule: "天窗實質並未打開，但 BCM 均記錄天窗偽報警與超聲波異常，此為頂部控制器內部當機擾亂總線的典型特徵。",
+                hud1: "防盜觸發源: 天窗打開",
+                hud2: "超聲波感測器異常"
+            },
+            {
+                id: 4,
+                title: "頂部控制器料號與 SW 軟體版本判定",
+                short: "4. SW版本與料號",
+                badge: "硬體版本識別",
+                desc: "頂部控制器拉下來之後上面會有寫序號，可參照通報。模組明確註明：SW 0.8.1 (舊品) / SW 0.8.2 (新品)。若新品跳 B1073-96 則直接換新；舊品有 SW 可 Run Flash 做下載（但我從來沒遇過）。如果看到 UAM 94X 的就是 Stelvio，我有遇到錯裝的，也會有問題。QR 下面的 27525 每次看都不一樣，非判斷依據。現在一定要發 DIDA 得到更換指令才可以更換！",
+                rule: "SW 0.8.1 為舊品；SW 0.8.2 為新品（跳碼直接換）。嚴防 Stelvio UAM 94X 錯裝至 Giulia。現行通報一定要發 DIDA 取得原廠指令。",
+                hud1: "標籤版本判定",
+                hud2: "SW 0.8.1 舊 / 0.8.2 新"
+            },
+            {
+                id: 5,
+                title: "超聲波感測器支架與橡皮凹槽檢查",
+                short: "5. 支架與橡皮安裝",
+                badge: "物理安裝細節",
+                desc: "拆下來下面兩個小 Sensor 如果是開開的，才會有超聲波感測的故障。還要特別注意橡皮有沒有塞到底，如果中間有一個小凹槽也不行，也會叫超聲波感測的故障！",
+                rule: "兩小 Sensor 不可開開的；橡皮必須塞到底，若中間留有微小凹槽，反射回波異常同樣會報故障碼！",
+                hud1: "超聲波探頭支架",
+                hud2: "橡皮塞到底 (不可有凹槽)"
+            },
+            {
+                id: 6,
+                title: "換完上鎖測試靜態電流 45 分鐘",
+                short: "6. 45分鐘驗證交車",
+                badge: "放電驗收標準",
+                desc: "換完上鎖測試靜態電流至少 45 分鐘，基本上沒有再漏就可以放心交車。我今天這台是他有買 12V 充電器放在車上，熄火之後會幫他充電，他剛好這週忘記充，就沒電了。",
+                rule: "換完上鎖測試靜態電流至少 45 分鐘！確認平穩下降至 0.05A 以下沒有再漏，方可放心交車。",
+                hud1: "休眠計時: 45 分鐘",
+                hud2: "交車標準: < 0.05A"
+            }
+        ];
+
+        // ================= Workshop Parasitic Drain Curriculum Data =================
+        const drainMethodsData = [
+            {
+                id: 'series',
+                title: "方法一：三用電錶串聯法 (跨接跳線無縫導入)",
+                short: "工法 A. 串聯跳線法",
+                badge: "精準量測首選",
+                desc: "利用跨接線 (Bypass Jumper) 先並聯在電瓶負極柱與車身搭鐵線，拔開樁頭時全車不斷電、不產生火花、不二次喚醒 ECU，再將電錶 10A 檔串入，最後斷開跳線精準讀數！",
+                rule: "紅表筆嚴禁插在 mA/μA 檔孔（瞬間電容充電必燒微安保險絲）！旋鈕務必打在 DC 10A 直流檔。門鎖做假扣，鑰匙離車 5 米以上。",
+                hud1: "FLUKE 87V 串聯",
+                hud2: "10A 直流檔位"
+            },
+            {
+                id: 'clamp',
+                title: "方法二：直流微安培鉤表法 (免拆線快速量測)",
+                short: "工法 B. 直流微安鉤表",
+                badge: "零斷電風險",
+                desc: "使用專業汽車級 DC 微安培鉤表。必須在欲夾電纜旁『相同方位與傾角』按下【REL / ZERO】消除地磁干擾，再打開鉗口夾入單一負極總線束。",
+                rule: "切勿夾雙線（正負相抵讀數為 0）！且必須是具備 DC 檔位的直流微安鉤表，一般水電行交流 (AC) 鉤表量不出靜態暗電流。",
+                hud1: "DC 微安鉤表",
+                hud2: "原位 ZERO 歸零"
+            },
+            {
+                id: 'fuse',
+                title: "方法三：保險絲毫伏 (mV) 壓降快篩法",
+                short: "工法 C. 保險絲mV壓降",
+                badge: "免拔保險絲直攻",
+                desc: "不拔保險絲、不喚醒休眠中的 CAN-BUS！電錶切至 DC mV 檔，雙表筆尖點在保險絲頂部外露金屬孔，依據歐姆定律毫伏壓降換算迴路洩漏電流。",
+                rule: "以 10A Mini 保險絲為例，若量得 3.4 mV 壓降，代表該分路正持續洩漏約 0.46A (460mA)！直攻頂棚保險絲即可精確鎖定元兇。",
+                hud1: "保險絲 mV 檔",
+                hud2: "歐姆定律換算"
+            }
+        ];
+
+        // ================= DOM Elements Initialization =================
+        const rightSwitchCaseBtn = document.getElementById("rightSwitchCaseBtn");
+        const rightSwitchDrainBtn = document.getElementById("rightSwitchDrainBtn");
+        const buttonDeckTitle = document.getElementById("buttonDeckTitle");
+        const buttonDeckCounter = document.getElementById("buttonDeckCounter");
+        const rightStepButtonsContainer = document.getElementById("rightStepButtonsContainer");
+        const rightPrevBtn = document.getElementById("rightPrevBtn");
+        const rightNextBtn = document.getElementById("rightNextBtn");
+        const rightActiveDetailCard = document.getElementById("rightActiveDetailCard");
+        const canvasDomainTag = document.getElementById("canvasDomainTag");
+        const canvasActiveTitle = document.getElementById("canvasActiveTitle");
+        const canvasInteractiveControls = document.getElementById("canvasInteractiveControls");
+        const canvasBottomHint = document.getElementById("canvasBottomHint");
+        const canvasStepNumber = document.getElementById("canvasStepNumber");
+        const svgDynamicStage = document.getElementById("svgDynamicStage");
+        const hudParam1Label = document.getElementById("hudParam1Label");
+        const hudParam1Val = document.getElementById("hudParam1Val");
+        const hudParam2Label = document.getElementById("hudParam2Label");
+        const hudParam2Val = document.getElementById("hudParam2Val");
+        const hudParam2Dot = document.getElementById("hudParam2Dot");
+        const bottomNoteText = document.getElementById("bottomNoteText");
+        const quickResetBtn = document.getElementById("quickResetBtn");
+
+        // Event Listeners for Domain Switching
+        rightSwitchCaseBtn.addEventListener("click", () => switchDomain('case'));
+        rightSwitchDrainBtn.addEventListener("click", () => switchDomain('drain'));
+        quickResetBtn.addEventListener("click", resetCurrentState);
+
+        rightPrevBtn.addEventListener("click", () => {
+            if (currentDomain === 'case') {
+                if (currentCaseStep > 0) selectCaseStep(currentCaseStep - 1);
+            } else {
+                const methods = ['series', 'clamp', 'fuse'];
+                const idx = methods.indexOf(currentDrainMethod);
+                if (idx > 0) selectDrainMethod(methods[idx - 1]);
+            }
+        });
+
+        rightNextBtn.addEventListener("click", () => {
+            if (currentDomain === 'case') {
+                if (currentCaseStep < caseStepsData.length - 1) selectCaseStep(currentCaseStep + 1);
+            } else {
+                const methods = ['series', 'clamp', 'fuse'];
+                const idx = methods.indexOf(currentDrainMethod);
+                if (idx < methods.length - 1) selectDrainMethod(methods[idx + 1]);
+            }
+        });
+
+        // Switch Domain Function
+        function switchDomain(domain) {
+            currentDomain = domain;
+            if (domain === 'case') {
+                rightSwitchCaseBtn.className = "py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-cyanGlow text-black shadow";
+                rightSwitchDrainBtn.className = "py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white";
+                canvasDomainTag.textContent = "SOP 實境診斷模擬";
+                buttonDeckTitle.innerHTML = "<span>▶</span> 案例排查 SOP 步驟按鈕";
+                selectCaseStep(currentCaseStep);
+            } else {
+                rightSwitchDrainBtn.className = "py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 bg-amberWarn text-black shadow";
+                rightSwitchCaseBtn.className = "py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 text-slate-400 hover:text-white";
+                canvasDomainTag.textContent = "實務電錶/鉤表量測工法";
+                buttonDeckTitle.innerHTML = "<span>▶</span> 電錶量測工法切換按鈕";
+                selectDrainMethod(currentDrainMethod);
+            }
+        }
+
+        function resetCurrentState() {
+            keyBatteryVolts = 2.7;
+            carCurrentAmps = 0.85;
+            swVersion = '0.8.1';
+            rubberInstalled = false;
+            drainSimState = 'leak';
+            bypassSwitchClosed = true;
+            if (currentDomain === 'case') {
+                selectCaseStep(currentCaseStep);
+            } else {
+                selectDrainMethod(currentDrainMethod);
+            }
+        }
+
+        // ================= Case SOP Controller =================
+        function selectCaseStep(index) {
+            currentCaseStep = index;
+            const data = caseStepsData[index];
+            canvasActiveTitle.textContent = `單元 ${data.id}: ${data.title}`;
+            canvasStepNumber.textContent = `步驟 ${index + 1} / ${caseStepsData.length}`;
+            buttonDeckCounter.textContent = `步驟 ${index + 1} / ${caseStepsData.length}`;
+            canvasBottomHint.textContent = `💡 目前切換至步驟 ${data.id}：${data.title}`;
+            bottomNoteText.textContent = data.rule;
+
+            rightPrevBtn.disabled = (index === 0);
+            rightNextBtn.disabled = (index === caseStepsData.length - 1);
+
+            renderRightStepButtons();
+            renderRightActiveDetailCard(data);
+            renderCaseInteractiveControls();
+            renderCaseSvg(index);
+        }
+
+        function renderRightStepButtons() {
+            rightStepButtonsContainer.innerHTML = '';
+            caseStepsData.forEach((item, idx) => {
+                const isActive = (idx === currentCaseStep);
+                const btn = document.createElement("button");
+                btn.className = `p-2 rounded-lg text-left text-xs font-bold transition active:scale-95 flex items-center gap-1.5 border ${
+                    isActive 
+                    ? 'bg-cyanGlow text-black border-cyanGlow shadow-[0_0_12px_rgba(0,229,255,0.4)]' 
+                    : 'bg-slate-800 text-slate-300 border-slate-700/80 hover:bg-slate-700 hover:text-white'
+                }`;
+                btn.onclick = () => selectCaseStep(idx);
+                btn.innerHTML = `
+                    <span class="w-4 h-4 rounded-full flex items-center justify-center font-mono text-[10px] shrink-0 ${
+                        isActive ? 'bg-black text-cyanGlow' : 'bg-slate-900 text-slate-400'
+                    }">${idx + 1}</span>
+                    <span class="truncate">${item.short.replace(/^\d+\.\s*/, '')}</span>
+                `;
+                rightStepButtonsContainer.appendChild(btn);
+            });
+        }
+
+        function renderRightActiveDetailCard(data) {
+            rightActiveDetailCard.innerHTML = `
+                <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-cyanGlow text-black font-mono text-xs font-bold flex items-center justify-center">${data.id}</span>
+                        <span class="text-xs font-bold text-white">${data.title}</span>
+                    </div>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyanGlow/20 text-cyanGlow border border-cyanGlow/40">${data.badge}</span>
+                </div>
+                <p class="text-[11.5px] text-slate-300 leading-relaxed font-sans pt-1">${data.desc}</p>
+                <div class="mt-2 pt-2 border-t border-slate-800/80 text-[11px] text-amberWarn flex items-start gap-1.5 font-medium">
+                    <span class="shrink-0">⚠️ 技師檢驗標準：</span>
+                    <span>${data.rule}</span>
+                </div>
+            `;
+        }
+
+        function renderCaseInteractiveControls() {
+            canvasInteractiveControls.innerHTML = '';
+            if (currentCaseStep === 0) {
+                // Key Voltage Toggle
+                canvasInteractiveControls.innerHTML = `
+                    <span class="text-[11px] font-mono text-slate-400 hidden sm:inline">鑰匙CR2032:</span>
+                    <button id="toggleKeyBtn" class="px-2.5 py-1 text-[11px] font-mono font-bold rounded ${keyBatteryVolts >= 3.0 ? 'bg-emeraldOk text-white' : 'bg-alfaRed text-white anim-alert'}">
+                        ${keyBatteryVolts >= 3.0 ? '電量正常 3.2V' : '電量低 2.7V (換掉)'}
+                    </button>
+                `;
+                document.getElementById("toggleKeyBtn").onclick = () => {
+                    keyBatteryVolts = (keyBatteryVolts >= 3.0) ? 2.7 : 3.2;
+                    renderCaseInteractiveControls();
+                    renderCaseSvg(currentCaseStep);
+                };
+            } else if (currentCaseStep === 1) {
+                // Current Leak Toggle
+                canvasInteractiveControls.innerHTML = `
+                    <span class="text-[11px] font-mono text-slate-400 hidden sm:inline">靜態電流狀態:</span>
+                    <button id="toggleLeakBtn" class="px-2.5 py-1 text-[11px] font-mono font-bold rounded ${carCurrentAmps > 0.1 ? 'bg-alfaRed text-white' : 'bg-emeraldOk text-white'}">
+                        ${carCurrentAmps > 0.1 ? '超標漏電中 0.85A' : '正常休眠 0.045A'}
+                    </button>
+                `;
+                document.getElementById("toggleLeakBtn").onclick = () => {
+                    carCurrentAmps = (carCurrentAmps > 0.1) ? 0.045 : 0.85;
+                    renderCaseInteractiveControls();
+                    renderCaseSvg(currentCaseStep);
+                };
+            } else if (currentCaseStep === 3) {
+                // SW Version Switcher
+                canvasInteractiveControls.innerHTML = `
+                    <div class="flex items-center gap-1 font-mono text-[10px]">
+                        <button id="swBtnOld" class="px-2 py-0.8 rounded ${swVersion === '0.8.1' ? 'bg-amberWarn text-black font-bold' : 'bg-slate-800 text-slate-300'}">舊品 0.8.1</button>
+                        <button id="swBtnNew" class="px-2 py-0.8 rounded ${swVersion === '0.8.2' ? 'bg-cyanGlow text-black font-bold' : 'bg-slate-800 text-slate-300'}">新品 0.8.2</button>
+                        <button id="swBtn94X" class="px-2 py-0.8 rounded ${swVersion === '94X' ? 'bg-alfaRed text-white font-bold' : 'bg-slate-800 text-slate-300'}">Stelvio 94X</button>
+                    </div>
+                `;
+                document.getElementById("swBtnOld").onclick = () => { swVersion = '0.8.1'; renderCaseInteractiveControls(); renderCaseSvg(currentCaseStep); };
+                document.getElementById("swBtnNew").onclick = () => { swVersion = '0.8.2'; renderCaseInteractiveControls(); renderCaseSvg(currentCaseStep); };
+                document.getElementById("swBtn94X").onclick = () => { swVersion = '94X'; renderCaseInteractiveControls(); renderCaseSvg(currentCaseStep); };
+            } else if (currentCaseStep === 4) {
+                // Rubber Seal Position Toggle
+                canvasInteractiveControls.innerHTML = `
+                    <button id="rubberToggleBtn" class="px-2.5 py-1 text-[11px] font-mono font-bold rounded ${rubberInstalled ? 'bg-emeraldOk text-white' : 'bg-alfaRed text-white anim-alert'}">
+                        ${rubberInstalled ? '橡皮塞到底 (正常)' : '中間凹槽氣隙 (異常呼叫)'}
+                    </button>
+                `;
+                document.getElementById("rubberToggleBtn").onclick = () => {
+                    rubberInstalled = !rubberInstalled;
+                    renderCaseInteractiveControls();
+                    renderCaseSvg(currentCaseStep);
+                };
+            } else if (currentCaseStep === 5) {
+                // 45 Min Verification Simulation Toggle
+                canvasInteractiveControls.innerHTML = `
+                    <button id="run45MinSimBtn" class="px-2.5 py-1 text-[11px] font-mono font-bold rounded bg-cyanGlow text-black shadow">
+                        ▶ 模擬 45 分鐘休眠計時曲線
+                    </button>
+                `;
+                document.getElementById("run45MinSimBtn").onclick = () => {
+                    animate45MinuteCurve();
+                };
+            }
+        }
+
+        function renderCaseSvg(step) {
+            hudParam1Label.textContent = caseStepsData[step].hud1.split(':')[0] || "系統指標";
+            hudParam1Val.textContent = caseStepsData[step].hud1.split(':')[1] || "正常";
+            hudParam2Label.textContent = caseStepsData[step].hud2.split(':')[0] || "檢測數值";
+            hudParam2Val.textContent = caseStepsData[step].hud2.split(':')[1] || "量測中";
+
+            if (step === 0) {
+                // Step 1: Tow truck, Key battery & 12V Battery test
+                const isKeyOk = (keyBatteryVolts >= 3.0);
+                hudParam2Dot.className = `w-2 h-2 rounded-full ${isKeyOk ? 'bg-emeraldOk' : 'bg-alfaRed'}`;
+                hudParam2Val.textContent = isKeyOk ? "3.2V (合格)" : "2.7V (過低請更換)";
+
+                svgDynamicStage.innerHTML = `
+                    <!-- Car on Tow Truck Graphic -->
+                    <g transform="translate(60, 80)">
+                        <rect x="0" y="160" width="340" height="25" fill="#334155" rx="4"/>
+                        <circle cx="60" cy="195" r="22" fill="#0f172a" stroke="#64748b" stroke-width="4"/>
+                        <circle cx="280" cy="195" r="22" fill="#0f172a" stroke="#64748b" stroke-width="4"/>
+                        <rect x="10" y="100" width="75" height="60" fill="#1e293b" rx="6"/>
+                        <polygon points="85,115 130,160 85,160" fill="#1e293b"/>
+                        <text x="35" y="135" fill="#94a3b8" font-size="10" font-family="monospace">拖吊進廠</text>
+
+                        <!-- Alfa Giulia Silhouette on Bed -->
+                        <g transform="translate(130, 95)">
+                            <path d="M 10 50 Q 50 15, 110 15 Q 150 15, 180 50 Z" fill="#7f1d1d" stroke="#ef4444" stroke-width="2"/>
+                            <rect x="0" y="45" width="200" height="20" fill="#991b1b" rx="4"/>
+                            <circle cx="35" cy="65" r="14" fill="#0f172a" stroke="#475569" stroke-width="3"/>
+                            <circle cx="165" cy="65" r="14" fill="#0f172a" stroke="#475569" stroke-width="3"/>
+                            <text x="100" y="42" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">GIULIA (無法發動)</text>
+                        </g>
+                    </g>
+
+                    <!-- Key Battery Voltage Meter -->
+                    <g transform="translate(480, 60)">
+                        <rect x="0" y="0" width="130" height="210" rx="20" fill="#0f172a" stroke="#475569" stroke-width="3"/>
+                        <rect x="35" y="18" width="60" height="24" rx="4" fill="#1e293b" stroke="#334155"/>
+                        <circle cx="65" cy="30" r="6" fill="#e51a2e"/>
+                        <text x="65" y="80" fill="#cbd5e1" font-size="11" font-weight="bold" text-anchor="middle">智慧鑰匙</text>
+                        <text x="65" y="98" fill="#94a3b8" font-size="9" text-anchor="middle">CR2032 鋰電池</text>
+
+                        <circle cx="65" cy="145" r="32" fill="#334155" stroke="${isKeyOk ? '#10b981' : '#ef4444'}" stroke-width="3"/>
+                        <text x="65" y="150" fill="${isKeyOk ? '#10b981' : '#ef4444'}" font-size="15" font-family="monospace" font-weight="bold" text-anchor="middle">
+                            ${keyBatteryVolts.toFixed(1)}V
+                        </text>
+                        <text x="65" y="166" fill="#94a3b8" font-size="8" text-anchor="middle">門檻值 3.0V</text>
+                    </g>
+
+                    <!-- 12V Main Battery Station -->
+                    <g transform="translate(650, 60)">
+                        <rect x="0" y="0" width="160" height="210" rx="10" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+                        <rect x="25" y="-10" width="25" height="10" fill="#ef4444" rx="2"/>
+                        <rect x="110" y="-10" width="25" height="10" fill="#3b82f6" rx="2"/>
+                        <text x="80" y="50" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">12V 主電瓶</text>
+                        <text x="80" y="75" fill="#38bdf8" font-size="11" text-anchor="middle">充滿電測試</text>
+                        
+                        <rect x="20" y="100" width="120" height="50" rx="6" fill="#0f172a" stroke="#334155"/>
+                        <text x="80" y="130" fill="#10b981" font-size="18" font-family="monospace" font-weight="bold" text-anchor="middle">12.7 V</text>
+                        <text x="80" y="175" fill="#94a3b8" font-size="9.5" text-anchor="middle">電壓標準正常</text>
+                    </g>
+
+                    <!-- Technician Rule Annotation Banner -->
+                    <g transform="translate(80, 340)">
+                        <rect x="0" y="0" width="720" height="85" rx="8" fill="#172033" stroke="${isKeyOk ? '#334155' : '#ef4444'}" stroke-width="2"/>
+                        <text x="24" y="32" fill="${isKeyOk ? '#38bdf8' : '#ef4444'}" font-size="14" font-weight="bold">
+                            ${isKeyOk ? '✓ 鑰匙電量 3.0V 以上合格' : '⚠️ 鑰匙電量低於 3.0V (松江標準：請客人直接換新！)'}
+                        </text>
+                        <text x="24" y="58" fill="#cbd5e1" font-size="11.5">
+                            車輛進廠若伴隨拖吊無法發動，先鎖定鑰匙與主電瓶電壓；充飽電後才能精確量測暗電流！
+                        </text>
+                    </g>
+                `;
+            } else if (step === 1) {
+                // Step 2: Quiescent current leak measurement
+                const isLeak = (carCurrentAmps > 0.1);
+                hudParam2Dot.className = `w-2 h-2 rounded-full ${isLeak ? 'bg-alfaRed animate-ping' : 'bg-emeraldOk'}`;
+                hudParam2Val.textContent = isLeak ? `${carCurrentAmps.toFixed(2)}A (嚴重漏電)` : "0.045A (正常休眠)";
+
+                svgDynamicStage.innerHTML = `
+                    <g transform="translate(60, 70)">
+                        <path d="M 20 120 Q 80 40, 200 40 Q 320 40, 380 120 Z" fill="#1e293b" stroke="#475569" stroke-width="3"/>
+                        <rect x="10" y="110" width="400" height="50" rx="8" fill="#0f172a" stroke="#334155"/>
+                        <circle cx="80" cy="160" r="26" fill="#020617" stroke="#475569" stroke-width="4"/>
+                        <circle cx="340" cy="160" r="26" fill="#020617" stroke="#475569" stroke-width="4"/>
+                        
+                        <rect x="175" y="46" width="70" height="18" rx="4" fill="${isLeak ? '#ef4444' : '#334155'}" class="${isLeak ? 'anim-alert' : ''}"/>
+                        <text x="210" y="59" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">頂部控制器</text>
+                        
+                        <text x="210" y="135" fill="#94a3b8" font-size="12" text-anchor="middle">車輛已完全上鎖休眠</text>
+                    </g>
+
+                    <g transform="translate(520, 50)">
+                        <rect x="0" y="0" width="290" height="340" rx="16" fill="#0f172a" stroke="#f59e0b" stroke-width="4"/>
+                        <rect x="16" y="16" width="258" height="308" rx="10" fill="#1e293b"/>
+                        
+                        <rect x="30" y="30" width="230" height="100" rx="8" fill="#022c22" stroke="${isLeak ? '#ef4444' : '#10b981'}" stroke-width="2"/>
+                        <text x="45" y="55" fill="#6ee7b7" font-size="11" font-family="monospace">DC AMPS [QUIESCENT]</text>
+                        <text x="145" y="105" fill="${isLeak ? '#ef4444' : '#10b981'}" font-size="42" font-family="monospace" font-weight="bold" text-anchor="middle" filter="url(#neonCyan)">
+                            ${carCurrentAmps.toFixed(3)} A
+                        </text>
+
+                        <g transform="translate(30, 150)">
+                            <rect x="0" y="0" width="230" height="60" rx="6" fill="#0b0f19" stroke="#334155"/>
+                            <text x="12" y="24" fill="#38bdf8" font-size="11" font-weight="bold">原廠標準靜態電流：</text>
+                            <text x="12" y="45" fill="#a7f3d0" font-size="12" font-family="monospace" font-weight="bold">0.05 A ~ 0.07 A</text>
+                        </g>
+
+                        <g transform="translate(30, 225)">
+                            <rect x="0" y="0" width="230" height="75" rx="6" fill="${isLeak ? '#450a0a' : '#064e3b'}" stroke="${isLeak ? '#ef4444' : '#10b981'}" stroke-width="1.5"/>
+                            <text x="12" y="26" fill="#ffffff" font-size="11" font-weight="bold">判定結果：</text>
+                            <text x="12" y="48" fill="${isLeak ? '#fca5a5' : '#a7f3d0'}" font-size="11" font-weight="bold">
+                                ${isLeak ? '靜態電流過高！依碼拆頂部控制器' : '合格！休眠正常無暗電流洩漏'}
+                            </text>
+                        </g>
+                    </g>
+
+                    ${isLeak ? `
+                        <path d="M 270 120 C 350 180, 480 200, 520 180" fill="none" stroke="#ef4444" stroke-width="4" class="current-leak"/>
+                    ` : ''}
+                `;
+            } else if (step === 2) {
+                // Step 3: BCM fault & False sunroof alarm trigger history
+                hudParam2Dot.className = "w-2 h-2 rounded-full bg-alfaRed";
+                hudParam2Val.textContent = "偽報警: 天窗被打開";
+
+                svgDynamicStage.innerHTML = `
+                    <g transform="translate(80, 40)">
+                        <rect x="0" y="0" width="720" height="380" rx="16" fill="#0f172a" stroke="#00e5ff" stroke-width="3" filter="url(#neonCyan)"/>
+                        <rect x="15" y="15" width="690" height="350" rx="10" fill="#080c14"/>
+                        
+                        <rect x="15" y="15" width="690" height="40" rx="8" fill="#1e293b"/>
+                        <text x="35" y="40" fill="#00e5ff" font-size="14" font-weight="bold" font-family="monospace">wiTECH 2 Diagnostic Suite - BCM 歷史診斷紀錄</text>
+
+                        <g transform="translate(35, 75)">
+                            <rect x="0" y="0" width="650" height="55" rx="6" fill="#450a0a" stroke="#ef4444" stroke-width="2"/>
+                            <text x="20" y="34" fill="#fca5a5" font-size="16" font-family="monospace" font-weight="bold">DTC: B1073-96 容積傳感器 (Volumetric Sensor Fault)</text>
+                        </g>
+
+                        <g transform="translate(35, 145)">
+                            <rect x="0" y="0" width="650" height="145" rx="6" fill="#172033" stroke="#334155"/>
+                            <text x="20" y="30" fill="#38bdf8" font-size="13" font-weight="bold">防盜系統觸發歷史紀錄 (Last Alarm Event Log):</text>
+                            
+                            <g transform="translate(20, 45)">
+                                <rect x="0" y="0" width="610" height="36" rx="4" fill="#7f1d1d" stroke="#ef4444"/>
+                                <text x="15" y="24" fill="#ffffff" font-size="13" font-weight="bold">事件 1: 【天窗被打開】(Sunroof Opened False Trigger) ⚠️ 異常</text>
+                            </g>
+                            <g transform="translate(20, 90)">
+                                <rect x="0" y="0" width="610" height="36" rx="4" fill="#1e293b"/>
+                                <text x="15" y="24" fill="#fca5a5" font-size="12">事件 2: 超聲波感測器訊號中斷 (Ultrasonic Intrusion Sensor Lost)</text>
+                            </g>
+                        </g>
+
+                        <text x="35" y="330" fill="#94a3b8" font-size="12">
+                            * 現場實戰規律：天窗並未開啟，但 BCM 均記錄天窗偽報警，此為內部控制器死當擾亂總線的典型特徵。
+                        </text>
+                    </g>
+                `;
+            } else if (step === 3) {
+                // Step 4: Overhead console SW 0.8.1 vs SW 0.8.2 vs Stelvio 94X
+                const isOld = (swVersion === '0.8.1');
+                const is94X = (swVersion === '94X');
+                hudParam2Dot.className = `w-2 h-2 rounded-full ${isOld ? 'bg-amberWarn' : (is94X ? 'bg-alfaRed' : 'bg-emeraldOk')}`;
+                hudParam2Val.textContent = is94X ? "UAM 94X (Stelvio 錯裝!)" : `SW ${swVersion} (${isOld ? '舊品待更換' : '新品合格'})`;
+
+                svgDynamicStage.innerHTML = `
+                    <g transform="translate(80, 50)">
+                        <rect x="0" y="0" width="380" height="320" rx="16" fill="url(#roofMatGrad)" stroke="#475569" stroke-width="3"/>
+                        <text x="190" y="40" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle">頂部控制器模組背面</text>
+                        
+                        <g transform="translate(40, 70)">
+                            <rect x="0" y="0" width="300" height="210" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+                            
+                            <text x="20" y="32" fill="#0f172a" font-size="14" font-weight="bold" font-family="monospace">
+                                ${is94X ? 'MODEL: UAM 94X (STELVIO)' : 'MODEL: UAM 952 (GIULIA)'}
+                            </text>
+                            
+                            <line x1="20" y1="45" x2="280" y2="45" stroke="#94a3b8"/>
+
+                            <text x="20" y="75" fill="#0f172a" font-size="13" font-family="monospace">
+                                SOFTWARE: <tspan fill="${isOld ? '#b45309' : (is94X ? '#dc2626' : '#047857')}" font-weight="bold">SW ${swVersion}</tspan>
+                            </text>
+
+                            <text x="20" y="105" fill="#475569" font-size="11" font-family="monospace">BATCH ID: 27525 (變動流水碼)</text>
+                            <text x="20" y="125" fill="#94a3b8" font-size="10">* 註: 27525 每次皆不同，非判斷依據</text>
+
+                            <rect x="20" y="140" width="55" height="55" fill="#0f172a"/>
+                            <rect x="30" y="150" width="15" height="15" fill="#ffffff"/>
+                            <rect x="52" y="170" width="12" height="12" fill="#ffffff"/>
+
+                            <text x="90" y="170" fill="#334155" font-size="11" font-weight="bold">
+                                ${isOld ? '• SW 0.8.1: 舊品 (需更換)' : (is94X ? '• 警告: Stelvio 錯裝！' : '• SW 0.8.2: 原廠新品')}
+                            </text>
+                        </g>
+                    </g>
+
+                    <g transform="translate(490, 50)">
+                        <rect x="0" y="0" width="320" height="320" rx="14" fill="#172033" stroke="${is94X ? '#ef4444' : (isOld ? '#f59e0b' : '#10b981')}" stroke-width="2"/>
+                        <text x="20" y="38" fill="#ffffff" font-size="14" font-weight="bold">松江實戰判定準則：</text>
+                        
+                        <g transform="translate(20, 60)">
+                            <rect x="0" y="0" width="280" height="65" rx="6" fill="#0f172a" stroke="#334155"/>
+                            <text x="12" y="24" fill="#fbbf24" font-size="11" font-weight="bold">SW 0.8.1 (舊品)：</text>
+                            <text x="12" y="46" fill="#cbd5e1" font-size="10.5">有 Flash 下載（少見），通常依指令更換新品。</text>
+                        </g>
+
+                        <g transform="translate(20, 140)">
+                            <rect x="0" y="0" width="280" height="65" rx="6" fill="#0f172a" stroke="#334155"/>
+                            <text x="12" y="24" fill="#34d399" font-size="11" font-weight="bold">SW 0.8.2 (新品)：</text>
+                            <text x="12" y="46" fill="#cbd5e1" font-size="10.5">若新品跳 B1073-96，無須猶豫直接換新！</text>
+                        </g>
+
+                        <g transform="translate(20, 220)">
+                            <rect x="0" y="0" width="280" height="75" rx="6" fill="#450a0a" stroke="#ef4444"/>
+                            <text x="12" y="24" fill="#fca5a5" font-size="11" font-weight="bold">通報更新提醒：</text>
+                            <text x="12" y="44" fill="#ffffff" font-size="10">現在一定要在系統發送 DIDA 故障單，</text>
+                            <text x="12" y="60" fill="#fca5a5" font-size="10" font-weight="bold">得到原廠指令許可後方可進行零件更換！</text>
+                        </g>
+                    </g>
+                `;
+            } else if (step === 4) {
+                // Step 5: Ultrasonic bracket & Rubber seal seating defect
+                hudParam2Dot.className = `w-2 h-2 rounded-full ${rubberInstalled ? 'bg-emeraldOk' : 'bg-alfaRed'}`;
+                hudParam2Val.textContent = rubberInstalled ? "橡皮完全到位" : "橡皮凹槽氣隙 (會叫故障!)";
+
+                svgDynamicStage.innerHTML = `
+                    <g transform="translate(60, 50)">
+                        <rect x="0" y="0" width="360" height="330" rx="12" fill="#172033" stroke="#475569" stroke-width="2"/>
+                        <text x="180" y="35" fill="#38bdf8" font-size="13" font-weight="bold" text-anchor="middle">超聲波感測器支架 (拆下檢視)</text>
+
+                        <g transform="translate(50, 70)">
+                            <path d="M 20 40 L 240 40 L 220 180 L 40 180 Z" fill="#334155" stroke="#94a3b8" stroke-width="2"/>
+                            
+                            <rect x="60" y="70" width="40" height="70" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+                            <rect x="160" y="70" width="40" height="70" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/>
+
+                            <ellipse cx="80" cy="105" rx="32" ry="46" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="4,3"/>
+                            <ellipse cx="180" cy="105" rx="32" ry="46" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="4,3"/>
+                        </g>
+
+                        <text x="180" y="280" fill="#fca5a5" font-size="11" text-anchor="middle" font-weight="bold">
+                            ⚠️ 拆下時兩側小 Sensor 若呈「開開的」，
+                        </text>
+                        <text x="180" y="302" fill="#cbd5e1" font-size="10.5" text-anchor="middle">
+                            回波反射角偏差，將持續產生超聲波感測故障！
+                        </text>
+                    </g>
+
+                    <g transform="translate(460, 50)">
+                        <rect x="0" y="0" width="360" height="330" rx="12" fill="#172033" stroke="${rubberInstalled ? '#10b981' : '#ef4444'}" stroke-width="2"/>
+                        <text x="180" y="35" fill="${rubberInstalled ? '#34d399' : '#f87171'}" font-size="13" font-weight="bold" text-anchor="middle">
+                            橡皮塞入深度剖面 (關鍵細節)
+                        </text>
+
+                        <g transform="translate(60, 60)">
+                            <rect x="0" y="30" width="240" height="150" fill="#0f172a" stroke="#475569" stroke-width="2"/>
+                            
+                            <rect x="40" y="${rubberInstalled ? '40' : '20'}" width="160" height="120" rx="6" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+
+                            ${!rubberInstalled ? `
+                                <rect x="40" y="90" width="160" height="30" fill="#7f1d1d" stroke="#ef4444" stroke-width="2" class="anim-alert"/>
+                                <text x="120" y="110" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">中間凹槽氣隙 (NG)</text>
+                                <line x1="215" y1="105" x2="255" y2="105" stroke="#ef4444" stroke-width="2.5"/>
+                            ` : `
+                                <rect x="40" y="40" width="160" height="120" fill="#064e3b" stroke="#10b981" stroke-width="2"/>
+                                <text x="120" y="105" fill="#a7f3d0" font-size="12" font-weight="bold" text-anchor="middle">完全塞到底 (合格)</text>
+                            `}
+                        </g>
+
+                        <g transform="translate(25, 240)">
+                            <rect x="0" y="0" width="310" height="70" rx="6" fill="#0b0f19" stroke="#334155"/>
+                            <text x="12" y="24" fill="#fbbf24" font-size="11" font-weight="bold">松江經驗筆記：</text>
+                            <text x="12" y="42" fill="#cbd5e1" font-size="10.5">橡皮若沒塞到底、中間產生微小凹槽，</text>
+                            <text x="12" y="58" fill="#fca5a5" font-size="10.5" font-weight="bold">同樣會誤判觸發超聲波感測故障！務必壓實推滿。</text>
+                        </g>
+                    </g>
+                `;
+            } else if (step === 5) {
+                // Step 6: 45 Minute Sleep Verification & Delivery
+                hudParam2Dot.className = "w-2 h-2 rounded-full bg-emeraldOk";
+                hudParam2Val.textContent = "休眠達標: 0.038A (可交車)";
+
+                svgDynamicStage.innerHTML = `
+                    <g transform="translate(60, 40)">
+                        <rect x="0" y="0" width="760" height="360" rx="14" fill="#0f172a" stroke="#00e5ff" stroke-width="2"/>
+                        <text x="380" y="35" fill="#00e5ff" font-size="15" font-weight="bold" text-anchor="middle" font-family="monospace">
+                            靜態電流 45 分鐘睡眠衰減監測曲線 (SOP VERIFICATION)
+                        </text>
+
+                        <g transform="translate(80, 60)">
+                            <line x1="0" y1="0" x2="0" y2="220" stroke="#475569" stroke-width="2"/>
+                            <line x1="0" y1="220" x2="620" y2="220" stroke="#475569" stroke-width="2"/>
+                            
+                            <line x1="0" y1="185" x2="620" y2="185" stroke="#10b981" stroke-width="2" stroke-dasharray="6,4"/>
+                            <text x="625" y="188" fill="#10b981" font-size="10" font-family="monospace">0.05A 標準合格線</text>
+
+                            <text x="-10" y="20" fill="#94a3b8" font-size="10" text-anchor="end font-mono">1.0A</text>
+                            <text x="-10" y="100" fill="#94a3b8" font-size="10" text-anchor="end font-mono">0.5A</text>
+                            <text x="-10" y="185" fill="#10b981" font-size="10" text-anchor="end font-mono">0.05A</text>
+                            <text x="-10" y="225" fill="#94a3b8" font-size="10" text-anchor="end font-mono">0.0A</text>
+
+                            <text x="0" y="240" fill="#94a3b8" font-size="10 font-mono">0分 (上鎖)</text>
+                            <text x="140" y="240" fill="#94a3b8" font-size="10 font-mono">15分</text>
+                            <text x="280" y="240" fill="#94a3b8" font-size="10 font-mono">30分</text>
+                            <text x="450" y="240" fill="#00e5ff" font-size="11" font-weight="bold font-mono">45分 (深眠門檻)</text>
+
+                            <path d="M 0 30 Q 100 70, 300 80 T 600 80" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="4,4"/>
+                            <text x="520" y="70" fill="#ef4444" font-size="11" font-weight="bold">故障持續漏電 (0.65A)</text>
+
+                            <path id="sleepCurveNormal" d="M 0 30 Q 80 80, 160 140 T 450 190 L 600 192" fill="none" stroke="#10b981" stroke-width="3.5" filter="url(#neonCyan)"/>
+                            <circle cx="450" cy="190" r="6" fill="#10b981"/>
+                            <text x="460" y="180" fill="#34d399" font-size="11" font-weight="bold">更換新品正常入眠 (0.038A)</text>
+                        </g>
+
+                        <g transform="translate(80, 305)">
+                            <rect x="0" y="0" width="620" height="40" rx="6" fill="#172033" stroke="#334155"/>
+                            <text x="20" y="24" fill="#cbd5e1" font-size="11">
+                                💡 車主習慣備註：此案例車主車上有放 12V 充電器，本週忘記充電即沒電拖吊進廠。
+                            </text>
+                        </g>
+                    </g>
+                `;
+            }
+        }
+
+        function animate45MinuteCurve() {
+            const curve = document.getElementById("sleepCurveNormal");
+            if (!curve) return;
+            curve.style.transition = "stroke-dashoffset 2s ease";
+            curve.style.strokeDasharray = "1000";
+            curve.style.strokeDashoffset = "1000";
+            setTimeout(() => {
+                curve.style.strokeDashoffset = "0";
+            }, 50);
+        }
+
+        // ================= Workshop Parasitic Drain Controller =================
+        function selectDrainMethod(methodKey) {
+            currentDrainMethod = methodKey;
+            const data = drainMethodsData.find(d => d.id === methodKey);
+            canvasActiveTitle.textContent = `${data.title}`;
+            canvasStepNumber.textContent = `工法 ${methodKey.toUpperCase()}`;
+            buttonDeckCounter.textContent = `工法 ${methodKey.toUpperCase()} / 3`;
+            canvasBottomHint.textContent = `💡 目前切換至實務電錶工法：${data.title}`;
+            bottomNoteText.textContent = `${data.desc} ${data.rule}`;
+
+            const methods = ['series', 'clamp', 'fuse'];
+            const idx = methods.indexOf(methodKey);
+            rightPrevBtn.disabled = (idx === 0);
+            rightNextBtn.disabled = (idx === methods.length - 1);
+
+            renderRightDrainButtons();
+            renderRightActiveDetailCard({
+                id: (idx === 0 ? 'A' : (idx === 1 ? 'B' : 'C')),
+                title: data.title,
+                badge: data.badge,
+                desc: data.desc,
+                rule: data.rule
+            });
+            renderDrainInteractiveControls();
+            renderDrainSvg(methodKey, drainSimState);
+        }
+
+        function renderRightDrainButtons() {
+            rightStepButtonsContainer.innerHTML = '';
+            drainMethodsData.forEach((item, idx) => {
+                const isActive = (item.id === currentDrainMethod);
+                const btn = document.createElement("button");
+                btn.className = `p-2 rounded-lg text-left text-xs font-bold transition active:scale-95 flex items-center gap-1.5 border ${
+                    isActive 
+                    ? 'bg-amberWarn text-black border-amberWarn shadow-[0_0_12px_rgba(245,158,11,0.4)]' 
+                    : 'bg-slate-800 text-slate-300 border-slate-700/80 hover:bg-slate-700 hover:text-white'
+                }`;
+                btn.onclick = () => selectDrainMethod(item.id);
+                btn.innerHTML = `
+                    <span class="w-4 h-4 rounded-full flex items-center justify-center font-mono text-[10px] shrink-0 ${
+                        isActive ? 'bg-black text-amberWarn' : 'bg-slate-900 text-slate-400'
+                    }">${String.fromCharCode(65 + idx)}</span>
+                    <span class="truncate">${item.short}</span>
+                `;
+                rightStepButtonsContainer.appendChild(btn);
+            });
+        }
+
+        function renderDrainInteractiveControls() {
+            canvasInteractiveControls.innerHTML = `
+                <div class="flex items-center gap-1.5">
+                    <button id="drainSimLeakBtn" class="px-2.5 py-1 text-[11px] font-mono font-bold rounded ${drainSimState === 'leak' ? 'bg-alfaRed text-white shadow' : 'bg-slate-800 text-slate-400'}">
+                        模擬漏電 (0.85A)
+                    </button>
+                    <button id="drainSimSleepBtn" class="px-2.5 py-1 text-[11px] font-mono font-bold rounded ${drainSimState === 'sleep' ? 'bg-emeraldOk text-white shadow' : 'bg-slate-800 text-slate-400'}">
+                        模擬正常 (0.045A)
+                    </button>
+                </div>
+            `;
+            document.getElementById("drainSimLeakBtn").onclick = () => {
+                drainSimState = 'leak';
+                renderDrainInteractiveControls();
+                renderDrainSvg(currentDrainMethod, drainSimState);
+            };
+            document.getElementById("drainSimSleepBtn").onclick = () => {
+                drainSimState = 'sleep';
+                renderDrainInteractiveControls();
+                renderDrainSvg(currentDrainMethod, drainSimState);
+            };
+        }
+
+        function toggleBypassJumper() {
+            bypassSwitchClosed = !bypassSwitchClosed;
+            renderDrainSvg('series', drainSimState);
+        }
+
+        function renderDrainSvg(method, state) {
+            const isLeak = (state === 'leak');
+            const ampDisplay = isLeak ? "0.850 A" : "0.045 A";
+            const mvDisplay = isLeak ? "3.4 mV" : "0.0 mV";
+            const currentStroke = isLeak ? "#ef4444" : "#10b981";
+
+            hudParam1Label.textContent = "量測儀器";
+            hudParam1Val.textContent = (method === 'series' ? "FLUKE 87V 串聯" : (method === 'clamp' ? "DC 微安鉤表" : "保險絲 mV 檔"));
+            hudParam2Label.textContent = "動態讀數";
+            hudParam2Dot.className = `w-2 h-2 rounded-full ${isLeak ? 'bg-alfaRed' : 'bg-emeraldOk'}`;
+            hudParam2Val.textContent = (method === 'fuse' ? `${mvDisplay} (${isLeak ? '異常壓降' : '無電流'})` : `${ampDisplay} (${isLeak ? '漏電' : '休眠正常'})`);
+
+            if (method === 'series') {
+                svgDynamicStage.innerHTML = `
+                    <g transform="translate(60, 90)">
+                        <rect x="0" y="0" width="140" height="160" rx="8" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+                        <rect x="20" y="-12" width="24" height="12" fill="#ef4444" rx="2"/>
+                        <rect x="95" y="-12" width="24" height="12" fill="#3b82f6" rx="2"/>
+                        <text x="32" y="-18" fill="#ef4444" font-size="14" font-weight="bold" text-anchor="middle">+</text>
+                        <text x="107" y="-18" fill="#3b82f6" font-size="16" font-weight="bold" text-anchor="middle">-</text>
+                        <text x="70" y="70" fill="#ffffff" font-size="14" font-weight="bold" text-anchor="middle">車載 12V 電瓶</text>
+                        <text x="70" y="95" fill="#94a3b8" font-size="11" text-anchor="middle">負極樁頭已拔起</text>
+                        
+                        <rect x="97" y="-28" width="20" height="18" fill="#64748b" stroke="#cbd5e1"/>
+                    </g>
+
+                    <g transform="translate(260, 62)">
+                        <rect x="0" y="0" width="30" height="30" rx="4" fill="#334155" stroke="#94a3b8" stroke-width="2"/>
+                        <text x="15" y="48" fill="#94a3b8" font-size="11" text-anchor="middle">車身搭鐵線</text>
+                        <path d="M 30 15 L 140 15" stroke="#475569" stroke-width="7"/>
+                    </g>
+
+                    <g transform="translate(165, 20)">
+                        <path d="M 0 42 C 45 -20, 80 -20, 110 42" fill="none" stroke="${bypassSwitchClosed ? '#f59e0b' : '#475569'}" stroke-width="3" stroke-dasharray="${bypassSwitchClosed ? 'none' : '4,4'}"/>
+                        <circle cx="55" cy="0" r="15" fill="#0f172a" stroke="#f59e0b" stroke-width="2" onclick="toggleBypassJumper()" class="cursor-pointer"/>
+                        <text x="55" y="4" fill="#f59e0b" font-size="9.5" font-weight="bold" text-anchor="middle" onclick="toggleBypassJumper()" class="cursor-pointer">
+                            ${bypassSwitchClosed ? 'ON' : 'OFF'}
+                        </text>
+                        <text x="55" y="-22" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">跨接跳線開關 (點擊切換)</text>
+                    </g>
+
+                    <g transform="translate(470, 45)">
+                        <rect x="0" y="0" width="300" height="360" rx="18" fill="#0f172a" stroke="#f59e0b" stroke-width="4"/>
+                        <rect x="14" y="14" width="272" height="332" rx="12" fill="#1e293b"/>
+                        
+                        <rect x="30" y="30" width="240" height="100" rx="6" fill="#022c22" stroke="${currentStroke}" stroke-width="2"/>
+                        <text x="45" y="55" fill="#6ee7b7" font-size="11" font-family="monospace">AUTO DC 10A [SERIES]</text>
+                        <text x="150" y="102" fill="${currentStroke}" font-size="40" font-family="monospace" font-weight="bold" text-anchor="middle" filter="url(#neonCyan)">
+                            ${ampDisplay}
+                        </text>
+
+                        <circle cx="150" cy="195" r="42" fill="#0f172a" stroke="#475569" stroke-width="3"/>
+                        <line x1="150" y1="195" x2="150" y2="158" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/>
+                        <text x="150" y="145" fill="#f59e0b" font-size="12" font-weight="bold" text-anchor="middle font-family='monospace'">10A⎓</text>
+
+                        <circle cx="75" cy="300" r="14" fill="#450a0a" stroke="#ef4444" stroke-width="2.5"/>
+                        <text x="75" y="304" fill="#ef4444" font-size="9" font-weight="bold" text-anchor="middle">10A</text>
+                        <text x="75" y="324" fill="#fca5a5" font-size="8" text-anchor="middle">紅表筆</text>
+
+                        <circle cx="150" cy="300" r="14" fill="#020617" stroke="#94a3b8" stroke-width="2.5"/>
+                        <text x="150" y="304" fill="#94a3b8" font-size="9" font-weight="bold" text-anchor="middle">COM</text>
+                        <text x="150" y="324" fill="#cbd5e1" font-size="8" text-anchor="middle">黑表筆</text>
+
+                        <circle cx="225" cy="300" r="14" fill="#0f172a" stroke="#475569" stroke-width="1.5"/>
+                        <text x="225" y="304" fill="#64748b" font-size="8" text-anchor="middle">VΩmA</text>
+                        <text x="225" y="324" fill="#ef4444" font-size="8" font-weight="bold" text-anchor="middle">嚴禁插此孔</text>
+                    </g>
+
+                    <path d="M 545 345 C 470 420, 260 410, 168 62" fill="none" stroke="#ef4444" stroke-width="4" stroke-linecap="round"/>
+                    <circle cx="168" cy="62" r="6" fill="#ef4444"/>
+
+                    <path d="M 620 345 C 560 380, 380 340, 275 92" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+                    <circle cx="275" cy="92" r="6" fill="#94a3b8"/>
+
+                    <g transform="translate(60, 285)">
+                        <rect x="0" y="0" width="370" height="95" rx="8" fill="#172033" stroke="#f59e0b" stroke-width="1.5"/>
+                        <text x="16" y="24" fill="#fbbf24" font-size="11" font-weight="bold">三用電錶防燒錶 &amp; 防 ECU 喚醒口訣：</text>
+                        <text x="16" y="44" fill="#cbd5e1" font-size="10.5">1. 門鎖做假扣，智慧鑰匙拿離車輛 5~10 公尺以上。</text>
+                        <text x="16" y="62" fill="#cbd5e1" font-size="10.5">2. 跨接跳線接好後拔樁頭，全車不斷電無火花。</text>
+                        <text x="16" y="80" fill="#38bdf8" font-size="10.5" font-weight="bold">3. 電錶插 10A 檔串接完成後，斷開跨接線精準讀數！</text>
+                    </g>
+                `;
+            } else if (method === 'clamp') {
+                svgDynamicStage.innerHTML = `
+                    <g transform="translate(80, 60)">
+                        <path d="M 30 180 L 620 180" stroke="#334155" stroke-width="26" stroke-linecap="round"/>
+                        <text x="325" y="140" fill="#94a3b8" font-size="13" font-weight="bold" text-anchor="middle">車載單一負極搭鐵纜線 (不可同時夾正負兩線)</text>
+
+                        <g transform="translate(260, 70)">
+                            <path d="M 20 60 C 20 -5, 90 -5, 90 60" fill="none" stroke="#f59e0b" stroke-width="18" stroke-linecap="round"/>
+                            <path d="M 20 150 C 20 215, 90 215, 90 150" fill="none" stroke="#f59e0b" stroke-width="18" stroke-linecap="round"/>
+                            
+                            <rect x="75" y="65" width="160" height="230" rx="14" fill="#0f172a" stroke="#d97706" stroke-width="3"/>
+                            
+                            <rect x="95" y="85" width="120" height="55" rx="5" fill="#022c22" stroke="${currentStroke}" stroke-width="1.5"/>
+                            <text x="155" y="122" fill="${currentStroke}" font-size="24" font-family="monospace" font-weight="bold" text-anchor="middle">
+                                ${ampDisplay}
+                            </text>
+                            <text x="155" y="134" fill="#6ee7b7" font-size="8" font-family="monospace" text-anchor="middle">DC mA CLAMP</text>
+
+                            <circle cx="155" cy="180" r="20" fill="#b45309" stroke="#fbbf24" stroke-width="2"/>
+                            <text x="155" y="184" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">ZERO</text>
+                            
+                            <text x="155" y="240" fill="#fbbf24" font-size="11" font-weight="bold" text-anchor="middle">夾入前需歸零</text>
+                        </g>
+
+                        <g transform="translate(40, 270)">
+                            <rect x="0" y="0" width="600" height="75" rx="8" fill="#172033" stroke="#f59e0b" stroke-width="1.5"/>
+                            <text x="20" y="26" fill="#fbbf24" font-size="12" font-weight="bold">直流微安鉤表三大關鍵細節：</text>
+                            <text x="20" y="48" fill="#cbd5e1" font-size="11">① 必須支援 DC 直流微安 (一般水電交流 AC 鉤表無效)。</text>
+                            <text x="20" y="66" fill="#cbd5e1" font-size="11">② 霍爾元件極易受地磁干擾，夾入線束前必須在相同角度按下【ZERO】歸零！</text>
+                        </g>
+                    </g>
+                `;
+            } else if (method === 'fuse') {
+                svgDynamicStage.innerHTML = `
+                    <g transform="translate(70, 50)">
+                        <rect x="0" y="0" width="350" height="330" rx="12" fill="#0f172a" stroke="#334155" stroke-width="2"/>
+                        <text x="25" y="34" fill="#ffffff" font-size="13" font-weight="bold">車載保險絲座 (BCM / 頂棚控制迴路)</text>
+
+                        <g transform="translate(35, 65)">
+                            <rect x="0" y="0" width="65" height="55" rx="4" fill="#1e3a8a" stroke="#3b82f6"/>
+                            <text x="32" y="34" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">15A</text>
+                            <circle cx="16" cy="10" r="3" fill="#cbd5e1"/>
+                            <circle cx="48" cy="10" r="3" fill="#cbd5e1"/>
+
+                            <rect x="90" y="0" width="65" height="55" rx="4" fill="#14532d" stroke="#22c55e"/>
+                            <text x="122" y="34" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">30A</text>
+                            <circle cx="106" cy="10" r="3" fill="#cbd5e1"/>
+                            <circle cx="138" cy="10" r="3" fill="#cbd5e1"/>
+
+                            <g transform="translate(180, 0)">
+                                <rect x="0" y="0" width="75" height="65" rx="4" fill="${isLeak ? '#7f1d1d' : '#1e293b'}" stroke="${isLeak ? '#ef4444' : '#64748b'}" stroke-width="2.5" class="${isLeak ? 'anim-alert' : ''}"/>
+                                <text x="37" y="38" fill="#fca5a5" font-size="14" font-weight="bold" text-anchor="middle">10A</text>
+                                <text x="37" y="55" fill="#f87171" font-size="8.5" text-anchor="middle font-bold">ROOF</text>
+                                
+                                <circle cx="20" cy="10" r="4.5" fill="#fde047" stroke="#000000"/>
+                                <circle cx="55" cy="10" r="4.5" fill="#fde047" stroke="#000000"/>
+                                <text x="37" y="-10" fill="#fca5a5" font-size="10" font-weight="bold" text-anchor="middle">漏電目標保險絲</text>
+                            </g>
+                        </g>
+
+                        <g transform="translate(460, 20)">
+                            <rect x="0" y="0" width="260" height="320" rx="14" fill="#0b0f19" stroke="#a855f7" stroke-width="3"/>
+                            <rect x="18" y="18" width="224" height="90" rx="6" fill="#1e1035" stroke="#a855f7" stroke-width="1.5"/>
+                            <text x="30" y="40" fill="#d8b4fe" font-size="10" font-family="monospace">DC MILLIVOLTS (mV)</text>
+                            <text x="130" y="85" fill="${isLeak ? '#f43f5e' : '#a7f3d0'}" font-size="38" font-family="monospace" font-weight="bold" text-anchor="middle">
+                                ${mvDisplay}
+                            </text>
+
+                            <path d="M 60 270 C 20 290, -100 240, -205 75" fill="none" stroke="#ef4444" stroke-width="3.5"/>
+                            <path d="M 120 270 C 60 310, -70 260, -240 75" fill="none" stroke="#94a3b8" stroke-width="3.5"/>
+                        </g>
+
+                        <g transform="translate(35, 200)">
+                            <rect x="0" y="0" width="370" height="110" rx="6" fill="#172033" stroke="#38bdf8" stroke-width="1.5"/>
+                            <text x="16" y="26" fill="#38bdf8" font-size="12" font-weight="bold">歐姆定律毫伏壓降換算：</text>
+                            <text x="16" y="48" fill="#cbd5e1" font-size="10.5">10A Mini 保險絲內阻約 7.4 mΩ ($V = I \times R$)。</text>
+                            <text x="16" y="70" fill="${isLeak ? '#fca5a5' : '#34d399'}" font-size="11" font-weight="bold">
+                                ${isLeak ? '• 量得 3.4 mV 壓降 ➜ 等於有約 0.46A (460mA) 持續吃電！' : '• 量得 0.0 mV 壓降 ➜ 該迴路完全休眠無洩漏。'}
+                            </text>
+                            <text x="16" y="94" fill="#fbbf24" font-size="10.5">★ 絕招優勢：完全不用拔掉保險絲，絕不二次喚醒 CAN-BUS！</text>
+                        </g>
+                    </g>
+                `;
+            }
+        }
+
+        // Initialize application on Case SOP Step 0
+        switchDomain('case');
+    </script>
+</body>
+</html>
