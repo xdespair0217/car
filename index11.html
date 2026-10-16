@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>車用直流勾表 (Amp Clamp) 量測邏輯與診斷模擬器</title>
+  <style>
+    :root {
+      --bg-main: #0b0f17;
+      --panel-bg: #131b29;
+      --card-bg: #1b263b;
+      --border-color: #2a3b53;
+      --accent-cyan: #00e5ff;
+      --accent-green: #00ff88;
+      --accent-yellow: #ffb703;
+      --accent-red: #ff3366;
+      --text-main: #e2e8f0;
+      --text-muted: #8899ac;
+      --font-mono: 'Consolas', 'Courier New', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      padding: 20px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 20px;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    header h1 {
+      font-size: 1.5rem;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .viewport {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      position: relative;
+    }
+
+    .canvas-container {
+      background: #06090e;
+      border: 1px solid #1f2b3e;
+      border-radius: 6px;
+      position: relative;
+      width: 100%;
+      height: 480px;
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .meter-control-bar {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 15px;
+      background: var(--card-bg);
+      padding: 12px 18px;
+      border-radius: 6px;
+      align-items: center;
+      border: 1px solid var(--border-color);
+    }
+
+    .lcd-screen {
+      background: #0a110d;
+      border: 2px solid #1b3824;
+      padding: 8px 16px;
+      border-radius: 4px;
+      color: #38ef7d;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      box-shadow: inset 0 0 10px rgba(0, 255, 136, 0.2);
+    }
+    .lcd-screen .val {
+      font-size: 2rem;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+    .lcd-screen .unit {
+      font-size: 0.9rem;
+      color: #2ed573;
+    }
+    .lcd-screen .mode-tag {
+      font-size: 0.75rem;
+      color: #11998e;
+      margin-left: auto;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      background: #202d42;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #2c3e5a;
+      border-color: var(--accent-cyan);
+    }
+    button.active {
+      background: var(--accent-cyan);
+      color: #050b14;
+      font-weight: bold;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+    }
+    button.btn-warn {
+      border-color: var(--accent-yellow);
+      color: var(--accent-yellow);
+    }
+    button.btn-warn.active {
+      background: var(--accent-yellow);
+      color: #000;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .panel h2 {
+      font-size: 1rem;
+      color: var(--accent-cyan);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    .scenario-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .scenario-btn {
+      text-align: left;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-radius: 5px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+    }
+    .scenario-btn .desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .eval-box {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #0c1420;
+      border-left: 4px solid var(--accent-green);
+    }
+    .eval-box.alert-warn { border-left-color: var(--accent-yellow); }
+    .eval-box.alert-danger { border-left-color: var(--accent-red); }
+
+    .eval-title {
+      font-weight: bold;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .eval-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .sop-item {
+      display: flex;
+      gap: 10px;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+    .sop-idx {
+      background: #1e293b;
+      color: var(--accent-cyan);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    @media (max-width: 1024px) {
+      .container { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>
+      <span>⚡ 車用直流勾表量測邏輯模擬系統</span>
+      <span class="badge">DC AMP CLAMP SOP v2.5</span>
+    </h1>
+    <span style="font-size: 0.85rem; color: var(--text-muted);">不斷電 / 非接觸式休眠暗電流診斷</span>
+  </header>
+
+  <!-- 左側：量測實境與動畫 Canvas -->
+  <div class="viewport">
+    <div class="canvas-container">
+      <canvas id="meterCanvas"></canvas>
+    </div>
+
+    <!-- 儀表下方操作欄位 -->
+    <div class="meter-control-bar">
+      <div class="lcd-screen">
+        <span class="val" id="dispVal">0.024</span>
+        <span class="unit" id="dispUnit">A</span>
+        <span class="mode-tag" id="dispMode">DC · AUTO</span>
+      </div>
+
+      <div class="btn-group">
+        <button id="btnDcA" class="active" onclick="setMode('DC_A')">DC 安培 (A)</button>
+        <button id="btnDcmA" onclick="setMode('DC_MA')">DC 毫安 (mA)</button>
+        <button id="btnAcA" onclick="setMode('AC')">AC 交流 (錯誤檔)</button>
+      </div>
+
+      <div class="btn-group">
+        <button id="btnZero" class="btn-warn" onclick="toggleZero()">ZERO 歸零校準</button>
+      </div>
+    </div>
+
+    <!-- 夾線位置選擇 -->
+    <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 0.85rem; background: var(--card-bg); padding: 10px 14px; border-radius: 6px;">
+      <span style="color: var(--text-muted);">鉗口夾持位置：</span>
+      <div class="btn-group">
+        <button id="clampSingleNeg" class="active" onclick="setClampTarget('NEG_SINGLE')">✔ 夾單一負極總線 (正確)</button>
+        <button id="clampBoth" onclick="setClampTarget('BOTH')">✖ 同時夾正負雙線 (錯誤相消)</button>
+        <button id="clampSinglePos" onclick="setClampTarget('POS_SINGLE')">夾正極主電源線</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右側面板 -->
+  <div class="sidebar">
+    <div class="panel">
+      <h2>即時診斷狀態</h2>
+      <div id="evalBox" class="eval-box">
+        <div class="eval-title" id="evalTitle">🟢 車輛正常休眠 (合格)</div>
+        <div class="eval-desc" id="evalDesc">總暗電流低於 50mA 規範值，全車通訊網路（CAN BUS）已安靜沉睡。</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>模擬故障情境切換</h2>
+      <div class="scenario-list">
+        <button class="scenario-btn active" id="scen-normal" onclick="setScenario('normal')">
+          <div>
+            <strong>正常休眠模式 (Sleep Mode)</strong>
+            <div class="desc">總電流約 20 ~ 35 mA (原廠標準)</div>
+          </div>
+          <span class="badge" style="border-color: #00ff88; color: #00ff88;">合格</span>
+        </button>
+
+        <button class="scenario-btn" id="scen-light" onclick="setScenario('light')">
+          <div>
+            <strong>加裝設備輕度漏電</strong>
+            <div class="desc">行車記錄器常火、OBD 配件偷吃電 (120 mA)</div>
+          </div>
+          <span class="badge" style="border-color: #ffb703; color: #ffb703;">警告</span>
+        </button>
+
+        <button class="scenario-btn" id="scen-can" onclick="setScenario('can')">
+          <div>
+            <strong>網路未睡眠 (CAN BUS Active)</strong>
+            <div class="desc">車身電腦 VSM 或儀表模組被喚醒 (450 mA)</div>
+          </div>
+          <span class="badge" style="border-color: #ff3366; color: #ff3366;">嚴重</span>
+        </button>
+
+        <button class="scenario-btn" id="scen-heavy" onclick="setScenario('heavy')">
+          <div>
+            <strong>重大負載未斷 / 繼電器常開</strong>
+            <div class="desc">車廂燈未熄或主繼電器吸合 (1.85 A)</div>
+          </div>
+          <span class="badge" style="border-color: #ff3366; color: #ff3366;">危急</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>汽修現場標準 SOP 鐵則</h2>
+      <div class="sop-item">
+        <div class="sop-idx">1</div>
+        <div><strong>非接觸霍爾效應</strong>：嚴禁拔開電瓶樁頭串聯電表！拔插瞬間會激醒 CAN BUS 網路，導致休眠倒數重來[cite: 79, 80]。</div>
+      </div>
+      <div class="sop-item">
+        <div class="sop-idx">2</div>
+        <div><strong>測前空中歸零</strong>：直流電流鉗極易受地磁影響。夾入導線前必須在空氣中按下 <code>ZERO</code> 鍵清空飄移數值[cite: 80]。</div>
+      </div>
+      <div class="sop-item">
+        <div class="sop-idx">3</div>
+        <div><strong>單線原則（切勿夾雙線）</strong>：若同時夾入正極與負極線，正向磁場與反向磁場剛好 100% 抵消，讀數將永遠顯示 0.00A！[cite: 80]</div>
+      </div>
+      <div class="sop-item">
+        <div class="sop-idx">4</div>
+        <div><strong>充電機負極嚴禁直夾樁頭</strong>：必須夾在車身搭鐵或電纜後方，確保充入電流通過 IBS 智慧電瓶感知器重新校正 SOC[cite: 206]。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const state = {
+    scenario: 'normal',
+    rawCurrent: 0.024,
+    mode: 'DC_A',
+    clampTarget: 'NEG_SINGLE',
+    isZeroed: true,
+    driftOffset: 0.065,
+    animOffset: 0
+  };
+
+  const scenarios = {
+    normal: { current: 0.024, title: "🟢 車輛正常休眠 (合格)", desc: "全車總靜態漏電流在 50mA 以下（約 24mA），各電腦模組處於深層睡眠狀態。", alert: "ok" },
+    light:  { current: 0.120, title: "🟡 輕度漏電 (加裝配件)", desc: "測得約 120mA 洩漏。常見原因為加裝之電子後視鏡、行車記錄器駐車監控或防盜配件持續耗電。", alert: "warn" },
+    can:    { current: 0.460, title: "🔴 網路被喚醒 (CAN BUS 活躍)", desc: "測得約 460mA。代表車身控制模組（VSM/BSI）或某通訊網關未睡，線路持續廣播通訊訊號。", alert: "danger" },
+    heavy:  { current: 1.850, title: "🚨 重大負載洩漏 / 繼電器常開", desc: "測得高達 1.85A！手套箱燈、後廂燈未熄，或主功率繼電器內部觸點黏死未釋放。", alert: "danger" }
+  };
+
+  function setScenario(scen) {
+    state.scenario = scen;
+    state.rawCurrent = scenarios[scen].current;
+    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('scen-' + scen).classList.add('active');
+    updateEval();
+  }
+
+  function setMode(m) {
+    state.mode = m;
+    ['btnDcA', 'btnDcmA', 'btnAcA'].forEach(id => document.getElementById(id).classList.remove('active'));
+    if (m === 'DC_A') document.getElementById('btnDcA').classList.add('active');
+    if (m === 'DC_MA') document.getElementById('btnDcmA').classList.add('active');
+    if (m === 'AC') document.getElementById('btnAcA').classList.add('active');
+    updateEval();
+  }
+
+  function toggleZero() {
+    state.isZeroed = !state.isZeroed;
+    const btn = document.getElementById('btnZero');
+    if (state.isZeroed) {
+      btn.classList.remove('active');
+      btn.innerText = "ZERO 歸零校準 (已校正)";
+    } else {
+      btn.classList.add('active');
+      btn.innerText = "ZERO 未歸零 (存在地磁漂移)";
+    }
+  }
+
+  function setClampTarget(target) {
+    state.clampTarget = target;
+    ['clampSingleNeg', 'clampBoth', 'clampSinglePos'].forEach(id => document.getElementById(id).classList.remove('active'));
+    if (target === 'NEG_SINGLE') document.getElementById('clampSingleNeg').classList.add('active');
+    if (target === 'BOTH') document.getElementById('clampBoth').classList.add('active');
+    if (target === 'POS_SINGLE') document.getElementById('clampSinglePos').classList.add('active');
+    updateEval();
+  }
+
+  function updateEval() {
+    const box = document.getElementById('evalBox');
+    const t = document.getElementById('evalTitle');
+    const d = document.getElementById('evalDesc');
+    const curScen = scenarios[state.scenario];
+
+    box.className = "eval-box";
+    if (state.clampTarget === 'BOTH') {
+      t.innerText = "⚠️ 夾持錯誤：磁場互相抵消";
+      d.innerText = "同時夾入正極與負極電纜時，兩者電流方向相反，產生的環形磁場完全相抵，讀數恆為 0.00A，無法查測漏電！";
+      box.classList.add('alert-warn');
+      return;
+    }
+
+    if (state.mode === 'AC') {
+      t.innerText = "⚠️ 檔位錯誤：直流電誤用交流檔";
+      d.innerText = "車輛電瓶為純直流電（DC），交流檔（AC）無法感應恆定磁場，讀數將持續顯示 0.00A 或雜波。";
+      box.classList.add('alert-warn');
+      return;
+    }
+
+    t.innerText = curScen.title;
+    d.innerText = curScen.desc;
+    if (curScen.alert === 'warn') box.classList.add('alert-warn');
+    if (curScen.alert === 'danger') box.classList.add('alert-danger');
+  }
+
+  function updateMeterDisplay() {
+    let finalCurrent = state.rawCurrent;
+
+    if (state.clampTarget === 'BOTH') finalCurrent = 0.000;
+    if (state.mode === 'AC') finalCurrent = 0.000;
+    if (!state.isZeroed) finalCurrent += state.driftOffset;
+
+    finalCurrent += (Math.random() - 0.5) * 0.002;
+    if (finalCurrent < 0) finalCurrent = 0;
+
+    const dispVal = document.getElementById('dispVal');
+    const dispUnit = document.getElementById('dispUnit');
+    const dispMode = document.getElementById('dispMode');
+
+    if (state.mode === 'DC_MA') {
+      const mA = (finalCurrent * 1000).toFixed(1);
+      dispVal.innerText = mA;
+      dispUnit.innerText = "mA";
+      dispMode.innerText = "DC · 毫安";
+    } else if (state.mode === 'AC') {
+      dispVal.innerText = (0.00).toFixed(2);
+      dispUnit.innerText = "A";
+      dispMode.innerText = "AC · 交流(無訊號)";
+    } else {
+      dispVal.innerText = finalCurrent.toFixed(3);
+      dispUnit.innerText = "A";
+      dispMode.innerText = "DC · 安培";
+    }
+  }
+
+  const canvas = document.getElementById('meterCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // 繪製函數
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    state.animOffset += 0.05;
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // 1. 電瓶本體
+    const batX = 60, batY = 170, batW = 130, batH = 200;
+    ctx.fillStyle = '#141d2b';
+    ctx.strokeStyle = '#2b3d56';
+    ctx.lineWidth = 3;
+    ctx.fillRect(batX, batY, batW, batH);
+    ctx.strokeRect(batX, batY, batW, batH);
+
+    // 正極樁頭 (紅)
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(batX + 20, batY - 18, 26, 18);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 15px monospace';
+    ctx.fillText('+', batX + 28, batY - 4);
+
+    // 負極樁頭 (深灰)
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(batX + batW - 46, batY - 18, 26, 18);
+    ctx.fillText('-', batX + batW - 37, batY - 4);
+
+    // IBS 感知器
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 1.5;
+    ctx.fillRect(batX + batW - 55, batY - 44, 44, 24);
+    ctx.strokeRect(batX + batW - 55, batY - 44, 44, 24);
+    ctx.fillStyle = '#00e5ff';
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText('IBS', batX + batW - 44, batY - 28);
+
+    // 2. 確定線路幾何路徑 (貝茲曲線)
+    const posStart = { x: batX + 33, y: batY - 18 };
+    const posCtrl  = { x: w * 0.45,  y: 70 };
+    const posEnd   = { x: w - 80,    y: 310 };
+
+    const negStart = { x: batX + batW - 33, y: batY - 44 };
+    const negCtrl  = { x: w * 0.50,         y: 20 };
+    const negEnd   = { x: w - 100,          y: 260 };
+
+    // 決定勾表在畫面中的中心點 (完美坐落在線路頂點)
+    let clampCenter = { x: w * 0.48, y: 100 };
+    let jawRadius = 38;
+
+    if (state.clampTarget === 'NEG_SINGLE') {
+      clampCenter = { x: w * 0.47, y: 78 };  // 準確穿過負極線頂點
+      jawRadius = 36;
+    } else if (state.clampTarget === 'POS_SINGLE') {
+      clampCenter = { x: w * 0.45, y: 145 }; // 準確穿過正極線頂點
+      jawRadius = 36;
+    } else if (state.clampTarget === 'BOTH') {
+      clampCenter = { x: w * 0.46, y: 110 }; // 位於雙線之間
+      jawRadius = 56; // 擴大鉗口包住兩根電線
+    }
+
+    // --- 圖層 A：繪製鉗口「後半圈」（營造穿過內部的層次感）---
+    ctx.save();
+    ctx.translate(clampCenter.x, clampCenter.y);
+    ctx.strokeStyle = '#f59e0b'; // 金黃色鐵芯
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0, 0, jawRadius, Math.PI * 0.75, Math.PI * 1.85); // 鉗口後半圓弧
+    ctx.stroke();
+    ctx.restore();
+
+    // --- 圖層 B：繪製實體電纜導線 ---
+    // 繪製正極電纜 (紅)
+    ctx.beginPath();
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = 18;
+    ctx.lineCap = 'round';
+    ctx.moveTo(posStart.x, posStart.y);
+    ctx.quadraticCurveTo(posCtrl.x, posCtrl.y, posEnd.x, posEnd.y);
+    ctx.stroke();
+
+    // 繪製負極電纜 (深灰藍色主線)
+    ctx.beginPath();
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 18;
+    ctx.lineCap = 'round';
+    ctx.moveTo(negStart.x, negStart.y);
+    ctx.quadraticCurveTo(negCtrl.x, negCtrl.y, negEnd.x, negEnd.y);
+    ctx.stroke();
+
+    // 負極外皮亮光條 (增加立體感)
+    ctx.beginPath();
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 4;
+    ctx.moveTo(negStart.x, negStart.y);
+    ctx.quadraticCurveTo(negCtrl.x, negCtrl.y, negEnd.x, negEnd.y);
+    ctx.stroke();
+
+    // 車身搭鐵符號 (GND)
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 2.5;
+    const gX = negEnd.x, gY = negEnd.y;
+    ctx.beginPath();
+    ctx.moveTo(gX - 22, gY); ctx.lineTo(gX + 22, gY);
+    ctx.moveTo(gX - 15, gY + 6); ctx.lineTo(gX + 15, gY + 6);
+    ctx.moveTo(gX - 8, gY + 12); ctx.lineTo(gX + 8, gY + 12);
+    ctx.stroke();
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('車身搭鐵 (GND)', gX - 45, gY + 28);
+
+    // --- 圖層 C：霍爾磁力線（穿過鉗口中心）---
+    if (state.clampTarget !== 'BOTH' && state.rawCurrent > 0.03 && state.mode !== 'AC') {
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      for (let r = 16; r <= 32; r += 8) {
+        ctx.beginPath();
+        ctx.arc(clampCenter.x, clampCenter.y, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+
+    // --- 圖層 D：繪製鉗口「前半圈」與勾表機身（遮蓋電線，完成包覆視覺）---
+    ctx.save();
+    ctx.translate(clampCenter.x, clampCenter.y);
+
+    // 鉗口前半圓弧 (前端閉合處)
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0, 0, jawRadius, -Math.PI * 0.25, Math.PI * 0.75);
+    ctx.stroke();
+
+    // 鉗口接合部縫隙
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(jawRadius - 8, -6);
+    ctx.lineTo(jawRadius + 8, -6);
+    ctx.stroke();
+
+    // 勾表主體把手 (紅色握把，垂在電線下方)
+    const bodyW = 42, bodyH = 140;
+    const bodyTop = jawRadius - 4; // 從鉗口下緣順暢延伸
+    ctx.fillStyle = '#b91c1c';
+    ctx.fillRect(-bodyW / 2, bodyTop, bodyW, bodyH);
+    ctx.strokeStyle = '#7f1d1d';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-bodyW / 2, bodyTop, bodyW, bodyH);
+
+    // 側邊開口扳機 (黃色)
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillRect(bodyW / 2, bodyTop + 18, 14, 28);
+    ctx.strokeRect(bodyW / 2, bodyTop + 18, 14, 28);
+
+    // 勾表本體微型 LCD 與標籤
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-16, bodyTop + 55, 32, 50);
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText('DC-mA', -14, bodyTop + 82);
+
+    ctx.restore();
+
+    // --- 圖層 E：狀態標註文字 ---
+    ctx.font = 'bold 13px sans-serif';
+    if (state.clampTarget === 'NEG_SINGLE') {
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('✔ 正確夾持：負極接地總電纜 (非接觸霍爾感測)', clampCenter.x - 140, clampCenter.y + jawRadius + 175);
+    } else if (state.clampTarget === 'BOTH') {
+      ctx.fillStyle = '#f87171';
+      ctx.fillText('✖ 錯誤夾持：正負雙線同時夾入（磁場相互抵消）', clampCenter.x - 140, clampCenter.y + jawRadius + 175);
+    } else {
+      ctx.fillStyle = '#facc15';
+      ctx.fillText('⚡ 正極電源線量測中', clampCenter.x - 60, clampCenter.y + jawRadius + 175);
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  setInterval(updateMeterDisplay, 100);
+  draw();
+  updateEval();
+</script>
+
+</body>
+</html>
