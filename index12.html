@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>車用保險絲微電壓降 (mV) 抓漏電量測教學與邏輯換算系統</title>
+  <style>
+    :root {
+      --bg-main: #0b0f17;
+      --panel-bg: #131b29;
+      --card-bg: #1b263b;
+      --border-color: #2a3b53;
+      --accent-cyan: #00e5ff;
+      --accent-green: #00ff88;
+      --accent-yellow: #ffb703;
+      --accent-red: #ff3366;
+      --text-main: #e2e8f0;
+      --text-muted: #8899ac;
+      --font-mono: 'Consolas', 'Courier New', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+      padding: 20px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 440px;
+      gap: 20px;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    header h1 {
+      font-size: 1.45rem;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+
+    /* 左側操作與動畫區 */
+    .viewport {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .canvas-container {
+      background: #06090e;
+      border: 1px solid #1f2b3e;
+      border-radius: 6px;
+      position: relative;
+      width: 100%;
+      height: 420px;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 測量設定與數值控制條 */
+    .control-deck {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      background: var(--card-bg);
+      padding: 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    select, input[type="range"], input[type="number"] {
+      background: #0d1522;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 10px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+    }
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    /* 儀表與計算面板 */
+    .meter-display-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      align-items: center;
+    }
+    .lcd-card {
+      background: #0a110d;
+      border: 2px solid #1b3824;
+      padding: 10px 16px;
+      border-radius: 6px;
+      color: #38ef7d;
+      font-family: var(--font-mono);
+      display: flex;
+      flex-direction: column;
+      box-shadow: inset 0 0 10px rgba(0, 255, 136, 0.2);
+    }
+    .lcd-card .lbl {
+      font-size: 0.7rem;
+      color: #2ed573;
+      margin-bottom: 2px;
+    }
+    .lcd-card .val-wrap {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .lcd-card .val {
+      font-size: 2.2rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+    .lcd-card .unit {
+      font-size: 0.95rem;
+      color: #2ed573;
+    }
+
+    /* 接線與檔位切換按鈕群組 */
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    button {
+      background: #202d42;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    button:hover {
+      background: #2c3e5a;
+      border-color: var(--accent-cyan);
+    }
+    button.active {
+      background: var(--accent-cyan);
+      color: #050b14;
+      font-weight: bold;
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+    }
+    button.btn-danger.active {
+      background: var(--accent-red);
+      color: #fff;
+      border-color: var(--accent-red);
+      box-shadow: 0 0 10px rgba(255, 51, 102, 0.4);
+    }
+
+    /* 右側面板 */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .panel {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .panel h2 {
+      font-size: 0.95rem;
+      color: var(--accent-cyan);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 8px;
+    }
+
+    /* 評估狀態燈規 */
+    .eval-box {
+      padding: 12px;
+      border-radius: 6px;
+      background: #0c1420;
+      border-left: 4px solid var(--accent-green);
+    }
+    .eval-box.alert-warn { border-left-color: var(--accent-yellow); }
+    .eval-box.alert-danger { border-left-color: var(--accent-red); }
+
+    .eval-title {
+      font-weight: bold;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .eval-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* 規範對照表 */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      margin-top: 6px;
+    }
+    .data-table th, .data-table td {
+      border: 1px solid var(--border-color);
+      padding: 6px 8px;
+      text-align: center;
+    }
+    .data-table th {
+      background: #1b263b;
+      color: var(--accent-cyan);
+    }
+    .data-table tr.highlight {
+      background: rgba(0, 229, 255, 0.15);
+      color: #fff;
+      font-weight: bold;
+    }
+
+    /* 原廠守則清單 */
+    .sop-item {
+      display: flex;
+      gap: 8px;
+      font-size: 0.8rem;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+    .sop-idx {
+      background: #1e293b;
+      color: var(--accent-cyan);
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    @media (max-width: 1024px) {
+      .container { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>
+      <span>⚡ 車用保險絲微電壓降 (mV) 量測教學與抓漏系統</span>
+      <span class="badge">PSA / VAG TPL 2008818</span>
+    </h1>
+    <span style="font-size: 0.85rem; color: var(--text-muted);">免拔保險絲 · 零斷電休眠暗電流診斷</span>
+  </header>
+
+  <!-- 左側：視覺動畫與主控面板 -->
+  <div class="viewport">
+    <div class="canvas-container">
+      <canvas id="fuseCanvas"></canvas>
+    </div>
+
+    <!-- 探針搭接與檔位選擇 -->
+    <div style="background: var(--card-bg); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: bold;">探針搭接模式：</span>
+        <div class="btn-grid" style="width: 75%;">
+          <button id="modeCorrect" class="active" onclick="setProbeMode('CORRECT')">✔ 頂部同顆兩側 (正確量微壓降)</button>
+          <button id="modeGround" class="btn-danger" onclick="setProbeMode('TO_GROUND')">✖ 單邊對車身地 (誤量12V)</button>
+          <button id="modeCross" class="btn-danger" onclick="setProbeMode('CROSS')">✖ 跨兩顆保險絲 (邏輯錯誤)</button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: bold;">電表量程檔位：</span>
+        <div class="btn-grid" style="width: 75%;">
+          <button id="rangeMv" class="active" onclick="setMeterRange('MV')">✔ 直流毫伏檔 (DC mV) [正確]</button>
+          <button id="rangeVolt" class="btn-danger" onclick="setMeterRange('VOLT')">✖ 直流電壓檔 (DC 20V) [解析不足]</button>
+          <button id="rangeAmp" class="btn-danger" onclick="setMeterRange('AMP')">✖ 電流檔 (DC 10A) [必短路燒表]</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 參數設定與滑動條 -->
+    <div class="control-deck">
+      <div class="form-group">
+        <label>保險絲規格 (規格 / 額定安培)：</label>
+        <select id="fuseTypeSelect" onchange="onParamChange()">
+          <optgroup label="Standard (標準型保險絲)">
+            <option value="STD_5">Standard 5A (黃褐色)</option>
+            <option value="STD_10">Standard 10A (紅色)</option>
+            <option value="STD_15" selected>Standard 15A (藍色)</option>
+            <option value="STD_20">Standard 20A (黃色)</option>
+            <option value="STD_25">Standard 25A (透明白色)</option>
+            <option value="STD_30">Standard 30A (綠色)</option>
+          </optgroup>
+          <optgroup label="Mini (迷你型保險絲)">
+            <option value="MINI_5">Mini 5A (黃褐色)</option>
+            <option value="MINI_7_5">Mini 7.5A (棕色)</option>
+            <option value="MINI_10">Mini 10A (紅色)</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between;">
+          <label>兩端實測微電壓 (mV)：</label>
+          <span id="mvInputDisplay" style="font-family: var(--font-mono); color: var(--accent-cyan); font-weight: bold;">0.2 mV</span>
+        </div>
+        <input type="range" id="mvSlider" min="0" max="6.0" step="0.1" value="0.2" oninput="onSliderChange(this.value)">
+      </div>
+    </div>
+
+    <!-- 雙 LCD 螢幕展示 -->
+    <div class="meter-display-bar">
+      <div class="lcd-card">
+        <span class="lbl">電表實測讀數 (DISPLAY)</span>
+        <div class="val-wrap">
+          <span class="val" id="dispMeterVal">0.2</span>
+          <span class="unit" id="dispMeterUnit">mV</span>
+        </div>
+      </div>
+
+      <div class="lcd-card" style="border-color: #1e3a5f; box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.2);">
+        <span class="lbl" style="color: var(--accent-cyan);">原廠查表換算漏電量 (CURRENT)</span>
+        <div class="val-wrap">
+          <span class="val" id="dispCalcCurrent" style="color: var(--accent-cyan);">45</span>
+          <span class="unit" style="color: var(--accent-cyan);">mA</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右側：診斷狀態、判定標準與數據矩陣 -->
+  <div class="sidebar">
+    <!-- 即時判定面板 -->
+    <div class="panel">
+      <h2>診斷判定結果</h2>
+      <div id="evalBox" class="eval-box">
+        <div class="eval-title" id="evalTitle">🟢 正常休眠 (合格)</div>
+        <div class="eval-desc" id="evalDesc">測得壓降 0.2mV，換算洩漏電流約 45mA，符合整車休眠標準（< 50mA）。</div>
+      </div>
+    </div>
+
+    <!-- 數值標準界線 -->
+    <div class="panel">
+      <h2>原廠休眠電流與微電壓判定準則</h2>
+      <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1f2b3e; padding-bottom: 4px;">
+          <span style="color: var(--accent-green); font-weight: bold;">0.0 ~ 0.2 mV (≤ 50 mA)</span>
+          <span>合格：模組正常深層睡眠</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1f2b3e; padding-bottom: 4px;">
+          <span style="color: var(--accent-yellow); font-weight: bold;">0.3 ~ 0.5 mV (60 ~ 150 mA)</span>
+          <span>警告：輕度漏電、外接配件偷吃電</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #1f2b3e; padding-bottom: 4px;">
+          <span style="color: var(--accent-red); font-weight: bold;">0.6 ~ 5.0 mV (200 ~ 1,500 mA)</span>
+          <span>嚴重：電腦未休眠 (CAN活躍)、燈未關</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #ff0055; font-weight: bold;">> 50.0 mV</span>
+          <span>故障：原廠定義保險絲或電路嚴重故障</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 原廠速查表格精華 (15A/20A/30A) -->
+    <div class="panel">
+      <h2>原廠對照速查表 (單位: mA)</h2>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>壓降 (mV)</th>
+            <th>Std 10A</th>
+            <th>Std 15A</th>
+            <th>Std 20A</th>
+            <th>Std 30A</th>
+          </tr>
+        </thead>
+        <tbody id="quickTableBody">
+          <!-- JS 動態生成 -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 操作鐵則 -->
+    <div class="panel">
+      <h2>保險絲檢測四大防呆鐵則</h2>
+      <div class="sop-item">
+        <div class="sop-idx">1</div>
+        <div><strong>嚴禁拔除保險絲</strong>：拔下再插回會引發通電突波，吵醒 VSM/BSI 與全車 ECU 重新開機，查修徹底失真。</div>
+      </div>
+      <div class="sop-item">
+        <div class="sop-idx">2</div>
+        <div><strong>必須使用細尖探針</strong>：使用粗探針接觸不良會產生浮動電阻，請使用原廠 V.A.G 1594C 級細針穩固接觸金屬孔。</div>
+      </div>
+      <div class="sop-item">
+        <div class="sop-idx">3</div>
+        <div><strong>切勿接車身地線</strong>：測量的是保險絲「進端與出端」之微小摩擦壓差，搭鐵只會量到 12V 電瓶電壓。</div>
+      </div>
+      <div class="sop-item">
+        <div class="sop-idx">4</div>
+        <div><strong>切勿切電流檔</strong>：電表內部電流檔為零電阻直通銅線，跨接保險絲兩端極易燒毀電表內部保險絲。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 原廠對照表完整矩陣 (TPL 2008818 附件核心數據)
+  const fuseLookup = {
+    // 格式: [0.1mV, 0.2mV, 0.3mV, 0.4mV, 0.5mV, 0.6mV, 0.7mV, 0.8mV, 0.9mV, 1.0mV, 1.5mV, 2.0mV, 3.0mV, 5.0mV]
+    STD_5:   { ratio: 66,   color: '#8b5a2b', name: 'Standard 5A' },
+    STD_10:  { ratio: 134,  color: '#dc2626', name: 'Standard 10A' },
+    STD_15:  { ratio: 226,  color: '#2563eb', name: 'Standard 15A' },
+    STD_20:  { ratio: 305,  color: '#eab308', name: 'Standard 20A' },
+    STD_25:  { ratio: 469,  color: '#f8fafc', name: 'Standard 25A' },
+    STD_30:  { ratio: 616,  color: '#16a34a', name: 'Standard 30A' },
+    MINI_5:  { ratio: 60,   color: '#8b5a2b', name: 'Mini 5A' },
+    MINI_7_5:{ ratio: 100,  color: '#78350f', name: 'Mini 7.5A' },
+    MINI_10: { ratio: 142,  color: '#dc2626', name: 'Mini 10A' }
+  };
+
+  // 查表基準數據 (mV: 0.1 ~ 1.0)
+  const lookupGrid = {
+    0.1: { STD_10: 13,  STD_15: 23,  STD_20: 30,  STD_30: 62 },
+    0.2: { STD_10: 27,  STD_15: 45,  STD_20: 61,  STD_30: 123 },
+    0.3: { STD_10: 40,  STD_15: 68,  STD_20: 91,  STD_30: 185 },
+    0.4: { STD_10: 54,  STD_15: 91,  STD_20: 122, STD_30: 246 },
+    0.5: { STD_10: 67,  STD_15: 113, STD_20: 152, STD_30: 308 },
+    1.0: { STD_10: 134, STD_15: 226, STD_20: 305, STD_30: 616 },
+    2.0: { STD_10: 268, STD_15: 453, STD_20: 609, STD_30: 1232 }
+  };
+
+  const state = {
+    probeMode: 'CORRECT', // CORRECT, TO_GROUND, CROSS
+    meterRange: 'MV',     // MV, VOLT, AMP
+    fuseType: 'STD_15',
+    measuredMv: 0.2,
+    calcCurrentMa: 45,
+    animTime: 0
+  };
+
+  function setProbeMode(m) {
+    state.probeMode = m;
+    ['modeCorrect', 'modeGround', 'modeCross'].forEach(id => document.getElementById(id).classList.remove('active'));
+    if (m === 'CORRECT') document.getElementById('modeCorrect').classList.add('active');
+    if (m === 'TO_GROUND') document.getElementById('modeGround').classList.add('active');
+    if (m === 'CROSS') document.getElementById('modeCross').classList.add('active');
+    updateAll();
+  }
+
+  function setMeterRange(r) {
+    state.meterRange = r;
+    ['rangeMv', 'rangeVolt', 'rangeAmp'].forEach(id => document.getElementById(id).classList.remove('active'));
+    if (r === 'MV') document.getElementById('rangeMv').classList.add('active');
+    if (r === 'VOLT') document.getElementById('rangeVolt').classList.add('active');
+    if (r === 'AMP') document.getElementById('rangeAmp').classList.add('active');
+    updateAll();
+  }
+
+  function onParamChange() {
+    state.fuseType = document.getElementById('fuseTypeSelect').value;
+    updateAll();
+  }
+
+  function onSliderChange(v) {
+    state.measuredMv = parseFloat(v);
+    document.getElementById('mvInputDisplay').innerText = state.measuredMv.toFixed(1) + ' mV';
+    updateAll();
+  }
+
+  // 核心計算與判定
+  function updateAll() {
+    // 1. 計算等效電流 (歐姆定律換算)
+    const factor = fuseLookup[state.fuseType].ratio;
+    state.calcCurrentMa = Math.round(state.measuredMv * factor);
+
+    const meterValEl = document.getElementById('dispMeterVal');
+    const meterUnitEl = document.getElementById('dispMeterUnit');
+    const calcEl = document.getElementById('dispCalcCurrent');
+
+    // 2. 處理電表讀數與錯誤模式
+    if (state.meterRange === 'AMP') {
+      meterValEl.innerText = "Err / FUSE";
+      meterUnitEl.innerText = "短路燒毀";
+      calcEl.innerText = "----";
+    } else if (state.probeMode === 'TO_GROUND') {
+      if (state.meterRange === 'VOLT') {
+        meterValEl.innerText = "12.45";
+        meterUnitEl.innerText = "V (DC)";
+      } else {
+        meterValEl.innerText = "OL";
+        meterUnitEl.innerText = "超載(爆表)";
+      }
+      calcEl.innerText = "無法計算";
+    } else if (state.probeMode === 'CROSS') {
+      meterValEl.innerText = "0.0";
+      meterUnitEl.innerText = "mV (無意義)";
+      calcEl.innerText = "0";
+    } else {
+      // 正確模式
+      if (state.meterRange === 'VOLT') {
+        meterValEl.innerText = "0.00";
+        meterUnitEl.innerText = "V (解析度不足)";
+        calcEl.innerText = state.calcCurrentMa;
+      } else {
+        meterValEl.innerText = state.measuredMv.toFixed(1);
+        meterUnitEl.innerText = "mV";
+        calcEl.innerText = state.calcCurrentMa;
+      }
+    }
+
+    // 3. 更新判定面板
+    updateEvalBox();
+    renderTable();
+  }
+
+  function updateEvalBox() {
+    const box = document.getElementById('evalBox');
+    const t = document.getElementById('evalTitle');
+    const d = document.getElementById('evalDesc');
+    box.className = "eval-box";
+
+    if (state.meterRange === 'AMP') {
+      t.innerText = "🚨 致命錯誤：電表電流檔短路！";
+      d.innerText = "電流檔內部阻抗幾乎為 0Ω（等同一根純銅線）。將探針並聯跨接保險絲兩端，瞬間產生短路，必燒斷電表內部保險絲！";
+      box.classList.add('alert-danger');
+      return;
+    }
+
+    if (state.probeMode === 'TO_GROUND') {
+      t.innerText = "⚠️ 接線錯誤：量測到電瓶對地電壓 (12V)";
+      d.innerText = "黑筆搭鐵測出來的是這條電路「有沒有通電」，電壓永遠是 12V 左右。此方法完全測不出是否有漏電！必須兩支探針都在同一顆保險絲上。";
+      box.classList.add('alert-warn');
+      return;
+    }
+
+    if (state.probeMode === 'CROSS') {
+      t.innerText = "⚠️ 接線錯誤：跨接兩顆不同保險絲";
+      d.innerText = "探針分別插在兩顆不同保險絲上，測量的是兩個獨立迴路之間的雜散電位，無任何診斷換算價值。";
+      box.classList.add('alert-warn');
+      return;
+    }
+
+    if (state.meterRange === 'VOLT') {
+      t.innerText = "⚠️ 檔位錯誤：直流電壓檔解析度不足";
+      d.innerText = "車用 20V 檔位小數點後只有兩位，零點幾毫伏（0.0002V）會被強制捨入顯示為 0.00V，造成「沒有漏電」的致命誤判！";
+      box.classList.add('alert-warn');
+      return;
+    }
+
+    // 正確量測下的數據判定
+    const ma = state.calcCurrentMa;
+    if (state.measuredMv > 50.0) {
+      t.innerText = "🚨 嚴重異常：保險絲或負載短路損壞 (>50mV)";
+      d.innerText = `測得微壓降高達 ${state.measuredMv}mV！原廠手冊明文規範：壓降超過 50mV 即代表該保險絲或後端電氣迴路嚴重故障。`;
+      box.classList.add('alert-danger');
+    } else if (ma <= 50) {
+      t.innerText = "🟢 正常休眠：數據合規 (合格)";
+      d.innerText = `微壓降 ${state.measuredMv}mV，換算暗電流約 ${ma}mA。全車總漏電容許上限通常在 30~50mA 以下，該線路處於深層睡眠狀態。`;
+    } else if (ma <= 150) {
+      t.innerText = "🟡 輕度漏電：配件微弱耗電 (警告)";
+      d.innerText = `換算暗電流高達 ${ma}mA！超出休眠標準。請檢查該保險絲供應之後裝行車記錄器、OBD 擴充盒或車載防盜待機模組。`;
+      box.classList.add('alert-warn');
+    } else {
+      t.innerText = "🔴 嚴重漏電：模組未睡眠 / 負載常開 (嚴重)";
+      d.innerText = `換算暗電流高達 ${ma}mA (${(ma/1000).toFixed(2)}A)！代表該迴路背後之車身電腦（VSM）、音響主機或繼電器未進入休眠。`;
+      box.classList.add('alert-danger');
+    }
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('quickTableBody');
+    tbody.innerHTML = '';
+    const mvs = [0.1, 0.2, 0.3, 0.4, 0.5, 1.0, 2.0];
+
+    mvs.forEach(mv => {
+      const row = lookupGrid[mv];
+      const tr = document.createElement('tr');
+      if (Math.abs(state.measuredMv - mv) < 0.05) tr.classList.add('highlight');
+      tr.innerHTML = `
+        <td>${mv.toFixed(1)} mV</td>
+        <td>${row.STD_10}</td>
+        <td>${row.STD_15}</td>
+        <td>${row.STD_20}</td>
+        <td>${row.STD_30}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Canvas 視覺化繪圖
+  const canvas = document.getElementById('fuseCanvas');
+  const ctx = canvas.getContext('2d');
+
+  function resizeCanvas() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    state.animTime += 0.04;
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const fuseConfig = fuseLookup[state.fuseType];
+
+    // 1. 保險絲底座座艙
+    const boxX = w * 0.5 - 130, boxY = 160, boxW = 260, boxH = 200;
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    // 2. 保險絲本體 (Blade Fuse)
+    const fX = w * 0.5 - 70, fY = 120, fW = 140, fH = 150;
+    
+    // 塑膠半透明外殼
+    ctx.save();
+    ctx.fillStyle = fuseConfig.color;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.roundRect(fX, fY, fW, fH - 40, 8);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(fX, fY, fW, fH - 40);
+
+    // 下方兩個鍍錫金屬引腳
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillRect(fX + 16, fY + fH - 40, 30, 45);
+    ctx.fillRect(fX + fW - 46, fY + fH - 40, 30, 45);
+
+    // 頂部兩個金屬測試孔 (Test Points) —— 最核心標的
+    const tp1 = { x: fX + 31, y: fY + 6 };
+    const tp2 = { x: fX + fW - 31, y: fY + 6 };
+
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(tp1.x - 10, tp1.y - 4, 20, 10);
+    ctx.fillRect(tp2.x - 10, tp2.y - 4, 20, 10);
+
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(tp1.x - 5, tp1.y - 2, 10, 6);
+    ctx.fillRect(tp2.x - 5, tp2.y - 2, 10, 6);
+
+    // 保險絲安培數印字
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 28px Consolas, monospace';
+    ctx.textAlign = 'center';
+    const ampText = state.fuseType.split('_')[1];
+    ctx.fillText(ampText, fX + fW / 2, fY + 65);
+
+    // 內部 S 型熔絲與微電阻示意
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(fX + 31, fY + 20);
+    ctx.lineTo(fX + 31, fY + 75);
+    ctx.bezierCurveTo(fX + 45, fY + 95, fX + fW - 45, fY + 65, fX + fW - 31, fY + 75);
+    ctx.lineTo(fX + fW - 31, fY + 20);
+    ctx.stroke();
+
+    // 3. 探針位置計算 (依模式切換)
+    let probeRed = { x: tp1.x, y: tp1.y };
+    let probeBlack = { x: tp2.x, y: tp2.y };
+
+    if (state.probeMode === 'TO_GROUND') {
+      probeRed = { x: tp1.x, y: tp1.y };
+      probeBlack = { x: w - 60, y: 320 }; // 接去車身搭鐵
+    } else if (state.probeMode === 'CROSS') {
+      probeRed = { x: tp1.x, y: tp1.y };
+      probeBlack = { x: tp1.x - 80, y: tp1.y }; // 接去隔壁不存在孔
+    }
+
+    // 繪製車身搭鐵點 (若在搭鐵模式)
+    if (state.probeMode === 'TO_GROUND') {
+      const gx = w - 60, gy = 320;
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(gx - 18, gy); ctx.lineTo(gx + 18, gy);
+      ctx.moveTo(gx - 12, gy + 5); ctx.lineTo(gx + 12, gy + 5);
+      ctx.moveTo(gx - 6, gy + 10); ctx.lineTo(gx + 6, gy + 10);
+      ctx.stroke();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('車身搭鐵 (GND)', gx, gy + 24);
+    }
+
+    // 4. 繪製紅黑電表細探針
+    drawProbe(ctx, probeRed.x, probeRed.y, '#ef4444', -0.35);    // 紅筆探針 (微傾斜)
+    drawProbe(ctx, probeBlack.x, probeBlack.y, '#3b82f6', 0.35); // 黑筆探針 (微傾斜)
+
+    // 5. 導線與電流微壓降光波
+    if (state.probeMode === 'CORRECT' && state.measuredMv > 0) {
+      ctx.strokeStyle = 'rgba(0, 229, 255, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(tp1.x, tp1.y);
+      ctx.lineTo(tp2.x, tp2.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#00e5ff';
+      ctx.font = 'bold 12px Consolas';
+      ctx.fillText(`ΔV = ${state.measuredMv.toFixed(1)} mV`, fX + fW / 2, fY - 14);
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  // 繪製精密細尖探針函式
+  function drawProbe(c, x, y, color, angle) {
+    c.save();
+    c.translate(x, y);
+    c.rotate(angle);
+
+    // 金屬極細針尖 (接觸點)
+    c.strokeStyle = '#e2e8f0';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.lineTo(0, -30);
+    c.stroke();
+
+    // 塑膠手柄護套
+    c.fillStyle = color;
+    c.fillRect(-6, -85, 12, 55);
+    c.strokeStyle = '#1e293b';
+    c.lineWidth = 1;
+    c.strokeRect(-6, -85, 12, 55);
+
+    // 後方引出電線
+    c.strokeStyle = color;
+    c.lineWidth = 4;
+    c.beginPath();
+    c.moveTo(0, -85);
+    c.bezierCurveTo(0, -120, color === '#ef4444' ? -40 : 40, -140, color === '#ef4444' ? -80 : 80, -160);
+    c.stroke();
+
+    c.restore();
+  }
+
+  // 初始化
+  updateAll();
+  draw();
+</script>
+
+</body>
+</html>
