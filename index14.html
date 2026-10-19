@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PEUGEOT 3008 1.5 BlueHDi (DV5RC) 噴油嘴示波器與線路量測指引</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons for Engineering UI -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            lion: {
+              50: '#f8fafc',
+              500: '#0284c7',
+              600: '#0369a1',
+              accent: '#38bdf8'
+            },
+            psa: {
+              dark: '#0b1120',
+              card: '#151e32',
+              border: '#23324d',
+              highlight: '#f59e0b',
+              danger: '#ef4444',
+              success: '#10b981'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom terminal scanline & scope grid aesthetic */
+    .scope-bg {
+      background-color: #050d1a;
+      background-image: 
+        linear-gradient(rgba(30, 58, 138, 0.25) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(30, 58, 138, 0.25) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .scope-screen {
+      box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.15);
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1120;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #23324d;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #38bdf8;
+    }
+  </style>
+</head>
+<body class="bg-psa-dark text-slate-200 font-sans antialiased min-h-screen selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Header / Vehicle HUD -->
+  <header class="border-b border-psa-border bg-[#0f172a]/90 backdrop-blur sticky top-0 z-50 px-4 py-3 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-sky-950 border border-sky-500/40 flex items-center justify-center text-sky-400 font-bold shadow-inner">
+          <i class="ph-bold ph-waveform text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 text-xs font-semibold rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">PEUGEOT SERVICE LAB</span>
+            <span class="text-xs text-slate-400">ISOLVE Ref: <strong class="text-amber-400">35669</strong></span>
+          </div>
+          <h1 class="text-base sm:text-lg font-bold text-slate-100 flex items-center gap-2">
+            3008 (P84E) 1.5 BlueHDi 131 <span class="text-slate-400 font-normal text-xs sm:text-sm">| DV5RC Euro 6.3</span>
+          </h1>
+        </div>
+      </div>
+
+      <!-- Quick Telemetry Badges -->
+      <div class="flex items-center gap-2 sm:gap-4 font-mono text-xs">
+        <div class="bg-psa-card border border-psa-border px-3 py-1.5 rounded-lg flex items-center gap-2">
+          <i class="ph-bold ph-fingerprint text-slate-400"></i>
+          <div>
+            <div class="text-[10px] text-slate-400 uppercase">Target VIN</div>
+            <div class="text-sky-300 font-semibold tracking-wider">VF3MCYHZUPS013374</div>
+          </div>
+        </div>
+        <div class="bg-red-500/10 border border-red-500/30 px-3 py-1.5 rounded-lg flex items-center gap-2">
+          <i class="ph-bold ph-warning-octagon text-red-400 text-lg animate-pulse"></i>
+          <div>
+            <div class="text-[10px] text-red-400 uppercase font-semibold">Active DiagBox DTC</div>
+            <div class="text-red-300 font-bold">P0203 13 <span class="text-[10px] text-slate-300 font-normal">(第3缸噴油斷路)</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-3 sm:p-6 space-y-6">
+
+    <!-- Cylinder Selection Bar -->
+    <div class="bg-psa-card border border-psa-border rounded-xl p-3 sm:p-4 shadow">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <i class="ph-bold ph-cpu text-sky-400"></i>
+          <span class="text-sm font-semibold text-slate-200">選擇檢測氣缸 (依據 PSA 規範：飛輪端為第 1 缸)</span>
+        </div>
+        <div class="grid grid-cols-4 gap-2 sm:w-auto w-full" id="cyl-buttons">
+          <button onclick="selectCylinder(1)" id="btn-cyl-1" class="px-4 py-2 rounded-lg border text-sm font-mono font-medium transition-all duration-200 flex flex-col items-center border-psa-border bg-[#0e1726] hover:border-sky-500 text-slate-300">
+            <span>Cyl 1</span>
+            <span class="text-[10px] text-slate-400">1331</span>
+          </button>
+          <button onclick="selectCylinder(2)" id="btn-cyl-2" class="px-4 py-2 rounded-lg border text-sm font-mono font-medium transition-all duration-200 flex flex-col items-center border-psa-border bg-[#0e1726] hover:border-sky-500 text-slate-300">
+            <span>Cyl 2</span>
+            <span class="text-[10px] text-emerald-400">1332 (正常參照)</span>
+          </button>
+          <button onclick="selectCylinder(3)" id="btn-cyl-3" class="px-4 py-2 rounded-lg border text-sm font-mono font-medium transition-all duration-200 flex flex-col items-center border-red-500 bg-red-950/40 text-red-200 ring-2 ring-red-500/40">
+            <span class="font-bold">Cyl 3</span>
+            <span class="text-[10px] text-red-300 font-bold">1333 (故障碼)</span>
+          </button>
+          <button onclick="selectCylinder(4)" id="btn-cyl-4" class="px-4 py-2 rounded-lg border text-sm font-mono font-medium transition-all duration-200 flex flex-col items-center border-psa-border bg-[#0e1726] hover:border-sky-500 text-slate-300">
+            <span>Cyl 4</span>
+            <span class="text-[10px] text-slate-400">1334</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid: Scope View & Pinout Interactive Card -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- LEFT: Dynamic Oscilloscope Screen & Hookup (7 Cols) -->
+      <div class="lg:col-span-7 space-y-4">
+        <div class="bg-psa-card border border-psa-border rounded-xl p-4 shadow-lg flex flex-col">
+          
+          <!-- Scope Top Bar -->
+          <div class="flex flex-wrap items-center justify-between pb-3 border-b border-psa-border gap-2">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span class="text-xs font-mono font-bold text-sky-400 uppercase tracking-wider">OSCILLOSCOPE SIMULATOR 2CH</span>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <div class="flex rounded-md shadow-sm border border-psa-border p-0.5 bg-black/40">
+                <button id="mode-normal" onclick="setWaveformMode('normal')" class="px-2.5 py-1 text-xs rounded font-medium bg-sky-600 text-white transition">標準正常波形</button>
+                <button id="mode-fault" onclick="setWaveformMode('fault')" class="px-2.5 py-1 text-xs rounded font-medium text-slate-400 hover:text-white transition">斷路異常 (P0203)</button>
+              </div>
+              <button onclick="togglePauseScope()" id="btn-pause" class="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-psa-border" title="凍結/播放">
+                <i class="ph-bold ph-pause" id="pause-icon"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Canvas Oscilloscope Viewport -->
+          <div class="relative mt-3 rounded-lg overflow-hidden scope-bg scope-screen border border-sky-900/40">
+            <canvas id="scopeCanvas" width="640" height="280" class="w-full h-[280px] block"></canvas>
+            
+            <!-- Channel Info Overlays -->
+            <div class="absolute top-2 left-3 flex flex-wrap gap-3 font-mono text-[11px] pointer-events-none">
+              <div class="bg-black/70 px-2 py-0.5 rounded border border-yellow-500/40 text-yellow-400 flex items-center gap-1.5 backdrop-blur-sm">
+                <span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>
+                <span>CH1: <strong id="scope-ch1-info">50V/div (20X)</strong></span>
+              </div>
+              <div class="bg-black/70 px-2 py-0.5 rounded border border-cyan-500/40 text-cyan-400 flex items-center gap-1.5 backdrop-blur-sm">
+                <span class="w-2 h-2 rounded-full bg-cyan-400 inline-block"></span>
+                <span>CH2: <strong id="scope-ch2-info">5A/div (1mV/10mA)</strong></span>
+              </div>
+              <div class="bg-black/70 px-2 py-0.5 rounded border border-slate-700 text-slate-300 backdrop-blur-sm">
+                TB: <strong>1.0ms/div</strong>
+              </div>
+            </div>
+
+            <!-- Waveform Diagnosis Note Tag -->
+            <div id="scope-diagnostic-tag" class="absolute bottom-2 right-3 font-mono text-xs px-2.5 py-1 rounded bg-black/80 backdrop-blur-sm border border-red-500/50 text-red-300">
+              ⚡ 狀態：噴油嘴電壓峰值缺失 / 零電流開關
+            </div>
+          </div>
+
+          <!-- Oscilloscope Channel Hookup Instructions -->
+          <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="p-3 rounded-lg bg-yellow-950/20 border border-yellow-500/30">
+              <div class="font-bold text-yellow-400 flex items-center gap-1.5 mb-1">
+                <i class="ph-bold ph-plug"></i> CH1 (黃色) - 電壓控制波形接線
+              </div>
+              <p class="text-slate-300 leading-relaxed">
+                • <strong>紅色刺針 (Back-Probe)：</strong> 刺入噴油嘴插頭 <strong class="text-yellow-300" id="ch1-target-pin">Pin 2 (線號 1323B)</strong> 低端驅動。<br>
+                • <strong>黑色鱷魚夾：</strong> 夾發動機缸體本體接地或電瓶負極。<br>
+                • <strong>硬體設定：</strong> 必須開啟探棒 <strong>10X 或 20X 衰減</strong>（噴油瞬間反電動勢峰值高達 80V~120V+）。
+              </p>
+            </div>
+
+            <div class="p-3 rounded-lg bg-cyan-950/20 border border-cyan-500/30">
+              <div class="font-bold text-cyan-400 flex items-center gap-1.5 mb-1">
+                <i class="ph-bold ph-magnet"></i> CH2 (青色) - 噴油電流勾表接線
+              </div>
+              <p class="text-slate-300 leading-relaxed">
+                • <strong>夾取位置：</strong> 噴油嘴單根導線（建議 <strong class="text-cyan-300" id="ch2-target-wire">Pin 1 (1213B)</strong> 或 Pin 2 單線）。<br>
+                • <strong>電流夾方向：</strong> 箭頭朝向噴油嘴本體。<br>
+                • <strong>檔位與歸零：</strong> 切換至 1mV/10mA (20A/60A 量程)，夾上線路前務必按 <strong>Zero</strong> 歸零。正常預噴/主噴峰值約 12A~18A。
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Safety & Critical Warning Card -->
+        <div class="bg-red-950/30 border border-red-500/40 rounded-xl p-4 text-xs space-y-2">
+          <div class="flex items-center gap-2 text-red-400 font-bold text-sm">
+            <i class="ph-bold ph-warning text-lg"></i>
+            <span>PSA DV5 柴油共軌高壓電壓安全須知 (SAFETY FIRST)</span>
+          </div>
+          <p class="text-red-200/90 leading-relaxed">
+            1. <strong>禁止赤手觸碰裸線：</strong> DV5RC 噴油系統由 ECU (1320) 內部升壓電容驅動，噴射開閥階段瞬間電壓可達 <strong>80V~150V DC</strong>，且連續工作時具備電擊風險。<br>
+            2. <strong>禁止引擎運轉中拔除噴嘴插頭：</strong> 會引發強烈感應反電動勢擊穿 ECU 內部 MOSFET 驅動級，並觸發 P06B8 內部模組嚴重錯誤。<br>
+            3. <strong>嚴禁使用一般試燈：</strong> 必須使用高阻抗示波器或數位萬用表，傳統鎢絲試燈會燒毀輸出級。
+          </p>
+        </div>
+      </div>
+
+      <!-- RIGHT: Interactive Pinout, ECU Mapping & ISOLVE Steps (5 Cols) -->
+      <div class="lg:col-span-5 space-y-4">
+        
+        <!-- Interactive Circuit Mapping Card -->
+        <div class="bg-psa-card border border-psa-border rounded-xl p-4 shadow-lg">
+          <div class="flex items-center justify-between pb-3 border-b border-psa-border">
+            <h2 class="font-bold text-sm text-slate-100 flex items-center gap-2">
+              <i class="ph-bold ph-circuit-board text-sky-400"></i>
+              線路端子針腳即時對照
+            </h2>
+            <span class="text-xs font-mono px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800" id="current-cyl-title">
+              氣缸 3 (元件 1333)
+            </span>
+          </div>
+
+          <!-- Visual Pinout Schematics Block -->
+          <div class="mt-4 p-4 rounded-xl bg-[#090f1d] border border-psa-border space-y-5">
+            
+            <!-- ECU Side (1320) -->
+            <div>
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span class="font-bold text-slate-200 flex items-center gap-1.5">
+                  <i class="ph-bold ph-desktop-tower"></i> 發動機電控單元 (ECU 1320)
+                </span>
+                <span class="font-mono bg-slate-800 px-2 py-0.5 rounded text-amber-300">插頭: 120V NR (黑色)</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 mt-2 font-mono text-xs">
+                <div class="p-2.5 rounded-lg bg-psa-card border border-sky-600/40" id="box-ecu-pin1">
+                  <div class="text-[10px] text-slate-400">高壓驅動/充電側 (High-Side)</div>
+                  <div class="text-sm font-bold text-sky-400" id="txt-ecu-pin1">Pin 3 (針腳 3)</div>
+                  <div class="text-[11px] text-slate-300 mt-0.5">線號代號：<span class="text-amber-300 font-semibold" id="txt-wire1">1213B</span></div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-psa-card border border-amber-600/40" id="box-ecu-pin2">
+                  <div class="text-[10px] text-slate-400">觸發接地/開關側 (Low-Side)</div>
+                  <div class="text-sm font-bold text-amber-400" id="txt-ecu-pin2">Pin 24 (針腳 24)</div>
+                  <div class="text-[11px] text-slate-300 mt-0.5">線號代號：<span class="text-amber-300 font-semibold" id="txt-wire2">1323B</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Wire Connection Graphic Arrow -->
+            <div class="flex items-center justify-center gap-3 text-slate-500 py-1">
+              <div class="h-px flex-1 bg-gradient-to-r from-transparent via-psa-border to-transparent"></div>
+              <span class="text-xs font-mono text-sky-400 flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded-full border border-sky-900">
+                <i class="ph-bold ph-arrows-down-up"></i> 原廠線束直通線條
+              </span>
+              <div class="h-px flex-1 bg-gradient-to-r from-transparent via-psa-border to-transparent"></div>
+            </div>
+
+            <!-- Injector Side (133X) -->
+            <div>
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+                <span class="font-bold text-slate-200 flex items-center gap-1.5" id="txt-injector-title">
+                  <i class="ph-bold ph-gas-can"></i> 3 號缸噴油嘴 (元件 1333)
+                </span>
+                <span class="font-mono bg-slate-800 px-2 py-0.5 rounded text-sky-300">插頭: 2V NR (黑色)</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 mt-2 font-mono text-xs">
+                <div class="p-2.5 rounded-lg bg-psa-card border border-sky-600/40 text-center">
+                  <div class="text-xs text-slate-400">噴油嘴端子</div>
+                  <div class="text-base font-bold text-sky-400">Pin 1</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">對應線號: <span class="text-amber-300" id="txt-inj-wire1">1213B</span></div>
+                </div>
+                <div class="p-2.5 rounded-lg bg-psa-card border border-amber-600/40 text-center">
+                  <div class="text-xs text-slate-400">噴油嘴端子 (示波器 CH1)</div>
+                  <div class="text-base font-bold text-amber-400">Pin 2</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">對應線號: <span class="text-amber-300" id="txt-inj-wire2">1323B</span></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- DTC Context Badge based on selection -->
+          <div class="mt-3 p-3 rounded-lg bg-slate-900/80 border border-slate-800 text-xs font-mono flex items-center justify-between">
+            <span class="text-slate-400">本缸相關專屬故障代碼：</span>
+            <span class="text-red-400 font-bold" id="txt-cyl-dtc">P0203 13 / P0267 16</span>
+          </div>
+
+        </div>
+
+        <!-- ISOLVE Technical Guideline: Resistance & Isolation Steps -->
+        <div class="bg-psa-card border border-psa-border rounded-xl p-4 shadow-lg space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-psa-border">
+            <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
+              <i class="ph-bold ph-wrench text-amber-400"></i>
+              ISOLVE 35669 靜態萬用電表查修 SOP
+            </h3>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+              官方檢驗標準
+            </span>
+          </div>
+
+          <div class="space-y-2.5 text-xs">
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div class="font-semibold text-sky-300 flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-sky-900 text-sky-300 inline-flex items-center justify-center text-[10px]">1</span>
+                線圈/晶體內部阻抗量測 (Pin 1 與 Pin 2 之間)
+              </div>
+              <p class="text-slate-400 mt-1 pl-5">
+                拔下 2V NR 插頭，量測噴嘴自身 Pin 1 - Pin 2。
+                標準值：常溫下約 <strong>0.2 Ω ~ 0.5 Ω</strong> (電磁閥式極低阻抗) 或高阻壓電體。
+                <span class="text-amber-400">若量測顯示 OL (無窮大)，判定噴油嘴內部開路，更換噴嘴。</span>
+              </p>
+            </div>
+
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div class="font-semibold text-amber-300 flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-amber-900 text-amber-300 inline-flex items-center justify-center text-[10px]">2</span>
+                絕緣阻抗量測 (極其關鍵：端子對噴嘴金屬外殼)
+              </div>
+              <p class="text-slate-400 mt-1 pl-5">
+                電表切至 MΩ 檔，黑表筆接地（噴油嘴外金屬體或引擎本體），紅表筆分別測量 <strong>Pin 1 與 Pin 2</strong>。
+                <strong class="text-emerald-400">標準值：必須為 OL (無窮大 > 10 MΩ)</strong>。若存在阻值甚至導通，代表內部高壓擊穿對地短路！
+              </p>
+            </div>
+
+            <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+              <div class="font-semibold text-purple-300 flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-purple-900 text-purple-300 inline-flex items-center justify-center text-[10px]">3</span>
+                線束導通與線徑磨損查核 (Track the beam path)
+              </div>
+              <p class="text-slate-400 mt-1 pl-5">
+                查驗 ECU 120V NR 黑插頭端與噴油嘴插頭間之阻抗（需 &lt; 0.5 Ω）。特別檢查發動機線束固定座周邊是否有<strong>線束與金屬支架摩擦破皮導致對地短路 (Contact with mass)</strong>。
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Interactive Workshop Checklist & Troubleshooting Notes -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Interactive Checklist (7 Cols) -->
+      <div class="lg:col-span-7 bg-psa-card border border-psa-border rounded-xl p-4 shadow-lg space-y-3">
+        <div class="flex items-center justify-between pb-2 border-b border-psa-border">
+          <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
+            <i class="ph-bold ph-check-square-offset text-sky-400"></i>
+            現場技師量測檢驗清單 (Diagnostic Inspection Checklist)
+          </h3>
+          <span class="text-xs text-slate-400 font-mono" id="checklist-progress">0/5 完成</span>
+        </div>
+
+        <div class="space-y-2 text-xs" id="checklist-items">
+          <label class="flex items-start gap-3 p-2.5 rounded-lg bg-slate-900/60 hover:bg-slate-900 border border-slate-800 cursor-pointer transition">
+            <input type="checkbox" onchange="updateChecklist()" class="mt-0.5 rounded border-slate-700 text-sky-500 focus:ring-sky-500 bg-slate-800">
+            <div>
+              <span class="font-semibold text-slate-200">1. 插頭外觀與退針/油污檢查 (Connectors & Clips)</span>
+              <p class="text-slate-400 text-[11px] mt-0.5">檢查 2V NR 插頭防水塞、卡榫是否斷裂，內部端子是否有柴油或機油滲入引起接觸不良。</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-2.5 rounded-lg bg-slate-900/60 hover:bg-slate-900 border border-slate-800 cursor-pointer transition">
+            <input type="checkbox" onchange="updateChecklist()" class="mt-0.5 rounded border-slate-700 text-sky-500 focus:ring-sky-500 bg-slate-800">
+            <div>
+              <span class="font-semibold text-slate-200">2. 靜態阻抗比對 (跨缸交叉驗證)</span>
+              <p class="text-slate-400 text-[11px] mt-0.5">量測故障缸 (Cyl 3) 噴嘴本體阻值，並與無故障之第 2 缸 (Cyl 2) 進行阻值精準交叉比對。</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-2.5 rounded-lg bg-slate-900/60 hover:bg-slate-900 border border-slate-800 cursor-pointer transition">
+            <input type="checkbox" onchange="updateChecklist()" class="mt-0.5 rounded border-slate-700 text-sky-500 focus:ring-sky-500 bg-slate-800">
+            <div>
+              <span class="font-semibold text-slate-200">3. 端子對發動機本體絕緣阻抗 (&gt; 10 MΩ)</span>
+              <p class="text-slate-400 text-[11px] mt-0.5">確認 Pin 1 / Pin 2 與噴油嘴外殼及發動機地線無任何漏電或絕緣穿透擊穿。</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-2.5 rounded-lg bg-slate-900/60 hover:bg-slate-900 border border-slate-800 cursor-pointer transition">
+            <input type="checkbox" onchange="updateChecklist()" class="mt-0.5 rounded border-slate-700 text-sky-500 focus:ring-sky-500 bg-slate-800">
+            <div>
+              <span class="font-semibold text-slate-200">4. 示波器 CH1 衰減探棒 10X/20X 校驗完成</span>
+              <p class="text-slate-400 text-[11px] mt-0.5">確認示波器軟體與硬體衰減開關一致，避免瞬間反電動勢衝擊燒毀示波器前端模組。</p>
+            </div>
+          </label>
+
+          <label class="flex items-start gap-3 p-2.5 rounded-lg bg-slate-900/60 hover:bg-slate-900 border border-slate-800 cursor-pointer transition">
+            <input type="checkbox" onchange="updateChecklist()" class="mt-0.5 rounded border-slate-700 text-sky-500 focus:ring-sky-500 bg-slate-800">
+            <div>
+              <span class="font-semibold text-slate-200">5. 線束搖晃測試 (Wiggle Test)</span>
+              <p class="text-slate-400 text-[11px] mt-0.5">啟動示波器滾動模式 (Roll Mode)，輕搖引擎線束本體，排查因線心內部微斷導致的偶發性 P0203 13 斷路。</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Workshop Diagnostic Notes & Copy / Export (5 Cols) -->
+      <div class="lg:col-span-5 bg-psa-card border border-psa-border rounded-xl p-4 shadow-lg flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-2 border-b border-psa-border">
+            <h3 class="font-bold text-sm text-slate-100 flex items-center gap-2">
+              <i class="ph-bold ph-note-pencil text-amber-400"></i>
+              工單診斷紀錄與分析摘要
+            </h3>
+            <button onclick="copyReport()" class="px-2.5 py-1 text-xs rounded bg-sky-600 hover:bg-sky-500 text-white font-medium flex items-center gap-1 transition">
+              <i class="ph-bold ph-copy"></i> 複製診斷報告
+            </button>
+          </div>
+          <div class="mt-3">
+            <textarea id="diag-notes" rows="6" class="w-full bg-[#080d1a] border border-psa-border rounded-lg p-3 font-mono text-xs text-slate-300 focus:outline-none focus:border-sky-500 leading-relaxed" placeholder="在此記錄量測數據（例如：Cyl 3 阻值 0.4Ω、對地絕緣 OL、波形顯示電壓無下拉驅動...）">【PEUGEOT 3008 1.5 BlueHDi DV5RC 噴油嘴檢測紀錄】
+車輛 VIN: VF3MCYHZUPS013374
+現存 DTC: P0203 13 (第3缸噴油嘴控制斷路)
+量測目標: 3號噴嘴 (1333) -> ECU 120V NR (Pin 3: 1213B / Pin 24: 1323B)
+----------------------------------------
+[量測實況紀錄]
+1. 靜態阻抗 Pin1-Pin2: 正常 (與2缸一致)
+2. 對地絕緣阻抗: 無窮大 (OL) 正常
+3. 示波器動態波形: CH1 測得 1323B 無驅動下拉信號，判斷為線束斷路或 ECU 驅動級開路
+建議對策: 執行 1323B 線路通斷測試與線束折損排查。</textarea>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-psa-border flex items-center justify-between text-[11px] text-slate-400 font-mono">
+          <span>DiagBox Version: v9.x / i-Solve Ref: 35669</span>
+          <span id="copy-status" class="text-emerald-400 font-semibold"></span>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Interactive Logic & Canvas Oscilloscope Simulation Script -->
+  <script>
+    // Cylinder Database mapped directly from Peugeot OEM Schematics (DV5RC / 1320 ECU)
+    const cylinderData = {
+      1: {
+        cylNumber: 1,
+        componentId: '1331',
+        title: '氣缸 1 噴油嘴 (元件 1331)',
+        ecuPin1: 'Pin 2',
+        ecuPin2: 'Pin 23',
+        wire1: '1211B',
+        wire2: '1321B',
+        dtc: 'P0201 13 / P0261 16',
+        isFaulty: false,
+        note: '靠近飛輪端（PSA標準定義為第1缸）'
+      },
+      2: {
+        cylNumber: 2,
+        componentId: '1332',
+        title: '氣缸 2 噴油嘴 (元件 1332) - 正常參照缸',
+        ecuPin1: 'Pin 4',
+        ecuPin2: 'Pin 25',
+        wire1: '1212B',
+        wire2: '1322B',
+        dtc: 'P0202 13 / P0264 16',
+        isFaulty: false,
+        note: '標準工作缸，可作為示波器與阻抗之正常基準'
+      },
+      3: {
+        cylNumber: 3,
+        componentId: '1333',
+        title: '氣缸 3 噴油嘴 (元件 1333) - 報錯目標缸',
+        ecuPin1: 'Pin 3',
+        ecuPin2: 'Pin 24',
+        wire1: '1213B',
+        wire2: '1323B',
+        dtc: 'P0203 13 / P0267 16',
+        isFaulty: true,
+        note: 'DiagBox 顯示：氣缸 3 噴油嘴控制斷路 (P0203 13)'
+      },
+      4: {
+        cylNumber: 4,
+        componentId: '1334',
+        title: '氣缸 4 噴油嘴 (元件 1334)',
+        ecuPin1: 'Pin 1',
+        ecuPin2: 'Pin 22',
+        wire1: '1214B',
+        wire2: '1324B',
+        dtc: 'P0204 13 / P0270 16',
+        isFaulty: false,
+        note: '靠近正時皮帶側'
+      }
+    };
+
+    let currentSelectedCyl = 3;
+    let waveformMode = 'fault'; // 'normal' or 'fault'
+    let isPaused = false;
+    let animOffset = 0;
+
+    // Cylinder Switching Logic
+    function selectCylinder(cyl) {
+      currentSelectedCyl = cyl;
+      const data = cylinderData[cyl];
+
+      // Update Buttons Styles
+      for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById(`btn-cyl-${i}`);
+        if (i === cyl) {
+          if (data.isFaulty) {
+            btn.className = "px-4 py-2 rounded-lg border text-sm font-mono font-medium transition-all duration-200 flex flex-col items-center border-red-500 bg-red-950/60 text-red-200 ring-2 ring-red-500/40";
+          } else {
+            btn.className = "px-4 py-2 rounded-lg border text-sm font-mono font-medium transition-all duration-200 flex flex-col items-center border-sky-500 bg-sky-950/60 text-sky-200 ring-2 ring-sky-500/40";
+          }
+        } else {
+          btn.className = "px-4 py-2 rounded-lg border text-sm font-mono font-medium transition-all duration-200 flex flex-col items-center border-psa-border bg-[#0e1726] hover:border-sky-500 text-slate-300";
+        }
+      }
+
+      // Update Text Elements
+      document.getElementById('current-cyl-title').innerText = `${data.title}`;
+      document.getElementById('txt-injector-title').innerHTML = `<i class="ph-bold ph-gas-can"></i> ${data.title}`;
+      document.getElementById('txt-ecu-pin1').innerText = `${data.ecuPin1}`;
+      document.getElementById('txt-ecu-pin2').innerText = `${data.ecuPin2}`;
+      document.getElementById('txt-wire1').innerText = data.wire1;
+      document.getElementById('txt-wire2').innerText = data.wire2;
+      document.getElementById('txt-inj-wire1').innerText = data.wire1;
+      document.getElementById('txt-inj-wire2').innerText = data.wire2;
+      document.getElementById('txt-cyl-dtc').innerText = data.dtc;
+
+      // Update Hookup Target Labels
+      document.getElementById('ch1-target-pin').innerText = `Pin 2 (${data.wire2})`;
+      document.getElementById('ch2-target-wire').innerText = `Pin 1 (${data.wire1})`;
+
+      // Auto switch waveform mode based on whether cylinder is faulty
+      if (cyl === 3) {
+        setWaveformMode('fault');
+      } else {
+        setWaveformMode('normal');
+      }
+    }
+
+    // Waveform Mode Toggle
+    function setWaveformMode(mode) {
+      waveformMode = mode;
+      const btnNormal = document.getElementById('mode-normal');
+      const btnFault = document.getElementById('mode-fault');
+      const tag = document.getElementById('scope-diagnostic-tag');
+
+      if (mode === 'normal') {
+        btnNormal.className = "px-2.5 py-1 text-xs rounded font-medium bg-emerald-600 text-white transition";
+        btnFault.className = "px-2.5 py-1 text-xs rounded font-medium text-slate-400 hover:text-white transition";
+        tag.className = "absolute bottom-2 right-3 font-mono text-xs px-2.5 py-1 rounded bg-black/80 backdrop-blur-sm border border-emerald-500/50 text-emerald-300";
+        tag.innerHTML = "⚡ 狀態：標準共軌多段噴射（預噴 + 主噴）正常電壓與電流上升沿";
+      } else {
+        btnFault.className = "px-2.5 py-1 text-xs rounded font-medium bg-red-600 text-white transition";
+        btnNormal.className = "px-2.5 py-1 text-xs rounded font-medium text-slate-400 hover:text-white transition";
+        tag.className = "absolute bottom-2 right-3 font-mono text-xs px-2.5 py-1 rounded bg-black/80 backdrop-blur-sm border border-red-500/50 text-red-300";
+        tag.innerHTML = "⚡ 狀態：P0203 13 斷路異常 - 控制信號無下拉/無感應高壓/零電流";
+      }
+    }
+
+    function togglePauseScope() {
+      isPaused = !isPaused;
+      const icon = document.getElementById('pause-icon');
+      if (isPaused) {
+        icon.className = "ph-bold ph-play";
+      } else {
+        icon.className = "ph-bold ph-pause";
+      }
+    }
+
+    // Oscilloscope Rendering Canvas Engine
+    const canvas = document.getElementById('scopeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function drawGrid() {
+      const w = canvas.width;
+      const h = canvas.height;
+      const numX = 10;
+      const numY = 8;
+      const stepX = w / numX;
+      const stepY = h / numY;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(30, 58, 138, 0.45)';
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i <= numX; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * stepX, 0);
+        ctx.lineTo(i * stepX, h);
+        ctx.stroke();
+      }
+      for (let j = 0; j <= numY; j++) {
+        ctx.beginPath();
+        ctx.moveTo(0, j * stepY);
+        ctx.lineTo(w, j * stepY);
+        ctx.stroke();
+      }
+
+      // Center division tick marks
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+      const midY = h / 2;
+      const midX = w / 2;
+      for (let x = 0; x < w; x += 10) {
+        ctx.beginPath();
+        ctx.moveTo(x, midY - 3);
+        ctx.lineTo(x, midY + 3);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 10) {
+        ctx.beginPath();
+        ctx.moveTo(midX - 3, y);
+        ctx.lineTo(midX + 3, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawWaveforms() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
+
+      const w = canvas.width;
+      const h = canvas.height;
+
+      const vBaseY = 160;  // CH1 (Voltage) baseline
+      const iBaseY = 240;  // CH2 (Current) baseline
+
+      // Advance animation offset
+      if (!isPaused) {
+        animOffset = (animOffset + 2) % 320;
+      }
+
+      // Draw CH1: Voltage Waveform (Yellow)
+      ctx.save();
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#eab308';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+
+      if (waveformMode === 'normal') {
+        // Normal Common Rail Injection Pattern: Pre-injection + Main injection + Flyback peak
+        for (let x = 0; x < w; x++) {
+          const cycleX = (x + animOffset) % 320;
+          let y = vBaseY;
+
+          // Pre-Injection event (cycleX between 40 and 60)
+          if (cycleX >= 40 && cycleX < 45) {
+            y = vBaseY + 30; // Pulled to ground (ECU low-side ON)
+          } else if (cycleX >= 45 && cycleX < 48) {
+            y = vBaseY - 95; // High Flyback Voltage Spike (~80V+)
+          } else if (cycleX >= 48 && cycleX < 65) {
+            y = vBaseY - (vBaseY - 95) * Math.exp(-(cycleX - 48) / 3) * 0.15; // Damping
+          }
+          // Main-Injection event (cycleX between 80 and 125)
+          else if (cycleX >= 80 && cycleX < 110) {
+            y = vBaseY + 30; // Main pulse pulled to ground
+          } else if (cycleX >= 110 && cycleX < 114) {
+            y = vBaseY - 120; // Massive inductive spike (>120V)
+          } else if (cycleX >= 114 && cycleX < 140) {
+            y = vBaseY - (vBaseY - 120) * Math.exp(-(cycleX - 114) / 4) * 0.2; // Damping back to battery
+          }
+
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+      } else {
+        // Fault Mode (P0203 13 Open Circuit): Constant line at Battery Voltage (or floating), No Ground Pulses, Noise only
+        for (let x = 0; x < w; x++) {
+          const noise = (Math.sin((x + animOffset) * 0.2) + Math.random() * 0.4 - 0.2) * 2;
+          const y = vBaseY + noise; // flat floating DC level
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Draw CH2: Current Waveform (Cyan)
+      ctx.save();
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+
+      if (waveformMode === 'normal') {
+        for (let x = 0; x < w; x++) {
+          const cycleX = (x + animOffset) % 320;
+          let y = iBaseY;
+
+          // Pre-Injection Current Ramp (Peak ~6A)
+          if (cycleX >= 40 && cycleX < 45) {
+            y = iBaseY - ((cycleX - 40) / 5) * 35; // Ramp up
+          } else if (cycleX >= 45 && cycleX < 50) {
+            y = (iBaseY - 35) + ((cycleX - 45) / 5) * 35; // Discharge
+          }
+          // Main-Injection Current Ramp (Peak ~15A)
+          else if (cycleX >= 80 && cycleX < 110) {
+            y = iBaseY - (1 - Math.exp(-(cycleX - 80) / 8)) * 85; // Inductive current rise & hold
+          } else if (cycleX >= 110 && cycleX < 116) {
+            y = iBaseY - 85 * Math.exp(-(cycleX - 110) / 2); // Sharp collapse
+          }
+
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+      } else {
+        // Fault Mode: 0 Current flatline
+        for (let x = 0; x < w; x++) {
+          const noise = (Math.random() * 0.5 - 0.25);
+          const y = iBaseY + noise;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      requestAnimationFrame(drawWaveforms);
+    }
+
+    // Checklist Progress Counter
+    function updateChecklist() {
+      const checkboxes = document.querySelectorAll('#checklist-items input[type="checkbox"]');
+      let checkedCount = 0;
+      checkboxes.forEach(cb => {
+        if (cb.checked) checkedCount++;
+      });
+      document.getElementById('checklist-progress').innerText = `${checkedCount}/${checkboxes.length} 完成`;
+    }
+
+    // Copy Diagnosis Report to Clipboard
+    function copyReport() {
+      const text = document.getElementById('diag-notes').value;
+      const statusEl = document.getElementById('copy-status');
+      
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          statusEl.innerText = "✓ 報告已成功複製！";
+          setTimeout(() => { statusEl.innerText = ""; }, 3000);
+        } else {
+          statusEl.innerText = "複製失敗，請手動複製";
+        }
+      } catch (err) {
+        statusEl.innerText = "無法存取剪貼簿";
+      }
+      document.body.removeChild(textArea);
+    }
+
+    // Start Simulation on window load
+    window.onload = function() {
+      selectCylinder(3); // Start with Cylinder 3 as in the user's issue
+      requestAnimationFrame(drawWaveforms);
+    };
+  </script>
+</body>
+</html>
