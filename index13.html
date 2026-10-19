@@ -42,7 +42,12 @@
             letter-spacing: 1px;
             margin-bottom: 10px;
         }
-        .btn-export {
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .btn {
             background-color: #1a1b26;
             color: var(--accent-cyan);
             border: 1px solid var(--accent-cyan);
@@ -56,11 +61,16 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        .btn-export:hover {
+        .btn:hover {
             background-color: var(--accent-cyan);
             color: #000;
             box-shadow: 0 0 10px rgba(125, 207, 255, 0.3);
         }
+        .btn-amber { color: var(--accent-amber); border-color: var(--accent-amber); }
+        .btn-amber:hover { background-color: var(--accent-amber); color: #000; box-shadow: 0 0 10px rgba(224, 175, 104, 0.3); }
+        .btn-danger { color: var(--danger); border-color: var(--danger); }
+        .btn-danger:hover { background-color: var(--danger); color: #000; box-shadow: 0 0 10px rgba(247, 118, 142, 0.3); }
+        
         .drop-zone {
             border: 2px dashed var(--border);
             padding: 50px;
@@ -77,55 +87,67 @@
             color: var(--accent-amber);
             box-shadow: 0 0 20px rgba(224, 175, 104, 0.15);
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            font-size: 0.85rem;
-            white-space: nowrap;
-        }
-        th, td {
-            border: 1px solid var(--border);
-            padding: 12px 15px;
-            text-align: left;
-        }
-        th {
-            background-color: #1a1b26;
-            color: var(--accent-cyan);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-        }
-        tr:hover { background-color: var(--highlight); }
-        .meta-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-bottom: 25px;
-            padding: 20px;
+        
+        /* 欄位篩選面板 */
+        .column-selector-panel {
+            display: none;
             background: var(--panel-bg);
-            border-left: 4px solid var(--accent-amber);
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .column-selector-panel.active { display: flex; flex-wrap: wrap; gap: 10px; }
+        .col-toggle {
+            display: flex; align-items: center; gap: 5px;
+            background: #1a1b26; padding: 5px 10px; border-radius: 4px;
+            border: 1px solid var(--border); cursor: pointer;
+            font-size: 0.85rem; user-select: none; transition: all 0.2s;
+        }
+        .col-toggle:hover { border-color: var(--accent-cyan); }
+        
+        /* 分析報告面板 */
+        .analysis-panel {
+            display: none;
+            background: rgba(247, 118, 142, 0.05);
+            border: 1px solid var(--danger);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(247, 118, 142, 0.1);
+        }
+        .analysis-panel.active { display: block; }
+        .analysis-title { color: var(--danger); font-size: 1.2rem; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid var(--danger); padding-bottom: 5px; }
+        .analysis-content { font-size: 0.95rem; line-height: 1.6; color: #e0e0e0; }
+        .analysis-point { margin-bottom: 8px; }
+        .analysis-highlight { color: var(--accent-amber); font-weight: bold; }
+
+        table {
+            width: 100%; border-collapse: collapse; margin-top: 10px;
+            font-size: 0.85rem; white-space: nowrap;
+        }
+        th, td { border: 1px solid var(--border); padding: 12px 15px; text-align: left; }
+        th { background-color: #1a1b26; color: var(--accent-cyan); position: sticky; top: 0; z-index: 10; font-weight: bold; }
+        
+        .meta-container {
+            display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 15px; padding: 20px;
+            background: var(--panel-bg); border-left: 4px solid var(--accent-amber); border-radius: 0 8px 8px 0;
         }
         .meta-item { font-size: 1rem; font-weight: bold;}
         .meta-key { color: var(--accent-amber); margin-right: 8px; font-weight: normal;}
-        .table-container {
-            overflow-x: auto;
-            max-height: 70vh;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background-color: var(--panel-bg);
-        }
+        .table-container { overflow-x: auto; max-height: 60vh; border: 1px solid var(--border); border-radius: 8px; background-color: var(--panel-bg); }
+        
         ::-webkit-scrollbar { height: 10px; width: 10px; }
         ::-webkit-scrollbar-track { background: var(--bg-color); border-radius: 5px;}
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px;}
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
         
-        .fault-code { color: var(--danger); font-weight: bold; }
-        .fault-desc { color: #c0caf5; max-width: 400px; white-space: normal; }
+        .fault-code { font-weight: bold; }
+        .fault-desc { max-width: 350px; white-space: normal; line-height: 1.4; }
+        .desc-en { font-size: 0.75rem; opacity: 0.7; display: block; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -133,21 +155,30 @@
 <div class="header">
     <div>
         <h1>STELLANTIS 解碼器</h1>
-        <div style="margin-top:5px; font-size: 0.9rem; color: #565f89;">[ 訊號解構與時空校準系統 ]</div>
+        <div style="margin-top:5px; font-size: 0.9rem; color: #565f89;">[ 訊號解構、色彩拓撲與邏輯診斷 v3.2 ]</div>
     </div>
     <div style="text-align: right;">
-        <div class="subtitle">v1.2 | Observer: Soros</div>
-        <button id="exportBtn" class="btn-export" style="display: none;" onclick="exportTableToCSV()">匯出 EXCEL (CSV)</button>
+        <div class="subtitle">Observer: Soros</div>
+        <div class="controls" id="controlsPanel" style="display: none;">
+            <button id="analyzeBtn" class="btn btn-danger" onclick="runStellantisAnalysis()">深度診斷分析</button>
+            <button id="toggleFilterBtn" class="btn btn-amber" onclick="toggleColumnPanel()">過濾欄位 (Filter)</button>
+            <button id="exportBtn" class="btn" onclick="exportTableToExcel()">匯出 EXCEL (帶顏色)</button>
+        </div>
     </div>
 </div>
 
 <div class="drop-zone" id="dropZone">
-    [ 點擊或拖曳 DiagBox CSV 至此進行解碼 ]
+    [ 點擊或拖曳 DiagBox CSV 至此進行解碼與著色 ]
 </div>
 <input type="file" id="fileInput" accept=".csv" style="display: none;">
 
 <div id="output" style="display: none;">
     <div class="meta-container" id="metaInfo"></div>
+    <div class="analysis-panel" id="analysisPanel">
+        <div class="analysis-title">▰ Stellantis 故障拓撲分析報告</div>
+        <div class="analysis-content" id="analysisContent"></div>
+    </div>
+    <div class="column-selector-panel" id="columnSelectorPanel"></div>
     <div class="table-container">
         <table id="dataTable">
             <thead><tr id="tableHead"></tr></thead>
@@ -157,43 +188,137 @@
 </div>
 
 <script>
+    // 擴充翻譯字典庫 (加入截圖中的新變數)
     const dict = {
-        "appearance": "出現標記",
-        "disappearance": "消失標記",
-        "date time": "系統時間 (+6h校準)",
-        "Accuracy of the contexts": "環境準確度",
-        "distance (km)": "行駛里程 (km)",
-        "control unit": "控制單元",
-        "emergency mode": "緊急模式",
-        "Fault code": "故障碼",
-        "fault description": "故障描述",
-        "Engine speed": "引擎轉速 (RPM)",
-        "exterior temperature": "車外溫度 (°C)",
-        "vehicle speed": "車速 (km/h)",
-        "lateral acceleration": "橫向加速度",
-        "longitudinal acceleration": "縱向加速度",
-        "STEERING WHEEL ANGLE": "方向盤角度",
-        "Voltage of the ancillaries battery": "輔助電瓶電壓 (V)",
-        "Ancillaries battery charge status": "電瓶充電狀態",
-        "presence of driver": "駕駛員偵測",
-        "ECO mode": "節能模式",
-        "status of the electrical network": "電網狀態",
-        "braking in progress": "煞車作動",
-        "filtered fuel level": "燃油液位",
-        "drive train type": "驅動類型",
-        "vehicle mileage": "進場里程",
-        "Accessory positive relay control": "ACC 繼電器",
-        "Ignition positive relay control": "IGN 繼電器",
-        "Windscreen wiping control position": "雨刷控制位置",
-        "traction battery charge level": "動力電池電量",
-        "date": "Date",
-        "time": "Time",
-        "Vehicle": "Vehicle",
-        "VIN": "VIN",
-        "Fault": "Fault",
-        "Log full": "Log full",
-        "number of faults": "Number of faults"
+        "appearance": "出現標記", "disappearance": "消失標記", "date time": "系統時間 (+6h校準)",
+        "accuracy of the contexts": "環境準確度", "distance (km)": "行駛里程 (km)",
+        "control unit": "控制單元", "emergency mode": "緊急模式", "fault code": "故障碼",
+        "fault description": "故障描述 (翻譯)", "engine speed": "引擎轉速 (RPM)",
+        "engine speed (tr/mn)": "引擎轉速 (RPM)", // 處理 tr/mn 單位
+        "exterior temperature": "車外溫度 (°C)", "vehicle speed": "車速 (km/h)",
+        "lateral acceleration": "橫向G值", "longitudinal acceleration": "縱向G值",
+        "steering wheel angle": "方向盤角度", "voltage of the ancillaries battery": "輔助電瓶電壓 (V)",
+        "battery voltage (v)": "電瓶電壓 (V)", // 處理不同車型的寫法
+        "ancillaries battery charge status": "電瓶充電狀態", "presence of driver": "駕駛員偵測",
+        "eco mode": "節能模式", "status of the electrical network": "電網狀態",
+        "electrical status of the vehicle": "車輛電氣狀態", // 新增
+        "braking in progress": "煞車作動", "filtered fuel level": "燃油液位",
+        "drive train type": "驅動類型", "vehicle mileage": "進場里程",
+        "date": "匯出日期", "time": "匯出時間", "vehicle": "車型", "vin": "車身號碼",
+        "fault": "故障狀態", "log full": "日誌已滿", "number of faults": "故障總數",
+        "accessory positive relay control": "ACC 正極繼電器", 
+        "ignition positive relay control": "IGN 正極繼電器",
+        "windscreen wiping control position": "雨刷控制位置", 
+        "traction battery charge level": "動力電池電量 (SOC)",
+        "on-board charger/direct voltage transformer assembly overheating": "OBC/變壓器過熱狀態",
+        "accuracy of the gradient value": "坡度準確度", 
+        "gradient value": "坡度值",
+        "pressing down the accelerator pedal": "油門踏板踩踏",
+        "front electric drive machine status information": "前電動機狀態",
+        "internal combustion engine operation information": "引擎運作資訊",
+        "speed limiter/cruise control status": "定速/限速狀態", 
+        "day/night management": "晝夜管理模式",
+        "status of the vehicle electrical system": "車輛電氣系統狀態",
+        "current of the traction battery": "動力電池電流",
+        "configuration of the vehicle's electrical system": "車輛電氣配置",
+        "front electric drive machine speed": "前電動機轉速",
+        "hybrid automatic gearbox gear lever position": "變速箱檔位",
+        "shunt parc position": "駐車分流器(Shunt)位置",
+        "reset counter for the vehicle time counter": "車輛時間計數器重置",
+        
+        // --- v3.2 新增補充 ---
+        "bsi operating mode": "BSI 運作模式",
+        "power consumption status": "耗電狀態",
+        "exterior air temperature (â°c)": "車外氣溫 (°C)", // 處理亂碼
+        "exterior air temperature (°c)": "車外氣溫 (°C)",
+        "engine coolant temperature (â°c)": "引擎水溫 (°C)", // 處理亂碼
+        "engine coolant temperature (°c)": "引擎水溫 (°C)",
+        "passenger compartment temperature (â°c)": "車室溫度 (°C)", // 處理亂碼
+        "passenger compartment temperature (°c)": "車室溫度 (°C)",
+        "load shedding": "負載卸載 (省電模式切斷)"
     };
+
+    function getTranslatedKey(keyRaw) {
+        // 先嘗試清除非字母數字與空白字元 (除了特殊符號如括號) 以對付亂碼
+        let cleanKey = keyRaw.toLowerCase().trim();
+        
+        if (dict[cleanKey]) return dict[cleanKey];
+        
+        // 嘗試過濾掉亂碼 (如 Â) 再查一次字典
+        let filteredKey = cleanKey.replace(/â/g, '');
+        if (dict[filteredKey]) return dict[filteredKey];
+
+        // 依然找不到，就回傳首字母大寫的原始字串
+        return keyRaw.charAt(0).toUpperCase() + keyRaw.slice(1);
+    }
+
+    const unitColors = {
+        "built-in systems interface": "#1e3a8a", // 深藍 (BSI)
+        "engine management ecu": "#7f1d1d",      // 深紅 (Engine)
+        "power steering": "#14532d",             // 深綠 (Steering)
+        "audio-navigation / connected audio system": "#4c1d95", // 深紫 (Radio)
+        "rear left-hand corner radar": "#78350f", // 棕色 (Radar)
+        "rear right-hand corner radar": "#78350f",
+        "left-hand headlamp": "#854d0e",          // 橙黃 (Headlamp)
+        "right-hand headlamp": "#854d0e",
+        "electric drive machine ecu": "#064e3b"   // 墨綠 (Hybrid Motor)
+    };
+    
+    function getUnitColor(unitName) {
+        let nameLower = unitName.toLowerCase().trim();
+        if (unitColors[nameLower]) return unitColors[nameLower];
+        
+        let hash = 0;
+        for (let i = 0; i < nameLower.length; i++) hash = nameLower.charCodeAt(i) + ((hash << 5) - hash);
+        let h = Math.abs(hash % 360);
+        return `hsl(${h}, 50%, 20%)`; 
+    }
+
+    function hslToHexStr(colorStr) {
+        if(colorStr.startsWith('#')) return colorStr;
+        let hslMatch = colorStr.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+        if(!hslMatch) return "#222222";
+        let h = parseInt(hslMatch[1]), s = parseInt(hslMatch[2])/100, l = parseInt(hslMatch[3])/100;
+        let c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c/2, r = 0, g = 0, b = 0;
+        if (0 <= h && h < 60) { r = c; g = x; b = 0; } else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+        else if (120 <= h && h < 180) { r = 0; g = c; b = x; } else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+        else if (240 <= h && h < 300) { r = x; g = 0; b = c; } else if (300 <= h && h < 360) { r = c; g = 0; b = x; }
+        r = Math.round((r + m) * 255).toString(16).padStart(2, '0');
+        g = Math.round((g + m) * 255).toString(16).padStart(2, '0');
+        b = Math.round((b + m) * 255).toString(16).padStart(2, '0');
+        return `#${r}${g}${b}`;
+    }
+
+    function translateFaultDescription(text) {
+        let t = text;
+        if(!t) return t;
+        const patterns = [
+            [/built-in systems interface/gi, "BSI(內建系統介面)"],
+            [/missing information/gi, "遺失資訊"],
+            [/no communication with/gi, "無通訊:"],
+            [/communication from/gi, "通訊來自"],
+            [/data received invalid/gi, "接收資料無效"],
+            [/outside range/gi, "超出範圍"],
+            [/switch to safety mode following expiration of the time delay/gi, "延遲到期後切換至安全模式"],
+            [/switch to safety mode/gi, "切換至安全模式"],
+            [/Internal combustion engine/gi, "引擎"],
+            [/oil level measurement signal/gi, "機油液位訊號"],
+            [/multiplexed air blower/gi, "多工空調鼓風機"],
+            [/multifunction video camera/gi, "多功能攝影機"],
+            [/datastream/gi, "資料流"],
+            [/no radio frequency connectivity/gi, "無射頻連線"],
+            [/synchronisation between/gi, "同步異常:"],
+            [/digital panoramic visual assistance/gi, "數位全景輔助"],
+            [/not characterised/gi, "(未定義特徵)"],
+            [/main triggering request receives by the CAN/gi, "CAN接收主觸發請求"],
+            [/A ne pas afficher Internal fault not specified/gi, "(內部未指定故障，可忽略)"], // 針對截圖中的特殊字串
+            [/the fault code is/gi, "故障碼為"]
+        ];
+        patterns.forEach(p => t = t.replace(p[0], p[1]));
+        return t;
+    }
+
+    let globalFaults = []; 
 
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
@@ -202,8 +327,7 @@
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--accent-amber)"; });
     dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = "var(--border)");
     dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = "var(--border)";
+        e.preventDefault(); dropZone.style.borderColor = "var(--border)";
         if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
     });
     fileInput.addEventListener('change', (e) => {
@@ -217,36 +341,27 @@
     }
 
     function parseCSV(text) {
+        globalFaults = [];
         const separator = text.indexOf(';') !== -1 ? ';' : ',';
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        
-        let metaHtml = "";
-        let headerIndex = -1;
+        let metaHtml = "", headerIndex = -1;
 
         for (let i = 0; i < lines.length; i++) {
             let lineLower = lines[i].toLowerCase();
             if (lineLower.includes('appearance') && (lineLower.includes('fault code') || lineLower.includes('date time'))) {
-                headerIndex = i;
-                break;
+                headerIndex = i; break;
             }
         }
 
-        if (headerIndex === -1) {
-            alert("[解析失敗] 無法辨識的矩陣結構，請確認是否為 DiagBox 標準輸出格式。");
-            return;
-        }
+        if (headerIndex === -1) { alert("解析失敗：無法辨識結構。"); return; }
 
         for (let i = 0; i < headerIndex; i++) {
             let parts = lines[i].split(separator);
             if (parts.length >= 2 && parts[0]) {
-                let keyRaw = parts[0].replace(/^"|"$/g, '').trim();
+                let keyRaw = parts[0].replace(/^"|"$/g, '').trim().replace(/\s+$/, '');
                 let val = parts[1].replace(/^"|"$/g, '').trim();
-                let keyClean = keyRaw.replace(/\s+$/, '');
-                let translatedKey = dict[keyClean] || dict[keyClean.toLowerCase()] || keyClean;
-                
-                if(keyClean) {
-                    metaHtml += `<div class="meta-item"><span class="meta-key">[${translatedKey}]</span> <span class="meta-val">${val}</span></div>`;
-                }
+                let translatedKey = getTranslatedKey(keyRaw);
+                if(keyRaw) metaHtml += `<div class="meta-item"><span class="meta-key">[${translatedKey}]</span> <span class="meta-val">${val}</span></div>`;
             }
         }
         document.getElementById('metaInfo').innerHTML = metaHtml;
@@ -255,68 +370,88 @@
         let tableHead = document.getElementById('tableHead');
         tableHead.innerHTML = "";
         
-        let faultCodeIndex = -1;
-        let faultDescIndex = -1;
+        let colIndexes = { unit: -1, code: -1, desc: -1, time: -1, volt: -1, volt2: -1 };
+        let translatedHeaders = [];
 
         rawHeaders.forEach((header, index) => {
             if (!header) return;
             let headerLower = header.toLowerCase();
-            if (headerLower === 'fault code') faultCodeIndex = index;
-            if (headerLower === 'fault description') faultDescIndex = index;
+            if (headerLower === 'control unit') colIndexes.unit = index;
+            if (headerLower === 'fault code') colIndexes.code = index;
+            if (headerLower === 'fault description') colIndexes.desc = index;
+            if (headerLower === 'date time') colIndexes.time = index;
+            if (headerLower === 'voltage of the ancillaries battery') colIndexes.volt = index;
+            if (headerLower === 'battery voltage (v)') colIndexes.volt2 = index; // 對付另一種寫法
 
-            let translated = dict[header] || dict[headerLower] || header;
+            let translated = getTranslatedKey(header);
+            translatedHeaders.push(translated);
             let th = document.createElement('th');
             th.innerText = translated;
             tableHead.appendChild(th);
         });
 
+        buildColumnSelector(translatedHeaders);
+
         let tableBody = document.getElementById('tableBody');
         tableBody.innerHTML = "";
         
         for (let i = headerIndex + 1; i < lines.length; i++) {
-            let cols = [];
-            let inQuotes = false;
-            let currentVal = '';
-            
+            let cols = [], inQuotes = false, currentVal = '';
             for (let char of lines[i]) {
-                if (char === '"' && inQuotes) {
-                    inQuotes = false;
-                } else if (char === '"' && !inQuotes) {
-                    inQuotes = true;
-                } else if (char === separator && !inQuotes) {
-                    cols.push(currentVal);
-                    currentVal = '';
-                } else {
-                    currentVal += char;
-                }
+                if (char === '"' && inQuotes) inQuotes = false;
+                else if (char === '"' && !inQuotes) inQuotes = true;
+                else if (char === separator && !inQuotes) { cols.push(currentVal); currentVal = ''; }
+                else currentVal += char;
             }
             cols.push(currentVal); 
-
             if (cols.length < 5) continue; 
             
             let tr = document.createElement('tr');
+            let rowData = {};
             
+            let unitName = cols[colIndexes.unit] ? cols[colIndexes.unit].replace(/^"|"$/g, '').trim() : "";
+            let rowColor = unitName ? getUnitColor(unitName) : "";
+            if (rowColor) {
+                tr.style.backgroundColor = rowColor;
+                tr.setAttribute('data-color', hslToHexStr(rowColor)); 
+            }
+
             for(let j = 0; j < rawHeaders.length; j++) {
                 if(!rawHeaders[j]) continue;
                 let val = cols[j] ? cols[j].replace(/^"|"$/g, '').trim() : "";
-                let headerName = rawHeaders[j].toLowerCase();
                 
-                if (headerName === "date time" && val) val = adjustTime(val, 6);
+                // 處理特殊的時間格式 (1572 day(s) 20:44:11)，若是這種格式就不進行 +6h 校準，直接顯示
+                if (j === colIndexes.time && val) {
+                    if(!val.includes('day(s)')) {
+                        val = adjustTime(val, 6);
+                    }
+                }
 
                 let td = document.createElement('td');
-                td.innerText = val;
+                td.style.color = "#ffffff"; 
                 
-                if (j === faultCodeIndex) td.className = 'fault-code';
-                if (j === faultDescIndex) td.className = 'fault-desc';
-                
+                if (j === colIndexes.desc && val !== "") {
+                    let translatedText = translateFaultDescription(val);
+                    if(translatedText !== val) td.innerHTML = `${translatedText} <br><span class="desc-en">(${val})</span>`;
+                    else td.innerText = val;
+                    td.className = 'fault-desc';
+                    rowData.desc = val;
+                } else {
+                    td.innerText = val;
+                    if (j === colIndexes.code) { td.className = 'fault-code'; rowData.code = val; }
+                    if (j === colIndexes.unit) rowData.unit = val;
+                    if (j === colIndexes.volt || j === colIndexes.volt2) rowData.volt = val;
+                }
                 tr.appendChild(td);
             }
             tableBody.appendChild(tr);
+            if(rowData.code) globalFaults.push(rowData);
         }
 
         document.getElementById('dropZone').style.display = 'none';
         document.getElementById('output').style.display = 'block';
-        document.getElementById('exportBtn').style.display = 'inline-block';
+        document.getElementById('controlsPanel').style.display = 'flex';
+        document.getElementById('analysisPanel').classList.remove('active');
     }
 
     function adjustTime(timeStr, addHours) {
@@ -325,79 +460,159 @@
             if (parts.length < 2) return timeStr;
             let dateParts = parts[0].split('/');
             let timeParts = parts[1].split(':');
-            
             if (dateParts.length === 3 && timeParts.length >= 2) {
-                let year = parseInt(dateParts[2], 10);
-                let month = parseInt(dateParts[1], 10) - 1; 
-                let day = parseInt(dateParts[0], 10);
-                let hour = parseInt(timeParts[0], 10);
-                let min = parseInt(timeParts[1], 10);
-                
-                let secParts = timeParts[2] ? timeParts[2].split('.') : ['0'];
-                let sec = parseInt(secParts[0], 10) || 0;
-                
-                let dateObj = new Date(year, month, day, hour, min, sec);
-                if (isNaN(dateObj.getTime())) return timeStr;
-
-                dateObj.setHours(dateObj.getHours() + addHours); 
-                
-                let y = dateObj.getFullYear();
-                let m = String(dateObj.getMonth() + 1).padStart(2, '0');
-                let d = String(dateObj.getDate()).padStart(2, '0');
-                let H = String(dateObj.getHours()).padStart(2, '0');
-                let M = String(dateObj.getMinutes()).padStart(2, '0');
-                let S = String(dateObj.getSeconds()).padStart(2, '0');
-                return `${y}/${m}/${d} ${H}:${M}:${S}`;
+                let dObj = new Date(dateParts[2], parseInt(dateParts[1])-1, dateParts[0], timeParts[0], timeParts[1], parseInt((timeParts[2]||'0').split('.')[0]));
+                if (isNaN(dObj.getTime())) return timeStr;
+                dObj.setHours(dObj.getHours() + addHours); 
+                let pad = n => String(n).padStart(2, '0');
+                return `${dObj.getFullYear()}/${pad(dObj.getMonth()+1)}/${pad(dObj.getDate())} ${pad(dObj.getHours())}:${pad(dObj.getMinutes())}:${pad(dObj.getSeconds())}`;
             }
             return timeStr;
-        } catch (e) {
-            return timeStr; 
-        }
+        } catch (e) { return timeStr; }
     }
 
-    // 將解構完畢的矩陣封裝回 Excel 可讀格式
-    function exportTableToCSV() {
-        let csv = [];
-        
-        // 1. 寫入 Meta 頂部資訊 (水平排列方便 Excel 檢視)
-        let metaKeysRow = [];
-        let metaValsRow = [];
-        const metaItems = document.querySelectorAll('.meta-item');
-        metaItems.forEach(item => {
-            let keyText = item.querySelector('.meta-key').innerText.replace(/[\[\]]/g, '').trim();
-            let valText = item.querySelector('.meta-val').innerText.trim();
-            metaKeysRow.push('"' + keyText + '"');
-            metaValsRow.push('"' + valText + '"');
+    function buildColumnSelector(headers) {
+        const container = document.getElementById('columnSelectorPanel');
+        container.innerHTML = '';
+        headers.forEach((h, index) => {
+            let label = document.createElement('label'); label.className = 'col-toggle';
+            let cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true;
+            cb.onchange = (e) => toggleColumnVisibility(index, e.target.checked);
+            label.appendChild(cb); label.appendChild(document.createTextNode(h));
+            container.appendChild(label);
         });
-        if(metaKeysRow.length > 0) {
-            csv.push(metaKeysRow.join(","));
-            csv.push(metaValsRow.join(","));
-            csv.push(""); // 空行分隔
-        }
+    }
 
-        // 2. 寫入主體資料表
-        const rows = document.querySelectorAll("#dataTable tr");
-        for (let i = 0; i < rows.length; i++) {
-            let row = [];
-            let cols = rows[i].querySelectorAll("td, th");
-            for (let j = 0; j < cols.length; j++) {
-                // 處理雙引號跳脫
-                let data = cols[j].innerText.replace(/"/g, '""');
-                row.push('"' + data + '"');
-            }
-            csv.push(row.join(","));
-        }
+    function toggleColumnPanel() { document.getElementById('columnSelectorPanel').classList.toggle('active'); }
+    function toggleColumnVisibility(index, isVisible) {
+        document.querySelectorAll(`#dataTable th:nth-child(${index + 1}), #dataTable td:nth-child(${index + 1})`).forEach(cell => {
+            cell.style.display = isVisible ? '' : 'none';
+        });
+    }
 
-        // 3. 觸發下載 (加入 BOM 以防止 Excel 中文亂碼)
-        let csvContent = "\uFEFF" + csv.join("\n");
-        let csvFile = new Blob([csvContent], {type: "text/csv;charset=utf-8;"});
+    // --- 核心：Stellantis 邏輯分析引擎 ---
+    function runStellantisAnalysis() {
+        const panel = document.getElementById('analysisPanel');
+        const content = document.getElementById('analysisContent');
+        panel.classList.add('active');
         
+        let uCodeCount = 0, bCodeCount = 0, pCodeCount = 0;
+        let hasU0046 = false, hasB132A = false, hasLowVolt = false;
+        let unitsAffected = new Set();
+
+        globalFaults.forEach(f => {
+            let c = f.code.toUpperCase();
+            if(c.startsWith('U')) uCodeCount++;
+            if(c.startsWith('B')) bCodeCount++;
+            if(c.startsWith('P')) pCodeCount++;
+            
+            if(c.includes('U0046') || c.includes('U1FC5')) hasU0046 = true; 
+            if(c.includes('B132A')) hasB132A = true; 
+            if(f.unit) unitsAffected.add(f.unit);
+            
+            let volt = parseFloat(f.volt);
+            if(!isNaN(volt) && volt < 11.5 && volt > 0) hasLowVolt = true;
+        });
+
+        let report = `<div class="analysis-point">掃描總結：共檢測到 <span class="analysis-highlight">${globalFaults.length}</span> 筆故障，橫跨 <span class="analysis-highlight">${unitsAffected.size}</span> 個控制單元。</div>`;
+        report += `<div class="analysis-point">協議分佈：網路通訊 (U碼) ${uCodeCount} 筆 | 車身系統 (B碼) ${bCodeCount} 筆 | 動力系統 (P碼) ${pCodeCount} 筆。</div><hr style="border-color:var(--danger); opacity:0.3; margin:10px 0;">`;
+
+        if (uCodeCount > (bCodeCount + pCodeCount)) {
+            report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">通訊雪崩 (U-Code Storm)</span>：U 碼佔比極高。Stellantis 規範中，這通常非單一模組損壞，而是<span class="analysis-highlight">底層供電/接地不良</span>或<span class="analysis-highlight">網路閘道 (BSI/VSM) 喚醒失敗</span>導致的骨牌效應。</div>`;
+        }
+        
+        if (hasU0046) {
+            report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">高速 CAN 網路癱瘓 (U0046/U1FC5)</span>：偵測到 CAN 2 或 CAN 6 失去通訊。若發生在行進間失去動力，極高機率為 VSM (車輛監控模組) 或 BSI 當機，請優先檢查其供電端子或周邊搭鐵。</div>`;
+        }
+
+        if (hasB132A) {
+            report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">BSI 防護機制介入 (B132A)</span>：BSI 已主動切換至安全模式 (Safety Mode)。這通常是為了保護電網，可能因瞬間電壓降或不正常的休眠/喚醒訊號所觸發。</div>`;
+        }
+
+        if (hasLowVolt) {
+            report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">低壓異常 (Low Voltage)</span>：紀錄中捕捉到 12V 輔助電瓶電壓低於 11.5V。在油電混合車 (Hybrid/PHEV) 的架構中，12V 瞬間失壓會導致牽引系統繼電器跳脫，引發「行進間失去動力」。</div>`;
+        }
+        
+        if (!hasU0046 && !hasB132A && pCodeCount > 0) {
+             report += `<div class="analysis-point">ℹ️ 主要為動力或感測器局部故障，未見全車網路癱瘓跡象，建議針對 P 碼指引進行單點查修。</div>`;
+        }
+
+        content.innerHTML = report;
+    }
+
+    // --- 匯出 Excel (使用 XML/HTML 格式以保留背景色) ---
+    function exportTableToExcel() {
+        let table = document.getElementById("dataTable").cloneNode(true);
+        
+        let rows = table.querySelectorAll("tr");
+        for(let i = 0; i < rows.length; i++) {
+            let cols = rows[i].querySelectorAll("th, td");
+            for(let j = cols.length - 1; j >= 0; j--) {
+                if (window.getComputedStyle(document.querySelectorAll(`#dataTable tr`)[i].querySelectorAll("th, td")[j]).display === 'none') {
+                    cols[j].remove();
+                }
+            }
+        }
+        
+        let trs = table.querySelectorAll("tr");
+        trs.forEach(tr => {
+            let hexColor = tr.getAttribute('data-color');
+            if(hexColor) {
+                tr.querySelectorAll('td').forEach(td => {
+                    td.style.backgroundColor = hexColor;
+                    td.style.color = "#FFFFFF"; 
+                    td.innerHTML = td.innerHTML.replace(/<br\s*[\/]?>/gi, "&#10;").replace(/<[^>]*>?/gm, ''); 
+                    td.style.msoNumberFormat = "\\@"; 
+                });
+            }
+        });
+
+        let metaHtml = "<table><tr>";
+        document.querySelectorAll('.meta-item').forEach(item => {
+            let k = item.querySelector('.meta-key').innerText;
+            let v = item.querySelector('.meta-val').innerText;
+            metaHtml += `<td style="font-weight:bold; background-color:#e0af68; color:#000;">${k}</td><td>${v}</td><td style="width:20px;"></td>`;
+        });
+        metaHtml += "</tr></table><br>";
+
+        let finalHtml = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta charset="utf-8">
+                <!--[if gte mso 9]>
+                <xml>
+                    <x:ExcelWorkbook>
+                        <x:ExcelWorksheets>
+                            <x:ExcelWorksheet>
+                                <x:Name>DiagBox Analysis</x:Name>
+                                <x:WorksheetOptions>
+                                    <x:DisplayGridlines/>
+                                </x:WorksheetOptions>
+                            </x:ExcelWorksheet>
+                        </x:ExcelWorksheets>
+                    </x:ExcelWorkbook>
+                </xml>
+                <![endif]-->
+                <style>
+                    table { border-collapse: collapse; }
+                    th, td { border: 1px solid #666666; padding: 5px; font-family: sans-serif; font-size: 12px; }
+                    th { background-color: #1a1b26; color: #7dcfff; font-weight: bold; }
+                </style>
+            </head>
+            <body>
+                ${metaHtml}
+                ${table.outerHTML}
+            </body>
+            </html>
+        `;
+
+        let blob = new Blob([finalHtml], { type: 'application/vnd.ms-excel' });
         let downloadLink = document.createElement("a");
         let now = new Date();
         let timestamp = `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}`;
         
-        downloadLink.download = `Stellantis_Decoded_${timestamp}.csv`;
-        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.download = `Stellantis_ColorDecoded_${timestamp}.xls`; 
+        downloadLink.href = window.URL.createObjectURL(blob);
         downloadLink.style.display = "none";
         document.body.appendChild(downloadLink);
         downloadLink.click();
