@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>Stellantis 解碼器 (DiagBox Decoder)</title>
+    <title>Stellantis 全方位解碼器 (DiagBox All-in-One Decoder v4.2)</title>
     <style>
         :root {
             --bg-color: #0a0a0c;
@@ -75,13 +75,12 @@
         .unit-select:focus { box-shadow: 0 0 10px rgba(224, 175, 104, 0.3); }
         .unit-select option { background-color: var(--panel-bg); color: var(--text-main); font-weight: normal; }
 
-        /* 使用 Label 確保點擊絕對有效 */
         .drop-zone {
-            display: block; /* 確保佔滿寬度 */
+            display: block;
             border: 2px dashed var(--border); padding: 50px; text-align: center;
             background-color: var(--panel-bg); cursor: pointer; transition: all 0.3s ease;
             letter-spacing: 1.5px; font-size: 1.1rem; border-radius: 8px;
-            user-select: none; /* 防止反白文字 */
+            user-select: none;
         }
         .drop-zone:hover { border-color: var(--accent-amber); color: var(--accent-amber); box-shadow: 0 0 20px rgba(224, 175, 104, 0.15); }
         
@@ -90,12 +89,16 @@
             padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             max-height: 250px; overflow-y: auto;
         }
-        .column-selector-panel.active { display: flex; flex-wrap: wrap; gap: 10px; }
+        .column-selector-panel.active { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
         .col-toggle {
             display: flex; align-items: center; gap: 5px; background: #1a1b26; padding: 5px 10px;
             border-radius: 4px; border: 1px solid var(--border); cursor: pointer; font-size: 0.85rem; user-select: none; transition: all 0.2s;
         }
         .col-toggle:hover { border-color: var(--accent-cyan); }
+        .col-toggle-all {
+            background: #24283b; border-color: var(--accent-amber); color: var(--accent-amber); font-weight: bold;
+        }
+        .col-toggle-all:hover { border-color: #fff; color: #fff; }
         
         .analysis-panel {
             display: none; background: rgba(247, 118, 142, 0.05); border: 1px solid var(--danger);
@@ -124,8 +127,8 @@
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px;}
         ::-webkit-scrollbar-thumb:hover { background: var(--accent-cyan); }
         
-        .fault-code { font-weight: bold; }
-        .fault-desc { max-width: 350px; white-space: normal; line-height: 1.4; }
+        .fault-code { font-weight: bold; font-size: 0.95rem; }
+        .fault-desc { max-width: 450px; white-space: normal; line-height: 1.4; }
         .desc-en { font-size: 0.75rem; opacity: 0.7; display: block; margin-top: 4px; }
     </style>
 </head>
@@ -133,8 +136,8 @@
 
 <div class="header">
     <div>
-        <h1>STELLANTIS 解碼器</h1>
-        <div style="margin-top:5px; font-size: 0.9rem; color: #565f89;">[ 訊號解構、色彩拓撲與邏輯診斷 v3.5 穩定版 ]</div>
+        <h1>STELLANTIS 全方位解碼器</h1>
+        <div style="margin-top:5px; font-size: 0.9rem; color: #565f89;">[ 支援 CSV / JDD HTML / Nav 日誌 / TU XML 全檔案相容 v4.2 ]</div>
     </div>
     <div style="text-align: right;">
         <div class="subtitle">Observer: Soros</div>
@@ -147,11 +150,10 @@
     </div>
 </div>
 
-<!-- 將 div 替換為 label，強制綁定 fileInput，解決點擊無效問題 -->
 <label class="drop-zone" id="dropZone" for="fileInput">
-    [ 點擊或拖曳 DiagBox CSV 至此進行解碼與著色 ]
+    [ 點擊或拖曳 DiagBox 檔案至此 (支援 .csv / .html / .xml) ]
 </label>
-<input type="file" id="fileInput" accept=".csv" style="display: none;">
+<input type="file" id="fileInput" accept=".csv, .html, .htm, .xml" style="display: none;">
 
 <div id="output" style="display: none;">
     <div class="meta-container" id="metaInfo"></div>
@@ -169,69 +171,56 @@
 </div>
 
 <script>
-    // 終極防錯字典庫
     const dict = {
         "appearance": "出現標記", "disappearance": "消失標記", "date time": "系統時間 (+6h校準)",
         "accuracy of the contexts": "環境準確度", "distance (km)": "行駛里程 (km)",
         "control unit": "控制單元", "emergency mode": "緊急模式", "fault code": "故障碼",
         "fault description": "故障描述", "engine speed": "轉速 (RPM)",
-        "engine speed (tr/mn)": "轉速 (RPM)", 
-        "exterior temperature": "車外氣溫 (°C)", "vehicle speed": "車速 (km/h)",
-        "lateral acceleration": "橫向G值", "longitudinal acceleration": "縱向G值",
-        "steering wheel angle": "方向盤角度", "voltage of the ancillaries battery": "輔助電瓶電壓 (V)",
-        "battery voltage (v)": "電瓶電壓 (V)", 
-        "ancillaries battery charge status": "充電狀態", "presence of driver": "駕駛員偵測",
-        "eco mode": "節能模式", "status of the electrical network": "電網狀態",
-        "electrical status of the vehicle": "車輛電氣狀態",
-        "braking in progress": "煞車作動", "filtered fuel level": "燃油液位",
+        "engine speed (tr/mn)": "轉速 (RPM)", "exterior temperature": "車外氣溫 (°C)",
+        "vehicle speed": "車速 (km/h)", "vehicle speed (km/h)": "車速 (km/h)",
+        "voltage of the ancillaries battery": "輔助電瓶電壓 (V)", "battery voltage (v)": "電瓶電壓 (V)",
         "drive train type": "驅動類型", "vehicle mileage": "進場里程",
-        "date": "匯出日期", "time": "匯出時間", "vehicle": "車型", "vin": "車身號碼",
+        "date": "匯出日期", "time": "匯出時間", "vehicle": "車型", "vin": "車身號碼", "vin:": "車身號碼",
+        "type of vehicle": "車型", "vehicle layout": "車型架構", "mileage": "進場里程",
         "fault": "故障狀態", "log full": "日誌已滿", "number of faults": "故障總數",
-        "accessory positive relay control": "ACC 繼電器", "ignition positive relay control": "IGN 繼電器",
-        "windscreen wiping control position": "雨刷控制位置", "traction battery charge level": "動力電池電量 (SOC)",
-        "on-board charger/direct voltage transformer assembly overheating": "OBC/變壓器過熱",
-        "accuracy of the gradient value": "坡度準確度", "gradient value": "坡度值",
-        "pressing down the accelerator pedal": "油門踏板",
-        "front electric drive machine status information": "前電動機狀態",
-        "internal combustion engine operation information": "引擎運作資訊",
-        "speed limiter/cruise control status": "定速/限速狀態", "day/night management": "晝夜模式",
-        "status of the vehicle electrical system": "車輛電氣系統狀態", "current of the traction battery": "動力電池電流",
-        "configuration of the vehicle's electrical system": "車輛電氣配置", "front electric drive machine speed": "前電動機轉速",
-        "hybrid automatic gearbox gear lever position": "變速箱檔位", "shunt parc position": "駐車分流器(Shunt)",
-        "reset counter for the vehicle time counter": "車輛時間重置",
-        "bsi operating mode": "BSI 運作模式", "power consumption status": "耗電狀態",
-        "exterior air temperature (c)": "車外氣溫 (°C)", "engine coolant temperature (c)": "引擎水溫 (°C)",
-        "passenger compartment temperature (c)": "車室溫度 (°C)", "load shedding": "負載卸載 (省電模式)"
+        "exterior air temperature (°c)": "車外氣溫 (°C)", "engine coolant temperature (°c)": "引擎水溫 (°C)",
+        "passenger compartment temperature (°c)": "車室溫度 (°C)", "status": "狀態", "state": "模組狀態",
+        "features": "特徵/性質", "cause": "起因", "location": "位置"
     };
 
     function getTranslatedKey(keyRaw) {
+        if (!keyRaw) return "";
         let cleanKey = keyRaw.toLowerCase().trim();
-        // 暴力破解所有亂碼：移除非英數字母，僅保留關鍵字元
-        let filteredKey = cleanKey.replace(/[^\w\s\(\)°/]/gi, ''); 
-        
+        let filteredKey = cleanKey.replace(/[^\w\s\(\)°/:]/gi, ''); 
         if (dict[cleanKey]) return dict[cleanKey];
         if (dict[filteredKey]) return dict[filteredKey];
-
-        // 關鍵字模糊比對 (對付被亂碼截斷的狀況)
         if (cleanKey.includes("battery voltage")) return "電瓶電壓 (V)";
-        if (cleanKey.includes("exterior air temp")) return "車外氣溫 (°C)";
-        if (cleanKey.includes("engine coolant temp")) return "引擎水溫 (°C)";
-        if (cleanKey.includes("passenger compartment temp")) return "車室溫度 (°C)";
-        
+        if (cleanKey.includes("air temperature")) return "車外氣溫 (°C)";
+        if (cleanKey.includes("coolant temperature")) return "引擎水溫 (°C)";
+        if (cleanKey.includes("mileage")) return "行駛里程 (km)";
         return keyRaw.charAt(0).toUpperCase() + keyRaw.slice(1);
     }
 
     const unitColors = {
-        "built-in systems interface": "#1e3a8a", "engine management ecu": "#7f1d1d",      
-        "power steering": "#14532d", "audio-navigation / connected audio system": "#4c1d95", 
-        "rear left-hand corner radar": "#78350f", "rear right-hand corner radar": "#78350f",
-        "left-hand headlamp": "#854d0e", "right-hand headlamp": "#854d0e",
-        "electric drive machine ecu": "#064e3b"   
+        "built-in systems interface": "#1e3a8a", "bmf": "#1e3a8a", "bmf : built-in systems interface": "#1e3a8a",
+        "engine management ecu": "#7f1d1d", "inj : engine management ecu": "#7f1d1d", "inj": "#7f1d1d",
+        "power steering": "#14532d", "directn : power steering": "#14532d", "directn": "#14532d",
+        "audio-navigation / connected audio system": "#4c1d95", "telemat : audio-navigation / connected audio system": "#4c1d95", "telemat": "#4c1d95",
+        "automatic or piloted manual gearbox": "#831843", "boitevit : automatic or piloted manual gearbox": "#831843", "boitevit": "#831843",
+        "parking assistance": "#78350f", "aas : parking assistance": "#78350f", "aas": "#78350f",
+        "driver's door module": "#1e293b", "portec : driver's door module": "#1e293b", "portec": "#1e293b",
+        "motorised boot unit": "#312e81", "bcm : motorised boot unit": "#312e81", "bcm": "#312e81",
+        "windscreen wiper": "#134e4a", "essuiv : windscreen wiper": "#134e4a", "essuiv": "#134e4a",
+        "anti-lock braking system (abs) or electronic stability program (esp)": "#064e3b", "abrasr": "#064e3b"
     };
     
     function getUnitColor(unitName) {
+        if (!unitName) return "#222222";
         let nameLower = unitName.toLowerCase().trim();
         if (unitColors[nameLower]) return unitColors[nameLower];
+        for (let key in unitColors) {
+            if (nameLower.includes(key)) return unitColors[key];
+        }
         let hash = 0;
         for (let i = 0; i < nameLower.length; i++) hash = nameLower.charCodeAt(i) + ((hash << 5) - hash);
         return `hsl(${Math.abs(hash % 360)}, 50%, 20%)`; 
@@ -254,28 +243,28 @@
     function translateFaultDescription(text) {
         let t = text; if(!t) return t;
         const patterns = [
-            [/built-in systems interface/gi, "BSI(內建系統介面)"], [/missing information/gi, "遺失資訊"],
+            [/built-in systems interface/gi, "BSI(車身網絡閘道)"], [/missing information/gi, "資訊遺失"],
             [/no communication with/gi, "無通訊:"], [/communication from/gi, "通訊來自"],
+            [/absence of communication with/gi, "通訊遺失:"],
+            [/the driver's seat comfort ecu/gi, "駕駛座舒適模組"],
+            [/the driver's seat pneumatic functions ecu/gi, "駕駛座氣壓功能模組"],
             [/data received invalid/gi, "接收資料無效"], [/outside range/gi, "超出範圍"],
-            [/switch to safety mode following expiration of the time delay/gi, "延遲到期切換安全模式"],
             [/switch to safety mode/gi, "切換至安全模式"], [/Internal combustion engine/gi, "引擎"],
-            [/oil level measurement signal/gi, "機油液位訊號"], [/multiplexed air blower/gi, "多工鼓風機"],
-            [/multifunction video camera/gi, "多功能攝影機"], [/datastream/gi, "資料流"],
-            [/no radio frequency connectivity/gi, "無射頻連線"], [/synchronisation between/gi, "同步異常:"],
-            [/digital panoramic visual assistance/gi, "數位全景輔助"], [/not characterised/gi, "(未定義特徵)"],
-            [/main triggering request receives by the CAN/gi, "CAN接收主觸發請求"],
-            [/A ne pas afficher Internal fault not specified/gi, "(內部未指定故障，可忽略)"], 
-            [/the fault code is/gi, "故障碼為"]
+            [/oil level measurement signal/gi, "機油液位訊號"], [/multifunction video camera/gi, "多功能攝影機"],
+            [/Starting monitoring \(Fuel pressure measured in the fuel high pressure common rail\)/gi, "啟動監控(柴油高壓共軌油壓測量異常)"],
+            [/supply voltage too low/gi, "供電電壓過低"], [/open circuit or short circuit to positive/gi, "開路或短路至正極"],
+            [/short circuit to earth/gi, "短路至接地"], [/incoherence/gi, "邏輯不一致"],
+            [/configuration fault/gi, "配置錯誤(需遠端編碼)"],
+            [/Traceability of the forcing of the maintaining of the lighting of the dipped headlamps/gi, "近光燈強制維持點亮追蹤(可忽略)"],
+            [/A ne pas afficher Internal fault not specified/gi, "(內部未指定故障，可忽略)"]
         ];
         patterns.forEach(p => t = t.replace(p[0], p[1])); return t;
     }
 
     let globalFaults = []; 
-
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('fileInput');
 
-    // 拖曳事件保留，點擊事件已由 label 的 for 屬性原生接管
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = "var(--accent-amber)"; });
     dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = "var(--border)");
     dropZone.addEventListener('drop', (e) => {
@@ -284,28 +273,248 @@
     });
     fileInput.addEventListener('change', (e) => {
         if (e.target.files.length) processFile(e.target.files[0]);
-        // 重置 input，允許重複上傳相同檔案
         e.target.value = '';
     });
 
     function processFile(file) {
+        if (file.size === 0) {
+            alert("警告：此檔案為 0 位元組空檔案 (常見於 DiagBox 伴隨導出的空 CSV)。請改拖入對應的 .HTML 或 .TU.xml 檔案！");
+            return;
+        }
         const reader = new FileReader();
-        reader.onload = e => parseCSV(e.target.result);
-        reader.readAsText(file, 'latin1'); 
+        reader.onload = e => {
+            const text = e.target.result;
+            if (file.name.endsWith('.xml') || (text.trim().startsWith('<?xml') && text.includes('<TraceUser>'))) {
+                parseTUXML(text);
+            } else if (text.includes('Rapport de navigation') || text.includes('ECUs present')) {
+                parseNavigationHTML(text);
+            } else if (text.includes('<table') || text.includes('<TABLE')) {
+                parseJDDHTML(text);
+            } else {
+                parseCSV(text);
+            }
+        };
+        reader.readAsText(file, 'utf-8');
+    }
+
+    function parseJDDHTML(htmlText) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        const tables = doc.querySelectorAll('table');
+        if (!tables.length) { alert("無法讀取 HTML 內容"); return; }
+
+        let metaHtml = "";
+        if (tables.length >= 1) {
+            tables[0].querySelectorAll('tr').forEach(r => {
+                const tds = r.querySelectorAll('td');
+                if (tds.length >= 2) {
+                    metaHtml += `<div class="meta-item"><span class="meta-key">[${getTranslatedKey(tds[0].innerText)}]</span> <span class="meta-val">${tds[1].innerText}</span></div>`;
+                }
+            });
+        }
+        document.getElementById('metaInfo').innerHTML = metaHtml;
+
+        const faultTable = tables.length >= 2 ? tables[1] : tables[0];
+        const rows = faultTable.querySelectorAll('tr');
+        if (rows.length < 2) return;
+
+        let rawHeaders = [];
+        rows[0].querySelectorAll('td, th').forEach(th => rawHeaders.push(th.innerText.trim()));
+        renderHeadersAndRowsFromTable(rawHeaders, rows);
+    }
+
+    function parseNavigationHTML(htmlText) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+
+        let metaHtml = "";
+        const tables = doc.querySelectorAll('table');
+        tables.forEach(t => {
+            if (t.innerText.includes('VIN') || t.innerText.includes('Tool information') || t.innerText.includes('Vehicle info')) {
+                t.querySelectorAll('tr').forEach(r => {
+                    const tds = r.querySelectorAll('td');
+                    if (tds.length >= 2) {
+                        const k = tds[0].innerText.trim();
+                        const v = tds[1].innerText.trim();
+                        if (!k.includes('Tool information') && !k.includes('Vehicle info') && !k.includes('Info PDV') && v) {
+                            metaHtml += `<div class="meta-item"><span class="meta-key">[${getTranslatedKey(k)}]</span> <span class="meta-val">${v}</span></div>`;
+                        }
+                    }
+                });
+            }
+        });
+        document.getElementById('metaInfo').innerHTML = metaHtml;
+
+        let tableHead = document.getElementById('tableHead');
+        tableHead.innerHTML = "<th>控制單元</th><th>故障碼</th><th>故障描述</th><th>特徵/性質</th><th>狀態</th><th>關鍵凍結數據</th>";
+        buildColumnSelector(["控制單元", "故障碼", "故障描述", "特徵/性質", "狀態", "關鍵凍結數據"]);
+
+        globalFaults = [];
+        let uniqueUnits = new Set();
+        let tableBody = document.getElementById('tableBody');
+        tableBody.innerHTML = "";
+
+        const allLis = doc.querySelectorAll('li');
+
+        allLis.forEach(li => {
+            const text = li.innerText;
+            if (text.includes('Faults present :') && li.querySelector('b')) {
+                const unitName = li.querySelector('b').innerText.replace(':', '').trim();
+                const faultCountMatch = text.match(/Faults present\s*:\s*(\d+)/i);
+                const faultCount = faultCountMatch ? parseInt(faultCountMatch[1]) : 0;
+
+                if (faultCount > 0) {
+                    uniqueUnits.add(unitName);
+
+                    const subLis = li.querySelectorAll('ul > li');
+                    subLis.forEach(sub => {
+                        const rawLine = sub.childNodes[0] ? sub.childNodes[0].textContent.trim() : "";
+                        if (rawLine.startsWith('R6') || rawLine.startsWith('R5') || rawLine.includes('Response data') || rawLine.includes('Variables associated')) {
+                            return;
+                        }
+
+                        const dtcMatch = rawLine.match(/^([PCBU][0-9A-F]{4}(?:\s+[0-9A-F]{2})?)\s*:\s*(.*)/i);
+                        if (!dtcMatch) return;
+
+                        const code = dtcMatch[1].trim();
+                        const desc = dtcMatch[2].trim();
+
+                        const subHtml = sub.innerHTML;
+                        const charMatch = subHtml.match(/(?:Characterisation|features)\s*:\s*([^<]+)/i);
+                        const statusMatch = subHtml.match(/status\s*:\s*([^<]+)/i);
+                        const charVal = charMatch ? charMatch[1].trim() : "-";
+                        const statusVal = statusMatch ? statusMatch[1].trim() : "-";
+
+                        let freezeData = [];
+                        sub.querySelectorAll('li').forEach(vLi => {
+                            const vt = vLi.innerText.trim();
+                            if (vt.includes('km') || vt.includes('V') || vt.includes('rpm') || vt.includes('°C') || vt.includes('speed') || vt.includes('voltage')) {
+                                freezeData.push(vt);
+                            }
+                        });
+
+                        let tr = document.createElement('tr');
+                        tr.setAttribute('data-unit', unitName);
+                        const rowColor = getUnitColor(unitName);
+                        if (rowColor) {
+                            tr.style.backgroundColor = rowColor;
+                            tr.setAttribute('data-color', hslToHexStr(rowColor));
+                        }
+
+                        tr.innerHTML = `
+                            <td style="color:#fff; font-weight:bold;">${unitName}</td>
+                            <td class="fault-code" style="color:#ffcc00; font-weight:bold;">${code}</td>
+                            <td class="fault-desc" style="color:#fff;">${translateFaultDescription(desc)}<br><span class="desc-en">(${desc})</span></td>
+                            <td style="color:#fff;">${charVal}</td>
+                            <td style="color:#fff;">${statusVal}</td>
+                            <td style="color:#7dcfff; font-size:0.8rem; white-space:normal;">${freezeData.join(' | ')}</td>
+                        `;
+                        tableBody.appendChild(tr);
+
+                        let voltMatch = freezeData.join(' ').match(/(\d+\.?\d*)\s*V/i);
+                        globalFaults.push({
+                            unit: unitName,
+                            code: code,
+                            desc: desc,
+                            volt: voltMatch ? voltMatch[1] : ""
+                        });
+                    });
+                }
+            }
+        });
+
+        finishParsing(uniqueUnits);
+    }
+
+    function parseTUXML(xmlText) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+        let metaHtml = "";
+        const veh = xmlDoc.querySelector('InfoVEH');
+        if (veh) {
+            metaHtml += `<div class="meta-item"><span class="meta-key">[車型]</span> <span class="meta-val">${veh.querySelector('Trademark')?.textContent || ''} ${veh.querySelector('Name')?.textContent || ''}</span></div>`;
+            metaHtml += `<div class="meta-item"><span class="meta-key">[車身號碼]</span> <span class="meta-val">${veh.querySelector('VIN')?.textContent || ''}</span></div>`;
+            metaHtml += `<div class="meta-item"><span class="meta-key">[進場里程]</span> <span class="meta-val">${veh.querySelector('KM')?.textContent || ''} km</span></div>`;
+            metaHtml += `<div class="meta-item"><span class="meta-key">[電瓶初始電壓]</span> <span class="meta-val">${veh.querySelector('tensionBefore')?.textContent || ''} V</span></div>`;
+        }
+        document.getElementById('metaInfo').innerHTML = metaHtml;
+
+        let tableHead = document.getElementById('tableHead');
+        tableHead.innerHTML = "<th>控制單元</th><th>狀態</th><th>故障碼</th><th>故障描述</th><th>關鍵凍結數據</th>";
+        buildColumnSelector(["控制單元", "狀態", "故障碼", "故障描述", "關鍵凍結數據"]);
+
+        globalFaults = [];
+        let uniqueUnits = new Set();
+        let tableBody = document.getElementById('tableBody');
+        tableBody.innerHTML = "";
+
+        const families = xmlDoc.querySelectorAll('Dir[name^="family_"]');
+        families.forEach(fam => {
+            const dtcCountElem = fam.querySelector('Dir[name="dtc"] > Entry[name="count"]');
+            const count = dtcCountElem ? parseInt(dtcCountElem.getAttribute('value')) : 0;
+            if (count > 0) {
+                const ecuName = fam.querySelector(':scope > Entry[name="name"]')?.getAttribute('value') || "ECU";
+                const ecuDescr = fam.querySelector(':scope > Entry[name="descr"]')?.getAttribute('value') || "";
+                const fullUnitName = ecuDescr ? `${ecuName} (${ecuDescr})` : ecuName;
+                uniqueUnits.add(fullUnitName);
+
+                fam.querySelectorAll('Dir[name^="dtc_"]').forEach(dtcDir => {
+                    const code = dtcDir.querySelector('Entry[name="name_uds"]')?.getAttribute('value') || dtcDir.querySelector('Entry[name="name"]')?.getAttribute('value') || "";
+                    const desc = dtcDir.querySelector('Entry[name="descr"]')?.getAttribute('value') || "";
+                    const status = dtcDir.querySelector('Dir[name="status"] Entry[name="descr"]')?.getAttribute('value') || "-";
+
+                    let vars = [];
+                    dtcDir.querySelectorAll('Dir[name^="var_"]').forEach(v => {
+                        const d = v.querySelector('Entry[name="descr"]')?.getAttribute('value') || "";
+                        const val = v.querySelector('Entry[name="value"]')?.getAttribute('value') || "";
+                        const u = v.querySelector('Entry[name="unit"]')?.getAttribute('value') || "";
+                        if (val && (u === 'V' || u === 'km' || u === 'rpm' || u === '°C' || d.includes('voltage') || d.includes('speed'))) {
+                            vars.push(`${d}: ${val}${u}`);
+                        }
+                    });
+
+                    let tr = document.createElement('tr');
+                    tr.setAttribute('data-unit', fullUnitName);
+                    const rowColor = getUnitColor(fullUnitName);
+                    if (rowColor) {
+                        tr.style.backgroundColor = rowColor;
+                        tr.setAttribute('data-color', hslToHexStr(rowColor));
+                    }
+
+                    tr.innerHTML = `
+                        <td style="color:#fff; font-weight:bold;">${fullUnitName}</td>
+                        <td style="color:#fff;">${status}</td>
+                        <td class="fault-code" style="color:#ffcc00; font-weight:bold;">${code}</td>
+                        <td class="fault-desc" style="color:#fff;">${translateFaultDescription(desc)}<br><span class="desc-en">(${desc})</span></td>
+                        <td style="color:#7dcfff; font-size:0.8rem; white-space:normal;">${vars.join(' | ')}</td>
+                    `;
+                    tableBody.appendChild(tr);
+
+                    let voltMatch = vars.join(' ').match(/(\d+\.?\d*)\s*V/i);
+                    globalFaults.push({
+                        unit: fullUnitName,
+                        code: code,
+                        desc: desc,
+                        volt: voltMatch ? voltMatch[1] : ""
+                    });
+                });
+            }
+        });
+
+        finishParsing(uniqueUnits);
     }
 
     function parseCSV(text) {
         globalFaults = [];
         let uniqueUnits = new Set(); 
-        
-        // 修正斷行判定，涵蓋 Windows \r\n 與 Mac \r
         const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
         let metaHtml = "", headerIndex = -1;
 
         for (let i = 0; i < lines.length; i++) {
-            let lineLower = lines[i].toLowerCase();
-            if ((lineLower.includes('appearance') || lineLower.includes('fault code')) && 
-                (lineLower.includes('control unit') || lineLower.includes('date time'))) {
+            let lLower = lines[i].toLowerCase();
+            if ((lLower.includes('fault code') || lLower.includes('code d') || lLower.includes('dtc')) && 
+                (lLower.includes('control unit') || lLower.includes('calculateur') || lLower.includes('date time'))) {
                 headerIndex = i; break;
             }
         }
@@ -315,14 +524,13 @@
             return; 
         }
 
-        // 智慧偵測分隔符號
         const headerLine = lines[headerIndex];
         const separator = (headerLine.split(';').length > headerLine.split(',').length) ? ';' : ',';
 
         for (let i = 0; i < headerIndex; i++) {
             let parts = lines[i].split(separator);
             if (parts.length >= 2 && parts[0]) {
-                let keyRaw = parts[0].replace(/^"|"$/g, '').trim().replace(/\s+$/, '');
+                let keyRaw = parts[0].replace(/^"|"$/g, '').trim();
                 let val = parts[1].replace(/^"|"$/g, '').trim();
                 let translatedKey = getTranslatedKey(keyRaw);
                 if(keyRaw) metaHtml += `<div class="meta-item"><span class="meta-key">[${translatedKey}]</span> <span class="meta-val">${val}</span></div>`;
@@ -331,21 +539,22 @@
         document.getElementById('metaInfo').innerHTML = metaHtml;
 
         let rawHeaders = lines[headerIndex].split(separator).map(h => h.replace(/^"|"$/g, '').trim());
+        renderHeadersAndRowsFromCSV(rawHeaders, lines.slice(headerIndex + 1), separator);
+    }
+
+    function renderHeadersAndRowsFromTable(rawHeaders, rows) {
         let tableHead = document.getElementById('tableHead');
         tableHead.innerHTML = "";
-        
-        let colIndexes = { unit: -1, code: -1, desc: -1, time: -1, volt: -1, volt2: -1 };
+        let colIndexes = { unit: -1, code: -1, desc: -1, time: -1, volt: -1 };
         let translatedHeaders = [];
 
         rawHeaders.forEach((header, index) => {
-            if (!header) return;
-            let headerLower = header.toLowerCase();
-            if (headerLower === 'control unit') colIndexes.unit = index;
-            if (headerLower === 'fault code') colIndexes.code = index;
-            if (headerLower === 'fault description') colIndexes.desc = index;
-            if (headerLower === 'date time') colIndexes.time = index;
-            if (headerLower.includes('voltage of the ancillaries')) colIndexes.volt = index;
-            if (headerLower.includes('battery voltage')) colIndexes.volt2 = index;
+            let hLower = header.toLowerCase();
+            if (hLower.includes('control unit')) colIndexes.unit = index;
+            if (hLower.includes('fault code')) colIndexes.code = index;
+            if (hLower.includes('fault description')) colIndexes.desc = index;
+            if (hLower.includes('date time')) colIndexes.time = index;
+            if (hLower.includes('battery voltage')) colIndexes.volt = index;
 
             let translated = getTranslatedKey(header);
             translatedHeaders.push(translated);
@@ -356,72 +565,142 @@
 
         buildColumnSelector(translatedHeaders);
 
+        globalFaults = [];
+        let uniqueUnits = new Set();
         let tableBody = document.getElementById('tableBody');
         tableBody.innerHTML = "";
-        
-        for (let i = headerIndex + 1; i < lines.length; i++) {
-            let cols = [], inQuotes = false, currentVal = '';
-            for (let char of lines[i]) {
-                if (char === '"' && inQuotes) inQuotes = false;
-                else if (char === '"' && !inQuotes) inQuotes = true;
-                else if (char === separator && !inQuotes) { cols.push(currentVal); currentVal = ''; }
-                else currentVal += char;
-            }
-            cols.push(currentVal); 
-            if (cols.length < 5) continue; 
-            
+
+        for (let i = 1; i < rows.length; i++) {
+            let cells = rows[i].querySelectorAll('td');
+            if (cells.length < 3) continue;
+
             let tr = document.createElement('tr');
             let rowData = {};
-            
-            let unitName = cols[colIndexes.unit] ? cols[colIndexes.unit].replace(/^"|"$/g, '').trim() : "";
+            let unitName = cells[colIndexes.unit] ? cells[colIndexes.unit].innerText.trim() : "";
+
             if (unitName) {
                 uniqueUnits.add(unitName);
-                tr.setAttribute('data-unit', unitName); 
-            }
-            
-            let rowColor = unitName ? getUnitColor(unitName) : "";
-            if (rowColor) {
-                tr.style.backgroundColor = rowColor;
-                tr.setAttribute('data-color', hslToHexStr(rowColor)); 
-            }
-
-            for(let j = 0; j < rawHeaders.length; j++) {
-                if(!rawHeaders[j]) continue;
-                let val = cols[j] ? cols[j].replace(/^"|"$/g, '').trim() : "";
-                
-                if (j === colIndexes.time && val) {
-                    if(!val.includes('day(s)')) val = adjustTime(val, 6);
+                tr.setAttribute('data-unit', unitName);
+                let rowColor = getUnitColor(unitName);
+                if (rowColor) {
+                    tr.style.backgroundColor = rowColor;
+                    tr.setAttribute('data-color', hslToHexStr(rowColor));
                 }
+            }
 
+            cells.forEach((tdElem, j) => {
+                let val = tdElem.innerText.trim().replace(/\u00a0/g, ' ');
                 let td = document.createElement('td');
-                td.style.color = "#ffffff"; 
-                
+                td.style.color = "#ffffff";
+
                 if (j === colIndexes.desc && val !== "") {
                     let translatedText = translateFaultDescription(val);
-                    if(translatedText !== val) td.innerHTML = `${translatedText} <br><span class="desc-en">(${val})</span>`;
-                    else td.innerText = val;
+                    td.innerHTML = (translatedText !== val) ? `${translatedText} <br><span class="desc-en">(${val})</span>` : val;
                     td.className = 'fault-desc';
                     rowData.desc = val;
                 } else {
                     td.innerText = val;
                     if (j === colIndexes.code) { td.className = 'fault-code'; rowData.code = val; }
                     if (j === colIndexes.unit) rowData.unit = val;
-                    if (j === colIndexes.volt || j === colIndexes.volt2) rowData.volt = val;
+                    if (j === colIndexes.volt) rowData.volt = val;
                 }
                 tr.appendChild(td);
-            }
-            tableBody.appendChild(tr);
-            if(rowData.code) globalFaults.push(rowData);
-        }
-        
-        buildUnitFilter(uniqueUnits);
+            });
 
+            tableBody.appendChild(tr);
+            if (rowData.code) globalFaults.push(rowData);
+        }
+
+        finishParsing(uniqueUnits);
+    }
+
+    function renderHeadersAndRowsFromCSV(rawHeaders, dataLines, separator) {
+        let tableHead = document.getElementById('tableHead');
+        tableHead.innerHTML = "";
+        let colIndexes = { unit: -1, code: -1, desc: -1, time: -1, volt: -1 };
+        let translatedHeaders = [];
+
+        rawHeaders.forEach((header, index) => {
+            let hLower = header.toLowerCase();
+            if (hLower.includes('control unit')) colIndexes.unit = index;
+            if (hLower.includes('fault code')) colIndexes.code = index;
+            if (hLower.includes('fault description')) colIndexes.desc = index;
+            if (hLower.includes('date time')) colIndexes.time = index;
+            if (hLower.includes('battery voltage')) colIndexes.volt = index;
+
+            let translated = getTranslatedKey(header);
+            translatedHeaders.push(translated);
+            let th = document.createElement('th');
+            th.innerText = translated;
+            tableHead.appendChild(th);
+        });
+
+        buildColumnSelector(translatedHeaders);
+
+        globalFaults = [];
+        let uniqueUnits = new Set();
+        let tableBody = document.getElementById('tableBody');
+        tableBody.innerHTML = "";
+
+        dataLines.forEach(line => {
+            let cols = [], inQuotes = false, currentVal = '';
+            for (let char of line) {
+                if (char === '"' && inQuotes) inQuotes = false;
+                else if (char === '"' && !inQuotes) inQuotes = true;
+                else if (char === separator && !inQuotes) { cols.push(currentVal); currentVal = ''; }
+                else currentVal += char;
+            }
+            cols.push(currentVal);
+            if (cols.length < 3) return;
+
+            let tr = document.createElement('tr');
+            let rowData = {};
+            let unitName = cols[colIndexes.unit] ? cols[colIndexes.unit].replace(/^"|"$/g, '').trim() : "";
+
+            if (unitName) {
+                uniqueUnits.add(unitName);
+                tr.setAttribute('data-unit', unitName);
+                let rowColor = getUnitColor(unitName);
+                if (rowColor) {
+                    tr.style.backgroundColor = rowColor;
+                    tr.setAttribute('data-color', hslToHexStr(rowColor));
+                }
+            }
+
+            rawHeaders.forEach((h, j) => {
+                let val = cols[j] ? cols[j].replace(/^"|"$/g, '').trim() : "";
+                let td = document.createElement('td');
+                td.style.color = "#ffffff";
+
+                if (j === colIndexes.desc && val !== "") {
+                    let translatedText = translateFaultDescription(val);
+                    td.innerHTML = (translatedText !== val) ? `${translatedText} <br><span class="desc-en">(${val})</span>` : val;
+                    td.className = 'fault-desc';
+                    rowData.desc = val;
+                } else {
+                    td.innerText = val;
+                    if (j === colIndexes.code) { td.className = 'fault-code'; rowData.code = val; }
+                    if (j === colIndexes.unit) rowData.unit = val;
+                    if (j === colIndexes.volt) rowData.volt = val;
+                }
+                tr.appendChild(td);
+            });
+
+            tableBody.appendChild(tr);
+            if (rowData.code) globalFaults.push(rowData);
+        });
+
+        finishParsing(uniqueUnits);
+    }
+
+    function finishParsing(unitsSet) {
+        buildUnitFilter(unitsSet);
         document.getElementById('dropZone').style.display = 'none';
         document.getElementById('output').style.display = 'block';
         document.getElementById('controlsPanel').style.display = 'flex';
         document.getElementById('analysisPanel').classList.remove('active');
     }
-    
+
     function buildUnitFilter(unitsSet) {
         let unitFilter = document.getElementById('unitFilter');
         unitFilter.innerHTML = '<option value="ALL">▰ 所有模組 (ALL)</option>';
@@ -441,33 +720,53 @@
         });
     }
 
-    function adjustTime(timeStr, addHours) {
-        try {
-            let parts = timeStr.trim().split(' ');
-            if (parts.length < 2) return timeStr;
-            let dateParts = parts[0].split('/');
-            let timeParts = parts[1].split(':');
-            if (dateParts.length === 3 && timeParts.length >= 2) {
-                let dObj = new Date(dateParts[2], parseInt(dateParts[1])-1, dateParts[0], timeParts[0], timeParts[1], parseInt((timeParts[2]||'0').split('.')[0]));
-                if (isNaN(dObj.getTime())) return timeStr;
-                dObj.setHours(dObj.getHours() + addHours); 
-                let pad = n => String(n).padStart(2, '0');
-                return `${dObj.getFullYear()}/${pad(dObj.getMonth()+1)}/${pad(dObj.getDate())} ${pad(dObj.getHours())}:${pad(dObj.getMinutes())}:${pad(dObj.getSeconds())}`;
-            }
-            return timeStr;
-        } catch (e) { return timeStr; }
-    }
-
+    // 構建欄位過濾器（含全選/全反選勾勾）
     function buildColumnSelector(headers) {
         const container = document.getElementById('columnSelectorPanel');
         container.innerHTML = '';
+
+        // 1. 建立「全選 / 全反選」按鈕
+        let masterLabel = document.createElement('label');
+        masterLabel.className = 'col-toggle col-toggle-all';
+        let masterCb = document.createElement('input');
+        masterCb.type = 'checkbox';
+        masterCb.checked = true;
+        masterCb.id = 'toggleAllColumns';
+        masterCb.onchange = (e) => toggleAllColumnsVisibility(e.target.checked, headers.length);
+        
+        masterLabel.appendChild(masterCb);
+        masterLabel.appendChild(document.createTextNode('全選 / 全不選 (TOGGLE ALL)'));
+        container.appendChild(masterLabel);
+
+        // 2. 建立各別欄位勾選框
         headers.forEach((h, index) => {
-            let label = document.createElement('label'); label.className = 'col-toggle';
-            let cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true;
-            cb.onchange = (e) => toggleColumnVisibility(index, e.target.checked);
-            label.appendChild(cb); label.appendChild(document.createTextNode(h));
+            let label = document.createElement('label'); 
+            label.className = 'col-toggle';
+            let cb = document.createElement('input'); 
+            cb.type = 'checkbox'; 
+            cb.checked = true;
+            cb.className = 'single-col-cb';
+            cb.onchange = (e) => {
+                toggleColumnVisibility(index, e.target.checked);
+                // 檢查是否所有個別勾選框都已勾選
+                const allCbs = document.querySelectorAll('.single-col-cb');
+                const checkedCount = document.querySelectorAll('.single-col-cb:checked').length;
+                document.getElementById('toggleAllColumns').checked = (checkedCount === allCbs.length);
+            };
+            label.appendChild(cb); 
+            label.appendChild(document.createTextNode(h));
             container.appendChild(label);
         });
+    }
+
+    // 一鍵全選 / 全不選切換
+    function toggleAllColumnsVisibility(isChecked, totalCols) {
+        document.querySelectorAll('.single-col-cb').forEach(cb => {
+            cb.checked = isChecked;
+        });
+        for (let i = 0; i < totalCols; i++) {
+            toggleColumnVisibility(i, isChecked);
+        }
     }
 
     function toggleColumnPanel() { document.getElementById('columnSelectorPanel').classList.toggle('active'); }
@@ -482,14 +781,14 @@
         const content = document.getElementById('analysisContent');
         panel.classList.add('active');
         
-        let uCodeCount = 0, bCodeCount = 0, pCodeCount = 0, hasU0046 = false, hasB132A = false, hasLowVolt = false;
+        let uCodeCount = 0, bCodeCount = 0, pCodeCount = 0, hasLowVolt = false, hasP2291 = false, hasB1003 = false;
         let unitsAffected = new Set();
 
         globalFaults.forEach(f => {
-            let c = f.code.toUpperCase();
+            let c = (f.code || '').toUpperCase();
             if(c.startsWith('U')) uCodeCount++; if(c.startsWith('B')) bCodeCount++; if(c.startsWith('P')) pCodeCount++;
-            if(c.includes('U0046') || c.includes('U1FC5')) hasU0046 = true; 
-            if(c.includes('B132A')) hasB132A = true; 
+            if(c.includes('P2291')) hasP2291 = true;
+            if(c.includes('B1003')) hasB1003 = true;
             if(f.unit) unitsAffected.add(f.unit);
             
             let volt = parseFloat(f.volt);
@@ -499,11 +798,10 @@
         let report = `<div class="analysis-point">掃描總結：共檢測到 <span class="analysis-highlight">${globalFaults.length}</span> 筆故障，橫跨 <span class="analysis-highlight">${unitsAffected.size}</span> 個控制單元。</div>`;
         report += `<div class="analysis-point">協議分佈：網路通訊 (U碼) ${uCodeCount} 筆 | 車身系統 (B碼) ${bCodeCount} 筆 | 動力系統 (P碼) ${pCodeCount} 筆。</div><hr style="border-color:var(--danger); opacity:0.3; margin:10px 0;">`;
 
-        if (uCodeCount > (bCodeCount + pCodeCount)) report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">通訊雪崩 (U-Code Storm)</span>：U 碼佔比極高。Stellantis 規範中，這通常非單一模組損壞，而是<span class="analysis-highlight">底層供電/接地不良</span>或<span class="analysis-highlight">網路閘道 (BSI/VSM) 喚醒失敗</span>導致的骨牌效應。</div>`;
-        if (hasU0046) report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">高速 CAN 網路癱瘓 (U0046/U1FC5)</span>：偵測到 CAN 2 或 CAN 6 失去通訊。若發生在行進間失去動力，極高機率為 VSM 或 BSI 當機，請優先檢查其供電端子或周邊搭鐵。</div>`;
-        if (hasB132A) report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">BSI 防護機制介入 (B132A)</span>：BSI 已主動切換至安全模式 (Safety Mode)。這通常是為了保護電網，可能因瞬間電壓降或不正常的休眠/喚醒訊號所觸發。</div>`;
-        if (hasLowVolt) report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">低壓異常 (Low Voltage)</span>：紀錄中捕捉到 12V 輔助電瓶電壓低於 11.5V。在混合動力架構中，12V 瞬間失壓會導致牽引系統繼電器跳脫，引發「行進間失去動力」。</div>`;
-        if (!hasU0046 && !hasB132A && pCodeCount > 0) report += `<div class="analysis-point">ℹ️ 主要為動力或感測器局部故障，未見全車網路癱瘓跡象，建議針對 P 碼指引進行單點查修。</div>`;
+        if (hasP2291) report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">高壓燃油啟動壓力異常 (P2291)</span>：柴油高壓共軌啟動建壓過慢。若凍結影格顯示啟動瞬間電壓低於 10V (如 9.46V)，強烈指向電瓶效能劣化導致啟動馬達拖慢轉速，進而影響高壓泵建壓速度。</div>`;
+        if (hasB1003) report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">控制電腦配置遺失 (B1003 55)</span>：偵測到 BCM 電動尾門或其他模組存在遠端配置未完成問題，需執行 DiagBox 線上或手動配置並進行極限位置初始化。</div>`;
+        if (hasLowVolt) report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">低壓骨牌效應 (Low Voltage Storm)</span>：多個模組記錄到供電電壓過低 (<11.5V)，車門與雨刷模組容易因暫態失壓回報通訊中斷，請優先進行 12V 輔助電瓶負載測試。</div>`;
+        if (uCodeCount > (bCodeCount + pCodeCount)) report += `<div class="analysis-point">⚠️ <span class="analysis-highlight">通訊雪崩 (U-Code Storm)</span>：U 碼佔比極高，建議優先檢查主搭鐵點與 BSI 供電線路。</div>`;
 
         content.innerHTML = report;
     }
