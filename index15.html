@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peugeot 5008 (P74) 電動窗與車身複用網路診斷平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            workshop: {
+              900: '#0a0f1d',
+              800: '#0f172a',
+              700: '#1e293b',
+              600: '#334155',
+              cyan: '#06b6d4',
+              amber: '#f59e0b',
+              emerald: '#10b981',
+              rose: '#f43f5e'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Menlo', 'Consolas', 'Courier New', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printable-report, #printable-report * { visibility: visible; }
+      #printable-report { position: absolute; left: 0; top: 0; width: 100%; color: black !important; background: white !important; }
+      .no-print { display: none !important; }
+    }
+    .grid-bg {
+      background-size: 24px 24px;
+      background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="bg-workshop-900 text-slate-200 font-sans min-h-screen flex flex-col grid-bg">
+
+  <!-- 頂部工作列 -->
+  <header class="border-b border-workshop-700 bg-workshop-800/90 backdrop-blur sticky top-0 z-50 px-4 lg:px-8 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-workshop-cyan/10 border border-workshop-cyan/40 flex items-center justify-center text-workshop-cyan font-bold text-xl shadow-[0_0_15px_rgba(6,182,212,0.25)]">
+          <i class="fa-solid fa-bolt-lightning"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs uppercase tracking-widest font-mono text-workshop-cyan font-semibold">PEUGEOT MASTER DIAGNOSTIC</span>
+            <span class="text-[10px] bg-workshop-amber/20 text-workshop-amber px-2 py-0.5 rounded font-mono border border-workshop-amber/30">P74 DCU 架構</span>
+          </div>
+          <h1 class="text-lg font-bold text-white tracking-wide">5008 HYBRID GT 電動窗 & 複用通訊排查系統</h1>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 no-print">
+        <button onclick="window.print()" class="px-3.5 py-1.5 rounded-lg bg-workshop-700 hover:bg-workshop-600 text-sm font-medium border border-workshop-600 flex items-center space-x-2 transition">
+          <i class="fa-solid fa-print text-slate-300"></i>
+          <span>列印工單總結</span>
+        </button>
+        <button onclick="resetAllDiagnosis()" class="px-3.5 py-1.5 rounded-lg bg-workshop-rose/20 hover:bg-workshop-rose/30 text-workshop-rose text-sm font-medium border border-workshop-rose/40 flex items-center space-x-2 transition">
+          <i class="fa-solid fa-arrow-rotate-left"></i>
+          <span>重置測試紀錄</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 車輛工單速覽卡 -->
+  <section class="max-w-7xl mx-auto w-full px-4 lg:px-8 pt-4 pb-2">
+    <div class="bg-workshop-800/70 border border-workshop-700 rounded-2xl p-4 shadow-xl">
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs font-mono">
+        <div class="bg-workshop-900/60 p-2.5 rounded-xl border border-workshop-700/60">
+          <div class="text-slate-400">車輛型號</div>
+          <div class="text-white font-bold mt-0.5">5008 HYBRID GT CIELO</div>
+        </div>
+        <div class="bg-workshop-900/60 p-2.5 rounded-xl border border-workshop-700/60">
+          <div class="text-slate-400">VIN 碼</div>
+          <div class="text-workshop-cyan font-bold mt-0.5">VR3KAHPY4TS019836</div>
+        </div>
+        <div class="bg-workshop-900/60 p-2.5 rounded-xl border border-workshop-700/60">
+          <div class="text-slate-400">里程數</div>
+          <div class="text-emerald-400 font-bold mt-0.5">1,602 KM (新車)</div>
+        </div>
+        <div class="bg-workshop-900/60 p-2.5 rounded-xl border border-workshop-700/60">
+          <div class="text-slate-400">工單號碼</div>
+          <div class="text-slate-200 font-bold mt-0.5">B261000469</div>
+        </div>
+        <div class="bg-workshop-900/60 p-2.5 rounded-xl border border-workshop-700/60">
+          <div class="text-slate-400">已處置零件 (排除)</div>
+          <div class="text-workshop-rose font-bold mt-0.5">左前新線束 + 六角鎖</div>
+        </div>
+        <div class="bg-workshop-900/60 p-2.5 rounded-xl border border-workshop-700/60">
+          <div class="text-slate-400">當前狀態</div>
+          <div class="text-workshop-amber font-bold mt-0.5 flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-workshop-amber animate-ping"></span>
+            <span>故障未排除 (反彈下墜)</span>
+          </div>
+        </div>
+      </div>
+      <div class="mt-3 text-xs bg-workshop-amber/10 border border-workshop-amber/30 text-amber-300 p-2.5 rounded-xl flex items-start space-x-2">
+        <i class="fa-solid fa-triangle-exclamation text-workshop-amber mt-0.5 text-sm"></i>
+        <span><strong>現場特別注意：</strong>已更換全新左前六角鎖與左前車門線束，故障依舊存在！嚴禁盲目續換其餘 3 門六角鎖與後門線束（避免產生高達 4 萬餘元保固退件爭議）。請按照本平台拓撲進行隔離與電氣壓降排查。</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 主要診斷區域 -->
+  <main class="max-w-7xl mx-auto w-full px-4 lg:px-8 py-4 flex-1 space-y-6">
+
+    <!-- 模組一：互動式電氣拓撲與腳位速查 (Topological Inspector) -->
+    <section class="bg-workshop-800/80 border border-workshop-700 rounded-2xl p-5 shadow-2xl relative overflow-hidden">
+      <div class="flex items-center justify-between mb-4 border-b border-workshop-700/80 pb-3">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-network-wired text-workshop-cyan text-lg"></i>
+          <h2 class="text-base font-bold text-white tracking-wide">P74 左側電氣拓撲與量測節點 (點擊方塊檢視針腳規格)</h2>
+        </div>
+        <span class="text-xs font-mono text-slate-400">SERVICEBOX SCHEMATIC COMPLIANT</span>
+      </div>
+
+      <!-- 拓撲示意圖 (節點按鈕) -->
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5 text-xs font-mono">
+        <button onclick="inspectNode('udb1')" class="topo-btn p-3 rounded-xl bg-workshop-700/50 hover:bg-workshop-700 border border-workshop-600/70 text-left transition relative group" id="btn-udb1">
+          <div class="text-slate-400 text-[10px]">供電源</div>
+          <div class="text-white font-bold text-sm mt-0.5">UDB1</div>
+          <div class="text-slate-400 text-[11px] truncate">引擎室配電盒</div>
+          <div class="text-workshop-cyan text-[10px] mt-1 font-semibold">BP20A (+12V)</div>
+        </button>
+
+        <button onclick="inspectNode('mc46')" class="topo-btn p-3 rounded-xl bg-workshop-700/50 hover:bg-workshop-700 border border-workshop-600/70 text-left transition relative group" id="btn-mc46">
+          <div class="text-slate-400 text-[10px]">關鍵接地點</div>
+          <div class="text-emerald-400 font-bold text-sm mt-0.5">MC46</div>
+          <div class="text-slate-400 text-[11px] truncate">左側車身搭鐵</div>
+          <div class="text-emerald-300 text-[10px] mt-1 font-semibold">純鐵基準 &lt;0.2V</div>
+        </button>
+
+        <button onclick="inspectNode('icv4a')" class="topo-btn p-3 rounded-xl bg-workshop-700/50 hover:bg-workshop-700 border border-workshop-600/70 text-left transition relative group" id="btn-icv4a">
+          <div class="text-slate-400 text-[10px]">前門中繼</div>
+          <div class="text-white font-bold text-sm mt-0.5">ICV4A</div>
+          <div class="text-slate-400 text-[11px] truncate">左前A柱34Pin</div>
+          <div class="text-workshop-amber text-[10px] mt-1 font-semibold">車身與車門交界</div>
+        </button>
+
+        <button onclick="inspectNode('dcu6063')" class="topo-btn p-3 rounded-xl bg-workshop-cyan/15 hover:bg-workshop-cyan/25 border-2 border-workshop-cyan text-left transition relative group" id="btn-dcu6063">
+          <div class="text-workshop-cyan font-bold text-[10px]">大腦核心 (DCU)</div>
+          <div class="text-white font-bold text-sm mt-0.5">6063 DRIVER</div>
+          <div class="text-slate-300 text-[11px] truncate">駕駛員車門ECU</div>
+          <div class="text-workshop-cyan text-[10px] mt-1 font-semibold">6V / 54V NR 插頭</div>
+        </button>
+
+        <button onclick="inspectNode('sw6036')" class="topo-btn p-3 rounded-xl bg-workshop-700/50 hover:bg-workshop-700 border border-workshop-600/70 text-left transition relative group" id="btn-sw6036">
+          <div class="text-slate-400 text-[10px]">駕駛控制</div>
+          <div class="text-white font-bold text-sm mt-0.5">6036 開關</div>
+          <div class="text-slate-400 text-[11px] truncate">四門總成+兒童鎖</div>
+          <div class="text-slate-300 text-[10px] mt-1 font-semibold">20V JN 插頭</div>
+        </button>
+
+        <button onclick="inspectNode('ic72a')" class="topo-btn p-3 rounded-xl bg-workshop-amber/15 hover:bg-workshop-amber/25 border-2 border-workshop-amber text-left transition relative group" id="btn-ic72a">
+          <div class="text-workshop-amber font-bold text-[10px]">後門隔離斷點</div>
+          <div class="text-white font-bold text-sm mt-0.5">IC72A</div>
+          <div class="text-slate-300 text-[11px] truncate">左側B柱34Pin</div>
+          <div class="text-workshop-amber text-[10px] mt-1 font-semibold">拔除物理二分</div>
+        </button>
+
+        <button onclick="inspectNode('rear6100')" class="topo-btn p-3 rounded-xl bg-workshop-700/50 hover:bg-workshop-700 border border-workshop-600/70 text-left transition relative group" id="btn-rear6100">
+          <div class="text-slate-400 text-[10px]">受牽連端</div>
+          <div class="text-white font-bold text-sm mt-0.5">6100 / 6130</div>
+          <div class="text-slate-400 text-[11px] truncate">左後獨立開關/馬達</div>
+          <div class="text-workshop-rose text-[10px] mt-1 font-semibold">按壓無反應</div>
+        </button>
+      </div>
+
+      <!-- 節點詳細資訊抽屜 (動態展示) -->
+      <div id="inspector-panel" class="mt-4 bg-workshop-900/90 border border-workshop-700 p-4 rounded-xl text-xs font-mono">
+        <div class="flex items-center justify-between text-workshop-cyan font-bold text-sm mb-2">
+          <span id="insp-title"><i class="fa-solid fa-microchip mr-1.5"></i>6063 - 駕駛員車門 ECU (DCU DRIVER) 核心針腳規格</span>
+          <span id="insp-tag" class="text-[11px] bg-workshop-cyan/20 px-2 py-0.5 rounded text-workshop-cyan border border-workshop-cyan/30">核心控制節點</span>
+        </div>
+        <div id="insp-body" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-slate-300">
+          <div class="bg-workshop-800 p-2.5 rounded-lg border border-workshop-700/60">
+            <span class="text-workshop-amber font-bold">6V NR - Pin 4 (M6063):</span>
+            <p class="mt-1 text-slate-400">專屬主接地線。直通車身搭鐵點 MC46。<strong>作動瞬間壓降必須 &lt; 0.2V</strong>。若跳高代表接地不良，造成電流採樣基準偏移，引發假性防夾反轉。</p>
+          </div>
+          <div class="bg-workshop-800 p-2.5 rounded-lg border border-workshop-700/60">
+            <span class="text-workshop-cyan font-bold">6V NR - Pin 3 (BP20A):</span>
+            <p class="mt-1 text-slate-400">大電流主電源 (+12V 常時火線)，來自引擎室 UDB1 配電盒。負載下電壓不得低於 10.5V (怠速時應維持 13.5V 以上)。</p>
+          </div>
+          <div class="bg-workshop-800 p-2.5 rounded-lg border border-workshop-700/60">
+            <span class="text-emerald-400 font-bold">6V NR - Pin 1 & Pin 6:</span>
+            <p class="mt-1 text-slate-400">直通左前升降馬達 (6040)。上升時由內部 MOSFET H 橋翻轉送出脈衝。若量測兩端有 12V 翻轉卻下墜，為邏輯逆轉下壓。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模組二：四步驟互動決策邏輯樹 (Decision Tree) -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-diagram-project text-workshop-amber text-lg"></i>
+          <h2 class="text-base font-bold text-white tracking-wide">標準排查四步驟決策樹 (現場逐項點擊驗證)</h2>
+        </div>
+        <div class="text-xs text-slate-400 font-mono">STEP-BY-STEP ISOLATION TREE</div>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="bg-workshop-800/80 border border-workshop-700 rounded-2xl p-4 transition" id="card-step1">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center space-x-3">
+            <span class="w-8 h-8 rounded-lg bg-workshop-cyan/15 text-workshop-cyan border border-workshop-cyan/30 flex items-center justify-center font-bold font-mono text-sm">01</span>
+            <div>
+              <h3 class="font-bold text-white text-sm">步驟一：B 柱 IC72A 物理二分隔離法 (排除後半車身)</h3>
+              <p class="text-xs text-slate-400 mt-0.5">拆下左側 B 柱下方飾板，拔開黑色 34Pin 中間插頭 IC72A (切斷 62 PRG 後門線束與馬達)，回到駕駛座測試左前窗。</p>
+            </div>
+          </div>
+          <span id="badge-step1" class="text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-600/40 text-slate-400 border border-workshop-600">待測試</span>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-workshop-700/70 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <button onclick="resolveStep1('pass')" class="p-3 rounded-xl bg-workshop-900/60 hover:bg-emerald-950/40 border border-workshop-700 hover:border-emerald-500/60 text-left transition flex items-start space-x-3 group">
+            <div class="w-5 h-5 rounded-full border border-slate-500 group-hover:border-emerald-400 flex items-center justify-center mt-0.5 text-[10px] text-emerald-400 font-bold">A</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-emerald-300">左前窗立刻恢復正常！不再反轉掉底</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">說明故障在左後門迴路 (62 PRG 線束破皮短路、IC72A 端子進水受潮或後馬達干擾)。</div>
+            </div>
+          </button>
+
+          <button onclick="resolveStep1('fail')" class="p-3 rounded-xl bg-workshop-900/60 hover:bg-workshop-amber/10 border border-workshop-700 hover:border-workshop-amber/60 text-left transition flex items-start space-x-3 group">
+            <div class="w-5 h-5 rounded-full border border-slate-500 group-hover:border-workshop-amber flex items-center justify-center mt-0.5 text-[10px] text-workshop-amber font-bold">B</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-workshop-amber">左前窗依舊強制反彈下墜 (症狀相同)</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">100% 排除左後門一切元件！問題完全收斂在左前門與車身主系統 (進入步驟二)。</div>
+            </div>
+          </button>
+        </div>
+        <div id="step1-output" class="hidden mt-3 p-3 rounded-xl text-xs font-mono"></div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="bg-workshop-800/80 border border-workshop-700 rounded-2xl p-4 transition opacity-50 pointer-events-none" id="card-step2">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center space-x-3">
+            <span class="w-8 h-8 rounded-lg bg-workshop-cyan/15 text-workshop-cyan border border-workshop-cyan/30 flex items-center justify-center font-bold font-mono text-sm">02</span>
+            <div>
+              <h3 class="font-bold text-white text-sm">步驟二：6063 電腦大電流動態電氣壓降量測 (排查搭鐵與電源)</h3>
+              <p class="text-xs text-slate-400 mt-0.5">三用電表黑筆夾車身純鐵，探針背刺 6063 上側 6V NR 插頭：Pin 4 (搭鐵) 與 Pin 3 (電源)，按下車窗上升開關記錄壓降。</p>
+            </div>
+          </div>
+          <span id="badge-step2" class="text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-600/40 text-slate-400 border border-workshop-600">等待步驟一</span>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-workshop-700/70 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <button onclick="resolveStep2('bad-ground')" class="p-3 rounded-xl bg-workshop-900/60 hover:bg-workshop-rose/20 border border-workshop-700 hover:border-workshop-rose/60 text-left transition flex items-start space-x-3 group">
+            <div class="w-5 h-5 rounded-full border border-slate-500 group-hover:border-workshop-rose flex items-center justify-center mt-0.5 text-[10px] text-workshop-rose font-bold">!</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-workshop-rose">Pin 4 接地壓降 &gt; 0.2V (甚至高達 1~2V)</div>
+              <div class="text-[11px] text-slate-400 mt-0.5"><strong>命中真因！</strong>車身主搭鐵點 MC46 虛接或底漆阻抗過大，大電流抽載拉高地電位觸發防夾。</div>
+            </div>
+          </button>
+
+          <button onclick="resolveStep2('good-ground')" class="p-3 rounded-xl bg-workshop-900/60 hover:bg-workshop-cyan/20 border border-workshop-700 hover:border-workshop-cyan/60 text-left transition flex items-start space-x-3 group">
+            <div class="w-5 h-5 rounded-full border border-slate-500 group-hover:border-workshop-cyan flex items-center justify-center mt-0.5 text-[10px] text-workshop-cyan font-bold">✓</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-workshop-cyan">Pin 4 搭鐵 &lt; 0.2V 且 Pin 3 供電正常 (&gt;11.5V)</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">供電與純鐵接地完全合格，排除底盤搭鐵問題，進入控制訊號排查 (進入步驟三)。</div>
+            </div>
+          </button>
+        </div>
+        <div id="step2-output" class="hidden mt-3 p-3 rounded-xl text-xs font-mono"></div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="bg-workshop-800/80 border border-workshop-700 rounded-2xl p-4 transition opacity-50 pointer-events-none" id="card-step3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center space-x-3">
+            <span class="w-8 h-8 rounded-lg bg-workshop-cyan/15 text-workshop-cyan border border-workshop-cyan/30 flex items-center justify-center font-bold font-mono text-sm">03</span>
+            <div>
+              <h3 class="font-bold text-white text-sm">步驟三：駕駛座主控開關 (6036) 訊號隔離測試</h3>
+              <p class="text-xs text-slate-400 mt-0.5">接回 B 柱 IC72A，拔除駕駛座開關面板 6036 (20V JN 插頭)，直接走到左後座按壓左後門獨立開關 6100。</p>
+            </div>
+          </div>
+          <span id="badge-step3" class="text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-600/40 text-slate-400 border border-workshop-600">等待步驟二</span>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-workshop-700/70 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <button onclick="resolveStep3('switch-bad')" class="p-3 rounded-xl bg-workshop-900/60 hover:bg-emerald-950/40 border border-workshop-700 hover:border-emerald-500/60 text-left transition flex items-start space-x-3 group">
+            <div class="w-5 h-5 rounded-full border border-slate-500 group-hover:border-emerald-400 flex items-center justify-center mt-0.5 text-[10px] text-emerald-400 font-bold">A</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-emerald-300">左後門開關立刻恢復作動，升降正常！</div>
+              <div class="text-[11px] text-slate-400 mt-0.5"><strong>命中真因！</strong>6036 主控面板內部兒童安全鎖電路微漏電，向 6063 持續誤發鎖定指令。</div>
+            </div>
+          </button>
+
+          <button onclick="resolveStep3('switch-ok')" class="p-3 rounded-xl bg-workshop-900/60 hover:bg-workshop-cyan/20 border border-workshop-700 hover:border-workshop-cyan/60 text-left transition flex items-start space-x-3 group">
+            <div class="w-5 h-5 rounded-full border border-slate-500 group-hover:border-workshop-cyan flex items-center justify-center mt-0.5 text-[10px] text-workshop-cyan font-bold">B</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-workshop-cyan">拔除 6036 後，左後門開關依然無反應</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">排除開關面板漏電，問題直接收斂至仲裁大腦 6063 車門電腦本身 (進入步驟四)。</div>
+            </div>
+          </button>
+        </div>
+        <div id="step3-output" class="hidden mt-3 p-3 rounded-xl text-xs font-mono"></div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="bg-workshop-800/80 border border-workshop-700 rounded-2xl p-4 transition opacity-50 pointer-events-none" id="card-step4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center space-x-3">
+            <span class="w-8 h-8 rounded-lg bg-workshop-cyan/15 text-workshop-cyan border border-workshop-cyan/30 flex items-center justify-center font-bold font-mono text-sm">04</span>
+            <div>
+              <h3 class="font-bold text-white text-sm">步驟四：DCU DRIVER 6063 車門電腦交叉替換與元件驅動</h3>
+              <p class="text-xs text-slate-400 mt-0.5">使用 DiagBox 執行元件作動測試 (Actuator Test)，並安排同型展示車 6063 車門電腦進行實車對調。</p>
+            </div>
+          </div>
+          <span id="badge-step4" class="text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-600/40 text-slate-400 border border-workshop-600">等待步驟三</span>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-workshop-700/70 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <button onclick="resolveStep4('dcu-fixed')" class="p-3 rounded-xl bg-workshop-900/60 hover:bg-emerald-950/40 border border-workshop-700 hover:border-emerald-500/60 text-left transition flex items-start space-x-3 group">
+            <div class="w-5 h-5 rounded-full border border-slate-500 group-hover:border-emerald-400 flex items-center justify-center mt-0.5 text-[10px] text-emerald-400 font-bold">✓</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-emerald-300">對調 6063 後全車車窗完全恢復正常！</div>
+              <div class="text-[11px] text-slate-400 mt-0.5"><strong>最終判定：</strong>原車 6063 車門 ECU 內部電流採樣邏輯晶片或 MOSFET 損壞，單獨出保 6063。</div>
+            </div>
+          </button>
+
+          <button onclick="resolveStep4('harness-icv4a')" class="p-3 rounded-xl bg-workshop-900/60 hover:bg-workshop-amber/20 border border-workshop-700 hover:border-workshop-amber/60 text-left transition flex items-start space-x-3 group">
+            <div class="w-5 h-5 rounded-full border border-slate-500 group-hover:border-workshop-amber flex items-center justify-center mt-0.5 text-[10px] text-workshop-amber font-bold">!</div>
+            <div>
+              <div class="text-xs font-bold text-slate-200 group-hover:text-workshop-amber">對調後仍異常，鎖定 A 柱 ICV4A 車身側母座</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">車身座艙主線束 (46 HAB) 進入 A 柱插頭之端子微退針或接觸壓力不足，引發 CAN 訊號抖動。</div>
+            </div>
+          </button>
+        </div>
+        <div id="step4-output" class="hidden mt-3 p-3 rounded-xl text-xs font-mono"></div>
+      </div>
+    </section>
+
+    <!-- 模組三：動態電氣壓降計算器 (Calculator & Diagnostic Log) -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-1 bg-workshop-800/80 border border-workshop-700 rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center space-x-2 mb-3 pb-2 border-b border-workshop-700">
+          <i class="fa-solid fa-calculator text-workshop-cyan"></i>
+          <h3 class="font-bold text-white text-sm">6063 動態電氣壓降計算評估</h3>
+        </div>
+        <div class="space-y-3 text-xs font-mono">
+          <div>
+            <label class="block text-slate-400 mb-1">電瓶空載基準電壓 (V_batt)</label>
+            <input type="number" id="input-vbatt" step="0.1" value="12.6" class="w-full bg-workshop-900 border border-workshop-600 rounded-lg p-2 text-white focus:outline-none focus:border-workshop-cyan">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Pin 3 升窗負載供電電壓 (BP20A)</label>
+            <input type="number" id="input-pin3" step="0.1" value="12.1" class="w-full bg-workshop-900 border border-workshop-600 rounded-lg p-2 text-white focus:outline-none focus:border-workshop-cyan">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Pin 4 升窗負載接地壓降 (M6063)</label>
+            <input type="number" id="input-pin4" step="0.05" value="0.08" class="w-full bg-workshop-900 border border-workshop-600 rounded-lg p-2 text-white focus:outline-none focus:border-workshop-cyan">
+          </div>
+          <button onclick="calculateVoltageDrop()" class="w-full mt-2 py-2.5 rounded-xl bg-workshop-cyan/20 hover:bg-workshop-cyan/30 text-workshop-cyan font-bold border border-workshop-cyan/40 transition flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span>執行即時壓降分析</span>
+          </button>
+        </div>
+
+        <div id="calc-result" class="mt-4 p-3 rounded-xl bg-workshop-900/80 border border-workshop-700 text-xs font-mono">
+          <div class="text-slate-400">接地壓降狀態：<span class="text-emerald-400 font-bold">正常 (&lt;0.2V)</span></div>
+          <div class="text-slate-400 mt-1">供電迴路狀態：<span class="text-emerald-400 font-bold">充足 (&gt;11.5V)</span></div>
+          <div class="mt-2 text-[11px] text-slate-300 border-t border-workshop-700/60 pt-2">
+            基準電位正常，排除車體大搭鐵 MC46 接觸不良真因。
+          </div>
+        </div>
+      </div>
+
+      <!-- 快速保固理賠建議 (PA Warranty Justification) -->
+      <div class="lg:col-span-2 bg-workshop-800/80 border border-workshop-700 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-3 pb-2 border-b border-workshop-700">
+            <div class="flex items-center space-x-2">
+              <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+              <h3 class="font-bold text-white text-sm">保固審核與備件清單修正對策 (避免 41,435 元核退)</h3>
+            </div>
+            <span class="text-xs font-mono text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">AUDIT READY</span>
+          </div>
+
+          <div class="space-y-2 text-xs font-mono text-slate-300">
+            <div class="p-2.5 bg-workshop-900/60 rounded-xl border border-workshop-700 flex items-start space-x-2.5">
+              <i class="fa-solid fa-ban text-workshop-rose mt-0.5"></i>
+              <div>
+                <strong class="text-white">取消備件：</strong>右前六角鎖、左後六角鎖、右後六角鎖、3 門防水布、右前車門線束。
+                <div class="text-[11px] text-slate-400 mt-0.5">理由：全車 4 顆六角鎖同時損壞無電氣依據，硬送原廠保固審核 100% 遭技術主管退件。</div>
+              </div>
+            </div>
+
+            <div class="p-2.5 bg-workshop-900/60 rounded-xl border border-workshop-700 flex items-start space-x-2.5">
+              <i class="fa-solid fa-circle-check text-emerald-400 mt-0.5"></i>
+              <div>
+                <strong class="text-white">保留/建議追開備件：</strong>
+                <ul class="list-disc list-inside mt-0.5 text-slate-300 space-y-0.5">
+                  <li><strong>DCU 6063</strong> (駕駛員車門 ECU - 若步驟四交叉測試確認)</li>
+                  <li><strong>6036</strong> (駕駛座車窗控制面板 - 若步驟三拔除後左後窗恢復動作)</li>
+                  <li>工時：依照 TSB 或引導式診斷填報電氣檢查工時，取代大包圍全車拆卸工時。</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-workshop-700/60 flex items-center justify-between">
+          <div class="text-xs text-slate-400 font-mono">
+            目前診斷結論：<span id="final-summary-badge" class="text-workshop-amber font-bold">待按步驟驗證中...</span>
+          </div>
+          <button onclick="generatePrintReport()" class="px-3.5 py-1.5 rounded-lg bg-workshop-cyan text-workshop-900 font-bold text-xs hover:bg-cyan-300 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-lines"></i>
+            <span>生成正式診斷紀錄單</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 隱藏的可列印診斷報告容器 -->
+  <div id="printable-report" class="p-8 hidden">
+    <div class="border-b-2 border-black pb-4 mb-6">
+      <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-2xl font-bold text-black uppercase">Peugeot Stellantis 技術診斷工單報告</h1>
+          <p class="text-sm text-gray-700 mt-1">車型：5008 (P74) HYBRID GT CIELO | VIN：VR3KAHPY4TS019836</p>
+        </div>
+        <div class="text-right text-sm text-gray-700">
+          <div>工單號：B261000469</div>
+          <div>里程：1,602 KM</div>
+          <div>日期：2026-10-21</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-4 text-sm text-black">
+      <div>
+        <h3 class="font-bold border-b border-gray-400 pb-1">一、 客訴主訴與檢測症狀</h3>
+        <p class="mt-1">1. 左前電動窗降到底後無法上升，出現強制防夾反彈下壓。</p>
+        <p>2. 故障發生時，左後車門獨立升降開關按壓完全無反應。</p>
+        <p>3. 曾出現行駛中 LPA (車道置中) 與駕駛注意力警告蜂鳴。</p>
+      </div>
+
+      <div>
+        <h3 class="font-bold border-b border-gray-400 pb-1">二、 現場隔離驗證紀錄</h3>
+        <table class="w-full mt-2 border border-black text-left text-xs">
+          <thead>
+            <tr class="bg-gray-100 border-b border-black">
+              <th class="p-2 border-r border-black">步驟</th>
+              <th class="p-2 border-r border-black">排查對象</th>
+              <th class="p-2 border-r border-black">量測/操作結果</th>
+              <th class="p-2">判定依據</th>
+            </tr>
+          </thead>
+          <tbody id="print-table-body">
+            <!-- 動態寫入 -->
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h3 class="font-bold border-b border-gray-400 pb-1">三、 最終診斷結論與出保對策</h3>
+        <p class="mt-1" id="print-final-conclusion">依據電氣拓撲與實際量測排除全車六角鎖故障，鎖定左側主控端硬體/電氣問題。</p>
+        <div class="mt-6 flex justify-between pt-6 border-t border-gray-400">
+          <div>承修技師簽名：____________________</div>
+          <div>技術主管/保固專員簽名：____________________</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-8 border-t border-workshop-700/80 bg-workshop-800/50 py-4 px-4 text-center text-xs text-slate-500 font-mono no-print">
+    PEUGEOT MASTER TECHNICAL WORKBENCH // P74 MULTIPLEXING SYSTEM // STELLANTIS SERVICEBOX REFERENCE
+  </footer>
+
+  <script>
+    // 狀態追蹤變數
+    let state = {
+      step1: null,
+      step2: null,
+      step3: null,
+      step4: null,
+      currentNode: 'dcu6063'
+    };
+
+    const nodeData = {
+      udb1: {
+        title: "UDB1 - 引擎室配電盒 (供電源)",
+        tag: "常時火線供應",
+        details: [
+          { label: "BP20A 線路", desc: "專屬大電流保險絲輸出，經 ICV4A A柱插頭直供 6063 車門電腦 6V NR Pin 3。" },
+          { label: "正常電壓規格", desc: "電瓶靜態 12.4V~12.8V，發動中 13.8V~14.4V。升窗作動時瞬間掉壓不可低於 10.5V。" },
+          { label: "故障特徵", desc: "若保險絲座接觸不良，大負載時電壓驟降會觸發 6063 低電壓重啟與防夾保護。" }
+        ]
+      },
+      mc46: {
+        title: "MC46 - 左側車身核心搭鐵點 (純鐵基準)",
+        tag: "車身主接地",
+        details: [
+          { label: "物理位置", desc: "位於左側 A/B 柱下方座艙地板金屬純鐵處 (包含 MC46H 與 MC46R 線號)。" },
+          { label: "阻抗與壓降規範", desc: "對電瓶負極純電阻需 < 0.2Ω；車窗馬達啟動瞬間，接地對車體壓降必須 < 0.2V。" },
+          { label: "新車常發真因", desc: "組裝底漆未刮除乾淨或螺栓扭力不足時，馬達抽載會瞬間拉高地電位，導致霍爾計數失準強制反轉。" }
+        ]
+      },
+      icv4a: {
+        title: "ICV4A - 左前 A 柱蛇腹中間連接器 (34 Pin 黑色)",
+        tag: "車身與前門交界",
+        details: [
+          { label: "Pin 3 (BP20A)", desc: "大電流常火供電進入左前門；若端子退針會引起間歇性斷電。" },
+          { label: "Pin 4 (M6063)", desc: "左前門主接地線進入車身搭鐵 MC46；必須確認接觸壓力緊度。" },
+          { label: "CAN 匯流排雙絞線", desc: "負責 6063 與 BSI 通訊；若鉸鏈處接觸不良，開門震動會引發 LPA 車道置中退出與蜂鳴。" }
+        ]
+      },
+      dcu6063: {
+        title: "6063 - 駕駛員車門 ECU (DCU DRIVER)",
+        tag: "核心仲裁大腦",
+        details: [
+          { label: "6V NR - Pin 4 (M6063)", desc: "主接地線。作動瞬間壓降需 < 0.2V。接地飄移會直接導致霍爾訊號採樣失真。" },
+          { label: "6V NR - Pin 3 (BP20A)", desc: "主供電輸入 (+12V)。" },
+          { label: "54V NR 插頭", desc: "接收 6036 總成開關、左前六角鎖訊號，以及左後門 6100 開關連線。" }
+        ]
+      },
+      sw6036: {
+        title: "6036 - 駕駛側車門電動窗與後視鏡控制面板",
+        tag: "指令輸入與兒童鎖",
+        details: [
+          { label: "20V JN 插頭", desc: "全功能微動訊號輸出至 6063 車門電腦。" },
+          { label: "兒童安全鎖邏輯", desc: "內部按鍵微漏電時，會向 6063 持續送出鎖定指令，導致左後門獨立開關按壓毫無反應。" },
+          { label: "隔離判定法", desc: "拔除 20V JN 插頭後，後門開關恢復預設非鎖定狀態，即可直接印證開關面板故障。" }
+        ]
+      },
+      ic72a: {
+        title: "IC72A - 左側 B 柱中間連接器 (34 Pin 黑色)",
+        tag: "後門物理二分斷點",
+        details: [
+          { label: "實體位置 (圖 A02)", desc: "位於左側 B 柱下方，串接座艙主線束 46 HAB 與左後門線束 62 PRG。" },
+          { label: "Pin 1~4 (6659Z等)", desc: "直通左後門開關 6100；Pin 29~30 直通左後窗馬達 6130。" },
+          { label: "快速二分法", desc: "拔開此插頭即可 100% 切離左後門，用來瞬間區分是前門問題還是後門短路干擾。" }
+        ]
+      },
+      rear6100: {
+        title: "6100 / 6130 - 左後門獨立開關與升降馬達",
+        tag: "受牽連附屬元件",
+        details: [
+          { label: "非獨立供電架構", desc: "開關訊號全數經 IC72A 穿回左前 6063 電腦，馬達亦受 6063 控制。" },
+          { label: "故障關聯", desc: "症狀發生時後門按壓沒反應，是因為前方 6063 進入保護鎖定模式或 6036 兒童鎖開關漏電。" },
+          { label: "排查結論", desc: "後門開關與馬達極高機率為正常良品，嚴禁無故拆卸更換。" }
+        ]
+      }
+    };
+
+    function inspectNode(nodeKey) {
+      state.currentNode = nodeKey;
+      document.querySelectorAll('.topo-btn').forEach(btn => {
+        btn.classList.remove('ring-2', 'ring-workshop-cyan');
+      });
+      const activeBtn = document.getElementById(`btn-${nodeKey}`);
+      if (activeBtn) activeBtn.classList.add('ring-2', 'ring-workshop-cyan');
+
+      const data = nodeData[nodeKey];
+      document.getElementById('insp-title').innerHTML = `<i class="fa-solid fa-microchip mr-1.5"></i>${data.title}`;
+      document.getElementById('insp-tag').textContent = data.tag;
+
+      const bodyHtml = data.details.map(d => `
+        <div class="bg-workshop-800 p-2.5 rounded-lg border border-workshop-700/60">
+          <span class="text-workshop-cyan font-bold">${d.label}:</span>
+          <p class="mt-1 text-slate-400">${d.desc}</p>
+        </div>
+      `).join('');
+      document.getElementById('insp-body').innerHTML = bodyHtml;
+    }
+
+    // 決策樹邏輯分支
+    function resolveStep1(result) {
+      state.step1 = result;
+      const out = document.getElementById('step1-output');
+      const badge = document.getElementById('badge-step1');
+      out.classList.remove('hidden');
+
+      if (result === 'pass') {
+        badge.textContent = "左後門故障";
+        badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/50";
+        out.className = "mt-3 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-xs font-mono text-emerald-300";
+        out.innerHTML = `<strong>【排查結論】</strong>拔開 B 柱 IC72A 後左前窗正常，證明問題出在「左後門 62 PRG 線束破皮短路」或「左後開關/馬達干擾」。請檢修 B 柱至後門線束。`;
+        document.getElementById('final-summary-badge').textContent = "檢修左後門 62 PRG 線路";
+      } else {
+        badge.textContent = "已排除後門";
+        badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-cyan/20 text-workshop-cyan border border-workshop-cyan/50";
+        out.className = "mt-3 p-3 rounded-xl bg-workshop-cyan/10 border border-workshop-cyan/40 text-xs font-mono text-cyan-200";
+        out.innerHTML = `<strong>【排查結論】</strong>左前窗依舊反彈，100% 排除左後門所有硬體。後門開關沒反應純屬被左前控制端牽連。解鎖步驟二。`;
+        
+        // 解鎖步驟二
+        const step2 = document.getElementById('card-step2');
+        step2.classList.remove('opacity-50', 'pointer-events-none');
+        document.getElementById('badge-step2').textContent = "進行中";
+        document.getElementById('badge-step2').className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-amber/20 text-workshop-amber border border-workshop-amber/40";
+      }
+    }
+
+    function resolveStep2(result) {
+      state.step2 = result;
+      const out = document.getElementById('step2-output');
+      const badge = document.getElementById('badge-step2');
+      out.classList.remove('hidden');
+
+      if (result === 'bad-ground') {
+        badge.textContent = "搭鐵虛接真因";
+        badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-rose/20 text-workshop-rose border border-workshop-rose/50";
+        out.className = "mt-3 p-3 rounded-xl bg-workshop-rose/20 border border-workshop-rose/50 text-xs font-mono text-rose-300";
+        out.innerHTML = `<strong>【命中真因】</strong>Pin 4 (M6063) 壓降超過 0.2V！確定為車身接地點 <strong>MC46</strong> 虛接。立即拆開左側 A 柱/B 柱底板飾板，刮除螺栓接觸面底漆重新緊固，即可結案。`;
+        document.getElementById('final-summary-badge').textContent = "MC46 車身搭鐵不良 (除漆重鎖)";
+      } else {
+        badge.textContent = "供電接地正常";
+        badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-cyan/20 text-workshop-cyan border border-workshop-cyan/50";
+        out.className = "mt-3 p-3 rounded-xl bg-workshop-cyan/10 border border-workshop-cyan/40 text-xs font-mono text-cyan-200";
+        out.innerHTML = `<strong>【排查結論】</strong>接地與常火供電完全合格，排除底盤搭鐵物理問題。解鎖步驟三 (訊號輸入隔離)。`;
+
+        // 解鎖步驟三
+        const step3 = document.getElementById('card-step3');
+        step3.classList.remove('opacity-50', 'pointer-events-none');
+        document.getElementById('badge-step3').textContent = "進行中";
+        document.getElementById('badge-step3').className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-amber/20 text-workshop-amber border border-workshop-amber/40";
+      }
+    }
+
+    function resolveStep3(result) {
+      state.step3 = result;
+      const out = document.getElementById('step3-output');
+      const badge = document.getElementById('badge-step3');
+      out.classList.remove('hidden');
+
+      if (result === 'switch-bad') {
+        badge.textContent = "主開關面板損壞";
+        badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/50";
+        out.className = "mt-3 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-xs font-mono text-emerald-300";
+        out.innerHTML = `<strong>【命中真因】</strong>拔掉 6036 開關後，左後門獨立開關立刻恢復動作！確定為 <strong>6036 主控面板</strong> 內部兒童鎖按鍵或電路板漏電微導通，持續鎖死後門並干擾前門。申請出保更換 6036 結案。`;
+        document.getElementById('final-summary-badge').textContent = "6036 駕駛座開關面板故障 (出保換件)";
+      } else {
+        badge.textContent = "排除開關總成";
+        badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-cyan/20 text-workshop-cyan border border-workshop-cyan/50";
+        out.className = "mt-3 p-3 rounded-xl bg-workshop-cyan/10 border border-workshop-cyan/40 text-xs font-mono text-cyan-200";
+        out.innerHTML = `<strong>【排查結論】</strong>拔除 6036 後後門依然無反應，排除開關面板漏電。問題鎖定在仲裁大腦 6063 電腦內部。解鎖步驟四。`;
+
+        // 解鎖步驟四
+        const step4 = document.getElementById('card-step4');
+        step4.classList.remove('opacity-50', 'pointer-events-none');
+        document.getElementById('badge-step4').textContent = "進行中";
+        document.getElementById('badge-step4').className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-amber/20 text-workshop-amber border border-workshop-amber/40";
+      }
+    }
+
+    function resolveStep4(result) {
+      state.step4 = result;
+      const out = document.getElementById('step4-output');
+      const badge = document.getElementById('badge-step4');
+      out.classList.remove('hidden');
+
+      if (result === 'dcu-fixed') {
+        badge.textContent = "6063 電腦損壞";
+        badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-500/50";
+        out.className = "mt-3 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-xs font-mono text-emerald-300";
+        out.innerHTML = `<strong>【最終判定】</strong>實車對調 6063 後全車窗升降恢復平順，證明原車 <strong>6063 (DCU DRIVER)</strong> 內部電流採樣晶片或 H 橋損壞，單獨申請更換 6063 出保結案！`;
+        document.getElementById('final-summary-badge').textContent = "DCU 6063 車門電腦內部損壞 (出保換件)";
+      } else {
+        badge.textContent = "A柱插座退針";
+        badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-amber/20 text-workshop-amber border border-workshop-amber/50";
+        out.className = "mt-3 p-3 rounded-xl bg-workshop-amber/20 border border-workshop-amber/50 text-xs font-mono text-amber-300";
+        out.innerHTML = `<strong>【最終判定】</strong>對調 6063 仍反彈，重點檢查 <strong>A 柱 ICV4A 車身側母座端子</strong>，修復退針或接觸壓力不足之端子。`;
+        document.getElementById('final-summary-badge').textContent = "A 柱 ICV4A 車身側端子退針修復";
+      }
+    }
+
+    // 壓降計算器
+    function calculateVoltageDrop() {
+      const vbatt = parseFloat(document.getElementById('input-vbatt').value);
+      const pin3 = parseFloat(document.getElementById('input-pin3').value);
+      const pin4 = parseFloat(document.getElementById('input-pin4').value);
+      const resultBox = document.getElementById('calc-result');
+
+      let groundStatus = pin4 < 0.2 ? 
+        `<span class="text-emerald-400 font-bold">正常 (<0.2V, 實測 ${pin4}V)</span>` : 
+        `<span class="text-workshop-rose font-bold">嚴重虛接 (實測 ${pin4}V > 0.2V 門檻!)</span>`;
+
+      let powerDrop = (vbatt - pin3).toFixed(2);
+      let powerStatus = pin3 >= 11.0 ?
+        `<span class="text-emerald-400 font-bold">充足 (負載 ${pin3}V, 壓降 ${powerDrop}V)</span>` :
+        `<span class="text-workshop-rose font-bold">供電不足 (負載低於 11.0V, 實測 ${pin3}V)</span>`;
+
+      let advice = "";
+      if (pin4 >= 0.2) {
+        advice = `<span class="text-workshop-rose font-bold">警告：MC46 搭鐵點壓降過大！大負載下拉高邏輯地電位，100% 誘發假性防夾反轉。請先除漆重緊搭鐵。</span>`;
+      } else if (pin3 < 11.0) {
+        advice = `<span class="text-workshop-amber font-bold">注意：主供電壓降過大，請檢查 ICV4A A柱 Pin 3 插腳與 UDB1 供電端子。</span>`;
+      } else {
+        advice = `電氣供電與接地壓降完全符合原廠技術規範。可安全排除 MC46 純鐵搭鐵與主電源問題。`;
+      }
+
+      resultBox.innerHTML = `
+        <div class="text-slate-300">接地壓降狀態：${groundStatus}</div>
+        <div class="text-slate-300 mt-1">供電迴路狀態：${powerStatus}</div>
+        <div class="mt-2 text-[11px] text-slate-300 border-t border-workshop-700/60 pt-2">
+          ${advice}
+        </div>
+      `;
+    }
+
+    // 重置所有測試
+    function resetAllDiagnosis() {
+      state = { step1: null, step2: null, step3: null, step4: null, currentNode: 'dcu6063' };
+
+      ['step1', 'step2', 'step3', 'step4'].forEach(s => {
+        const out = document.getElementById(`${s}-output`);
+        if (out) { out.classList.add('hidden'); out.innerHTML = ""; }
+        const badge = document.getElementById(`badge-${s}`);
+        if (badge) {
+          badge.textContent = s === 'step1' ? '待測試' : `等待步驟${s.replace('step', '') - 1}`;
+          badge.className = "text-[11px] font-mono px-2.5 py-1 rounded-full bg-workshop-600/40 text-slate-400 border border-workshop-600";
+        }
+      });
+
+      ['card-step2', 'card-step3', 'card-step4'].forEach(id => {
+        const el = document.getElementById(id);
+        el.classList.add('opacity-50', 'pointer-events-none');
+      });
+
+      document.getElementById('final-summary-badge').textContent = "待按步驟驗證中...";
+      inspectNode('dcu6063');
+    }
+
+    // 生成列印報告
+    function generatePrintReport() {
+      const tableBody = document.getElementById('print-table-body');
+      tableBody.innerHTML = `
+        <tr class="border-b border-gray-300">
+          <td class="p-2 border-r border-gray-300">01</td>
+          <td class="p-2 border-r border-gray-300 font-bold">B 柱 IC72A 物理隔離</td>
+          <td class="p-2 border-r border-gray-300">${state.step1 === 'fail' ? '左前窗依舊強制反彈下墜' : (state.step1 === 'pass' ? '左前窗立刻恢復正常' : '未執行')}</td>
+          <td class="p-2">${state.step1 === 'fail' ? '100% 排除左後門線束與元件，鎖定左前駕駛側主控' : (state.step1 === 'pass' ? '真凶在左後門迴路 (62 PRG 線束/後馬達)' : 'N/A')}</td>
+        </tr>
+        <tr class="border-b border-gray-300">
+          <td class="p-2 border-r border-gray-300">02</td>
+          <td class="p-2 border-r border-gray-300 font-bold">6063 負載電氣量測</td>
+          <td class="p-2 border-r border-gray-300">${state.step2 === 'bad-ground' ? 'Pin 4 接地壓降 > 0.2V (虛接)' : (state.step2 === 'good-ground' ? 'Pin 4 壓降 < 0.2V，供電正常' : '未執行')}</td>
+          <td class="p-2">${state.step2 === 'bad-ground' ? 'MC46 搭鐵不良拉高地電位，引發假性防夾' : (state.step2 === 'good-ground' ? '排除車身接地不良，轉向控制與邏輯排查' : 'N/A')}</td>
+        </tr>
+        <tr class="border-b border-gray-300">
+          <td class="p-2 border-r border-gray-300">03</td>
+          <td class="p-2 border-r border-gray-300 font-bold">主控開關 6036 隔離</td>
+          <td class="p-2 border-r border-gray-300">${state.step3 === 'switch-bad' ? '拔除 6036 後左後門開關恢復動作' : (state.step3 === 'switch-ok' ? '拔除 6036 後左後門仍無動作' : '未執行')}</td>
+          <td class="p-2">${state.step3 === 'switch-bad' ? '6036 面板兒童安全鎖微漏電持續鎖死後門' : (state.step3 === 'switch-ok' ? '排除開關面板，鎖定車門電腦 6063 本體' : 'N/A')}</td>
+        </tr>
+        <tr class="border-b border-gray-300">
+          <td class="p-2 border-r border-gray-300">04</td>
+          <td class="p-2 border-r border-gray-300 font-bold">6063 電腦對調比對</td>
+          <td class="p-2 border-r border-gray-300">${state.step4 === 'dcu-fixed' ? '對調後全功能完全恢復正常' : (state.step4 === 'harness-icv4a' ? '對調後依舊異常' : '未執行')}</td>
+          <td class="p-2">${state.step4 === 'dcu-fixed' ? '原車 6063 (DCU DRIVER) 內部採樣晶片損壞，單獨出保' : (state.step4 === 'harness-icv4a' ? 'A 柱 ICV4A 車身側母座端子退針接觸不良' : 'N/A')}</td>
+        </tr>
+      `;
+
+      const finalDesc = document.getElementById('final-summary-badge').textContent;
+      document.getElementById('print-final-conclusion').innerHTML = `
+        <strong>當前綜合判決：</strong>${finalDesc}<br>
+        <strong>備件處理指示：</strong>即刻取消派工單上其餘 3 顆六角鎖與後門線束待料，杜絕保固核退爭議。
+      `;
+
+      window.print();
+    }
+
+    // 初始化載入
+    window.onload = function() {
+      inspectNode('dcu6063');
+    };
+  </script>
+</body>
+</html>
