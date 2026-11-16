@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Peugeot 408 (P54) 氣氛燈異常與 LIN Bus 串接診斷互動教學</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Noto Serif TC, Noto Sans TC, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-dark: #090e17;
+      --panel-bg: #111827;
+      --border-color: #1f2937;
+      --cyan-glow: #38bdf8;
+      --red-power: #ef4444;
+      --green-gnd: #22c55e;
+      --yellow-bypass: #facc15;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: #e2e8f0;
+      font-family: 'Noto Sans TC', sans-serif;
+      overflow-x: hidden;
+    }
+
+    .font-serif-tc {
+      font-family: 'Noto Serif TC', serif;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* 氣氛燈發光濾鏡效果 */
+    .ambient-strip-on {
+      stroke: #38bdf8;
+      stroke-width: 5;
+      filter: drop-shadow(0 0 8px #0ea5e9) drop-shadow(0 0 16px #38bdf8);
+      transition: all 0.4s ease;
+    }
+
+    .ambient-strip-off {
+      stroke: #334155;
+      stroke-width: 4;
+      filter: none;
+      transition: all 0.4s ease;
+    }
+
+    /* 電流與訊號流動動畫 */
+    @keyframes flowDash {
+      to {
+        stroke-dashoffset: -24;
+      }
+    }
+
+    .flow-active {
+      stroke-dasharray: 6 6;
+      animation: flowDash 0.8s linear infinite;
+    }
+
+    .flow-fast {
+      stroke-dasharray: 4 6;
+      animation: flowDash 0.45s linear infinite;
+    }
+
+    /* 探針選中呼吸燈 */
+    @keyframes probePulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.25);
+        opacity: 0.7;
+      }
+    }
+
+    .probe-ring {
+      transform-origin: center;
+      transform-box: fill-box;
+      animation: probePulse 1.4s infinite ease-in-out;
+    }
+
+    /* 自訂捲軸 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1120;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- 頂部儀器標題列 -->
+  <header class="bg-slate-950/90 border-b border-slate-800 px-4 py-3 sticky top-0 z-30 backdrop-blur">
+    <div class="max-w-[1600px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div class="flex items-center gap-3">
+        <div class="w-3 h-3 rounded-full bg-sky-400 shadow-[0_0_10px_#38bdf8]"></div>
+        <div>
+          <h1 class="font-serif-tc text-lg md:text-xl font-bold text-slate-100 tracking-wide">
+            Peugeot 408 (P54) 氣氛燈異常與 LIN Bus 串接診斷互動教學
+          </h1>
+          <p class="text-xs text-slate-400 font-mono-tech">
+            SYSTEM: VSM1 LIN-6 / IDB1 ZB21 | VIN: VR3FPHPY0SY515177 | TOPOLOGY ANALYZER
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-xs font-mono-tech">
+        <span class="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-sky-400">
+          LIN 速率: 19.2 kbit/s
+        </span>
+        <span id="header-status-badge" class="px-2.5 py-1 rounded bg-emerald-950/80 border border-emerald-700/70 text-emerald-300">
+          STATUS: NORMAL (4/4 ON)
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主體左右雙欄配置 -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-3 md:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- 左欄：SVG 動態車艙透視與電路拓撲 + 虛擬示波器/電表 (佔 7 欄) -->
+    <section class="lg:col-span-7 flex flex-col gap-4">
+
+      <!-- 上半部：SVG 車艙與門板結構透視畫布 -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 md:p-4 shadow-2xl flex flex-col">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-sky-400 font-mono-tech">[CHASSIS & DOOR TOPOLOGY]</span>
+            <span class="text-xs text-slate-400">點擊圖上 ECU 節點可切換電表/示波器探針位置</span>
+          </div>
+          <!-- 圖例說明 -->
+          <div class="flex flex-wrap items-center gap-3 text-[11px] font-mono-tech">
+            <span class="flex items-center gap-1 text-red-400"><i class="inline-block w-3 h-0.5 bg-red-500"></i>供電 ZB21 (2+2並聯)</span>
+            <span class="flex items-center gap-1 text-emerald-400"><i class="inline-block w-3 h-0.5 bg-emerald-500"></i>搭鐵 MC (1+1+2獨立)</span>
+            <span class="flex items-center gap-1 text-sky-400"><i class="inline-block w-3 h-0.5 bg-sky-400"></i>LIN 訊號 (單線串接)</span>
+            <span class="flex items-center gap-1 text-yellow-300"><i class="inline-block w-3 h-0.5 bg-yellow-400"></i>跨接飛線</span>
+          </div>
+        </div>
+
+        <!-- 精細矢量 SVG 車艙與左右門板展開透視圖 -->
+        <div class="w-full relative bg-[#070b14] rounded-lg border border-slate-800/90 overflow-hidden">
+          <svg id="car-topology-svg" viewBox="0 0 920 530" class="w-full h-auto block select-none">
+            <defs>
+              <!-- 網格背景 -->
+              <pattern id="tech-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+                <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#1e293b" stroke-width="0.6" stroke-opacity="0.45" />
+              </pattern>
+              <!-- 光暈濾鏡 -->
+              <filter id="cyan-glow-filter" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            <!-- 背景網格 -->
+            <rect width="920" height="530" fill="url(#tech-grid)" />
+
+            <!-- ==================== 1. 車體結構輪廓 (俯視展開圖) ==================== -->
+            <!-- 前擋風玻璃與車頭引擎防火牆輪廓 -->
+            <path d="M 250 95 Q 460 45 670 95 L 690 155 Q 460 125 230 155 Z" fill="#0f172a" stroke="#334155" stroke-width="2" />
+            <text x="460" y="84" text-anchor="middle" fill="#64748b" font-size="11" font-family="JetBrains Mono">FRONT WINDSHIELD / FIREWALL (車頭方向 ▲)</text>
+
+            <!-- 中控儀表台總成 (Dashboard) -->
+            <path d="M 225 160 Q 460 132 695 160 L 685 255 Q 560 245 505 265 L 505 350 L 415 350 L 415 265 Q 360 245 235 255 Z" fill="#111827" stroke="#475569" stroke-width="2" />
+            <text x="460" y="182" text-anchor="middle" fill="#94a3b8" font-size="12" font-weight="bold">中控儀表台總成 (Dashboard)</text>
+            <!-- 方向盤示意 (左側駕駛座 LHD) -->
+            <ellipse cx="325" cy="262" rx="34" ry="12" fill="none" stroke="#475569" stroke-width="2.5" />
+            <text x="325" y="288" text-anchor="middle" fill="#64748b" font-size="10">駕駛側 (LHD)</text>
+            <text x="595" y="288" text-anchor="middle" fill="#64748b" font-size="10">副駕駛側 (RHD/Pass)</text>
+
+            <!-- 左側：駕駛座前門板展開輪廓 (60 CPG - Left Door) -->
+            <g id="left-door-assembly">
+              <path d="M 205 185 L 40 225 Q 22 232 22 255 L 22 455 Q 22 475 45 478 L 195 462 L 205 360 Z" fill="#0f172a" stroke="#475569" stroke-width="2.2" />
+              <!-- 門板內飾板結構線 -->
+              <path d="M 185 215 L 55 248 L 55 435 L 180 422 Z" fill="#131c31" stroke="#334155" stroke-width="1.2" />
+              <text x="112" y="210" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="bold">左前門板 (60 CPG)</text>
+              <text x="112" y="224" text-anchor="middle" fill="#64748b" font-size="10">駕駛側門飾板</text>
+              <!-- 左門氣氛燈導光條 -->
+              <path id="strip-3138" d="M 178 242 L 58 272" stroke-linecap="round" class="ambient-strip-on" />
+            </g>
+
+            <!-- 右側：副駕駛座前門板展開輪廓 (60 CPD - Right Door) -->
+            <g id="right-door-assembly">
+              <path d="M 715 185 L 880 225 Q 898 232 898 255 L 898 455 Q 898 475 875 478 L 725 462 L 715 360 Z" fill="#0f172a" stroke="#475569" stroke-width="2.2" />
+              <!-- 門板內飾板結構線 -->
+              <path d="M 735 215 L 865 248 L 865 435 L 740 422 Z" fill="#131c31" stroke="#334155" stroke-width="1.2" />
+              <text x="808" y="210" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="bold">右前門板 (60 CPD)</text>
+              <text x="808" y="224" text-anchor="middle" fill="#64748b" font-size="10">副駕駛側門飾板</text>
+              <!-- 右門氣氛燈導光條 -->
+              <path id="strip-3137" d="M 742 242 L 862 272" stroke-linecap="round" class="ambient-strip-on" />
+            </g>
+
+            <!-- 儀表台兩組氣氛燈導光條 -->
+            <!-- 3135 中控側光條 -->
+            <path id="strip-3135" d="M 380 220 L 495 220" stroke-linecap="round" class="ambient-strip-on" />
+            <!-- 3136 副駕前方儀表台光條 -->
+            <path id="strip-3136" d="M 535 220 L 665 212" stroke-linecap="round" class="ambient-strip-on" />
+
+            <!-- ==================== 2. 主控單元 IDB1 與 VSM1 ==================== -->
+            <!-- IDB1 配電單元 -->
+            <g transform="translate(265, 18)">
+              <rect width="145" height="44" rx="6" fill="#1e1b4b" stroke="#ef4444" stroke-width="1.5" />
+              <text x="72" y="18" text-anchor="middle" fill="#fca5a5" font-size="11" font-weight="bold" font-family="JetBrains Mono">IDB1 (乘客艙配電)</text>
+              <text x="72" y="34" text-anchor="middle" fill="#f87171" font-size="10" font-family="JetBrains Mono">28V BE Pin 19 [ZB21]</text>
+            </g>
+
+            <!-- VSM1 智能控制盒 -->
+            <g transform="translate(510, 18)">
+              <rect width="155" height="44" rx="6" fill="#0c4a6e" stroke="#38bdf8" stroke-width="1.5" />
+              <text x="77" y="18" text-anchor="middle" fill="#bae6fd" font-size="11" font-weight="bold" font-family="JetBrains Mono">VSM1 (智能控制盒)</text>
+              <text x="77" y="34" text-anchor="middle" fill="#38bdf8" font-size="10" font-family="JetBrains Mono">76V VE Pin 72 [LIN 6]</text>
+            </g>
+
+            <!-- ==================== 3. 供電線路 (紅線: 2+2 兩隊並聯) ==================== -->
+            <!-- IDB1 -> EZ01 節點 -->
+            <path d="M 337 62 L 337 110" stroke="#ef4444" stroke-width="2.2" fill="none" />
+            <circle cx="337" cy="110" r="4.5" fill="#ef4444" />
+            <text x="328" y="106" text-anchor="end" fill="#fca5a5" font-size="10" font-family="JetBrains Mono">EZ01</text>
+
+            <!-- 第一隊 (ZB21A): 供給 3138 (左門) 與 3137 (右門) -->
+            <!-- 往左門 3138 Pin 1 -->
+            <path d="M 337 110 L 145 110 L 145 295" stroke="#ef4444" stroke-width="2" fill="none" class="flow-active" />
+            <text x="220" y="104" fill="#f87171" font-size="9.5" font-family="JetBrains Mono">ZB21A (第一隊: 前車門組)</text>
+            <!-- 往右門 3137 Pin 1 -->
+            <path d="M 337 110 L 775 110 L 775 295" stroke="#ef4444" stroke-width="2" fill="none" class="flow-active" />
+
+            <!-- 第二隊 (ZB21D -> EZB21 -> ZB21B / ZB21C): 供給 3135 與 3136 -->
+            <path d="M 337 110 L 337 136 L 455 136" stroke="#ef4444" stroke-width="2" fill="none" />
+            <circle cx="455" cy="136" r="4.5" fill="#ef4444" />
+            <text x="455" y="128" text-anchor="middle" fill="#fca5a5" font-size="9.5" font-family="JetBrains Mono">EZB21 (第二隊)</text>
+            <!-- 往 3135 Pin 1 (ZB21B) -->
+            <path d="M 455 136 L 415 136 L 415 295" stroke="#ef4444" stroke-width="1.8" fill="none" class="flow-active" />
+            <!-- 往 3136 Pin 1 (ZB21C) -->
+            <path d="M 455 136 L 575 136 L 575 295" stroke="#ef4444" stroke-width="1.8" fill="none" class="flow-active" />
+
+            <!-- ==================== 4. 搭鐵線路 (綠線: 1+1+2 三路獨立) ==================== -->
+            <!-- 3138 獨立搭鐵 -> MC47 -->
+            <path d="M 95 360 L 95 450" stroke="#22c55e" stroke-width="2" fill="none" />
+            <rect x="65" y="450" width="60" height="20" rx="3" fill="#052e16" stroke="#22c55e" stroke-width="1.2" />
+            <text x="95" y="464" text-anchor="middle" fill="#86efac" font-size="10" font-family="JetBrains Mono">MC47 搭鐵</text>
+
+            <!-- 3137 獨立搭鐵 -> MC46 -->
+            <path d="M 825 360 L 825 450" stroke="#22c55e" stroke-width="2" fill="none" />
+            <rect x="795" y="450" width="60" height="20" rx="3" fill="#052e16" stroke="#22c55e" stroke-width="1.2" />
+            <text x="825" y="464" text-anchor="middle" fill="#86efac" font-size="10" font-family="JetBrains Mono">MC46 搭鐵</text>
+
+            <!-- 3135 & 3136 共地 EM51B -> MC51 -->
+            <path d="M 415 360 L 415 415 L 575 415 L 575 360" stroke="#22c55e" stroke-width="2" fill="none" />
+            <path d="M 495 415 L 495 450" stroke="#22c55e" stroke-width="2" fill="none" />
+            <circle cx="495" cy="415" r="3.5" fill="#22c55e" />
+            <rect x="455" y="450" width="80" height="20" rx="3" fill="#052e16" stroke="#22c55e" stroke-width="1.2" />
+            <text x="495" y="464" text-anchor="middle" fill="#86efac" font-size="10" font-family="JetBrains Mono">MC51 (EM51B)</text>
+
+            <!-- ==================== 5. LIN Bus 單線串接通訊路徑 (青藍色) ==================== -->
+            <!-- Segment 1: VSM1 -> 9A50B/9A50A -> 3137 (第一站: 副駕門) -->
+            <path id="lin-seg-1" d="M 588 62 L 588 122 L 750 122 L 750 295" stroke="#38bdf8" stroke-width="2.6" fill="none" class="flow-fast" />
+            <text x="672" y="117" text-anchor="middle" fill="#7dd3fc" font-size="9.5" font-family="JetBrains Mono">9A50A (第一棒)</text>
+
+            <!-- Segment 2: 3137 Pin 3 -> 3103A (經過 IC1PA/ICV5A/ICV4A/IC1NA) -> 3138 Pin 2 (第二站: 駕駛門) -->
+            <!-- 這段是核心故障模擬段！ -->
+            <path id="lin-seg-2" d="M 730 335 L 685 335 L 685 495 L 235 495 L 235 335 L 185 335" stroke="#38bdf8" stroke-width="2.8" fill="none" class="flow-fast" />
+
+            <!-- 中繼接頭標示 (IC1PA -> ICV5A -> ICV4A -> IC1NA) -->
+            <g transform="translate(245, 483)">
+              <rect width="430" height="24" rx="4" fill="#0f172a" stroke="#475569" stroke-width="1.2" />
+              <text x="215" y="15" text-anchor="middle" fill="#cbd5e1" font-size="9.5" font-family="JetBrains Mono">
+                線號 3103A 路徑: 3137(P3) ➔ IC1PA ➔ ICV5A ➔ ICV4A ➔ IC1NA ➔ 3138(P2)
+              </text>
+            </g>
+
+            <!-- 斷點叉叉圖示 (情境二、情境三顯示) -->
+            <g id="fault-break-marker" transform="translate(460, 495)" style="display: none;">
+              <circle r="15" fill="#450a0a" stroke="#ef4444" stroke-width="2" />
+              <path d="M -6 -6 L 6 6 M 6 -6 L -6 6" stroke="#f87171" stroke-width="3" stroke-linecap="round" />
+              <rect x="-58" y="-34" width="116" height="18" rx="3" fill="#7f1d1d" />
+              <text x="0" y="-22" text-anchor="middle" fill="#fecaca" font-size="9.5" font-weight="bold">3103A 線路斷路!</text>
+            </g>
+
+            <!-- 跨接修復飛線 (情境四顯示) -->
+            <g id="bypass-wire-group" style="display: none;">
+              <path d="M 730 345 L 665 390 L 255 390 L 185 345" stroke="#facc15" stroke-width="3.2" fill="none" class="flow-fast" filter="url(#cyan-glow-filter)" />
+              <rect x="365" y="379" width="190" height="20" rx="4" fill="#422006" stroke="#facc15" stroke-width="1.2" />
+              <text x="460" y="393" text-anchor="middle" fill="#fef08a" font-size="10" font-weight="bold" font-family="JetBrains Mono">
+                ★ 跨接飛線: 3137 P3 ➔ 3138 P2
+              </text>
+            </g>
+
+            <!-- Segment 3: 3138 Pin 3 -> 3100A -> 3135 Pin 2 (第三站: 中控儀表) -->
+            <path id="lin-seg-3" d="M 185 318 L 365 318" stroke="#38bdf8" stroke-width="2.6" fill="none" class="flow-fast" />
+            <text x="275" y="312" text-anchor="middle" fill="#7dd3fc" font-size="9.5" font-family="JetBrains Mono">3100A (第三棒)</text>
+
+            <!-- Segment 4: 3135 Pin 3 -> 3101 -> 3136 Pin 2 (第四站: 副駕儀表) -->
+            <path id="lin-seg-4" d="M 465 318 L 530 318" stroke="#38bdf8" stroke-width="2.6" fill="none" class="flow-fast" />
+            <text x="497" y="312" text-anchor="middle" fill="#7dd3fc" font-size="9.5" font-family="JetBrains Mono">3101</text>
+
+            <!-- ==================== 6. 四顆氣氛燈 ECU 互動節點卡片 ==================== -->
+
+            <!-- ECU 4: 3138 (左前門 / 駕駛側) -->
+            <g id="node-3138" transform="translate(65, 290)" class="cursor-pointer" onclick="selectProbe('3138')">
+              <rect width="120" height="72" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="2" id="box-3138" />
+              <text x="60" y="17" text-anchor="middle" fill="#f8fafc" font-size="11" font-weight="bold" font-family="JetBrains Mono">3138 (ECU 4)</text>
+              <text x="60" y="31" text-anchor="middle" fill="#94a3b8" font-size="9.5">左前門 (第二站)</text>
+              <text x="60" y="46" text-anchor="middle" fill="#38bdf8" font-size="9" font-family="JetBrains Mono">P2入:3103A | P3出:3100A</text>
+              <text id="status-txt-3138" x="60" y="62" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="bold" font-family="JetBrains Mono">● 燈亮 (方波正常)</text>
+              <!-- 探針選中指示環 -->
+              <circle id="probe-3138" cx="112" cy="10" r="6" fill="#facc15" class="probe-ring" style="display: none;" />
+            </g>
+
+            <!-- ECU 1: 3135 (中控台 / 儀表中央) -->
+            <g id="node-3135" transform="translate(365, 290)" class="cursor-pointer" onclick="selectProbe('3135')">
+              <rect width="100" height="72" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="2" id="box-3135" />
+              <text x="50" y="17" text-anchor="middle" fill="#f8fafc" font-size="11" font-weight="bold" font-family="JetBrains Mono">3135 (ECU 1)</text>
+              <text x="50" y="31" text-anchor="middle" fill="#94a3b8" font-size="9.5">中控儀表 (第三站)</text>
+              <text x="50" y="46" text-anchor="middle" fill="#38bdf8" font-size="9" font-family="JetBrains Mono">P2:3100A | P3:3101</text>
+              <text id="status-txt-3135" x="50" y="62" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="bold" font-family="JetBrains Mono">● 燈亮</text>
+              <circle id="probe-3135" cx="92" cy="10" r="6" fill="#facc15" class="probe-ring" style="display: none;" />
+            </g>
+
+            <!-- ECU 2: 3136 (右側儀表台 / 終點站) -->
+            <g id="node-3136" transform="translate(530, 290)" class="cursor-pointer" onclick="selectProbe('3136')">
+              <rect width="110" height="72" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="2" id="box-3136" />
+              <text x="55" y="17" text-anchor="middle" fill="#f8fafc" font-size="11" font-weight="bold" font-family="JetBrains Mono">3136 (ECU 2)</text>
+              <text x="55" y="31" text-anchor="middle" fill="#94a3b8" font-size="9.5">右儀表台 (第四站)</text>
+              <text x="55" y="46" text-anchor="middle" fill="#38bdf8" font-size="9" font-family="JetBrains Mono">P2:3101 | P3:空腳</text>
+              <text id="status-txt-3136" x="55" y="62" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="bold" font-family="JetBrains Mono">● 燈亮</text>
+              <circle id="probe-3136" cx="102" cy="10" r="6" fill="#facc15" class="probe-ring" style="display: none;" />
+            </g>
+
+            <!-- ECU 3: 3137 (右前門 / 副駕側 / 第一站) -->
+            <g id="node-3137" transform="translate(730, 290)" class="cursor-pointer" onclick="selectProbe('3137')">
+              <rect width="125" height="72" rx="6" fill="#0f172a" stroke="#38bdf8" stroke-width="2" id="box-3137" />
+              <text x="62" y="17" text-anchor="middle" fill="#f8fafc" font-size="11" font-weight="bold" font-family="JetBrains Mono">3137 (ECU 3)</text>
+              <text x="62" y="31" text-anchor="middle" fill="#94a3b8" font-size="9.5">右前門 (第一站)</text>
+              <text x="62" y="46" text-anchor="middle" fill="#38bdf8" font-size="9" font-family="JetBrains Mono">P2入:9A50A | P3出:3103A</text>
+              <text id="status-txt-3137" x="62" y="62" text-anchor="middle" fill="#38bdf8" font-size="9.5" font-weight="bold" font-family="JetBrains Mono">● 燈亮 (方波正常)</text>
+              <circle id="probe-3137" cx="117" cy="10" r="6" fill="#facc15" class="probe-ring" style="display: none;" />
+            </g>
+
+            <!-- 3137 插頭拔除提示標籤 (情境三顯示) -->
+            <g id="unplugged-3137-badge" transform="translate(730, 266)" style="display: none;">
+              <rect width="125" height="20" rx="4" fill="#b45309" stroke="#f59e0b" stroke-width="1" />
+              <text x="62" y="14" text-anchor="middle" fill="#fef3c7" font-size="10" font-weight="bold">⚠ 4V NR 插頭已拔除</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 下半部：即時虛擬示波器與三用電表雙儀表板 -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 md:p-4 shadow-2xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-400 font-mono-tech">[VIRTUAL LAB BENCH]</span>
+            <span class="text-xs text-slate-300">即時虛擬示波器 & 數位三用電表</span>
+          </div>
+          <!-- 量測點快速切換按鈕 -->
+          <div class="flex flex-wrap gap-1.5 text-xs font-mono-tech">
+            <button onclick="selectProbe('3137')" id="btn-probe-3137" class="px-2.5 py-1 rounded border border-slate-700 bg-slate-800 text-slate-300 hover:border-sky-400 transition">
+              3137 Pin2/3
+            </button>
+            <button onclick="selectProbe('3138')" id="btn-probe-3138" class="px-2.5 py-1 rounded border border-amber-400 bg-amber-950/50 text-amber-300 font-bold transition">
+              3138 Pin2/3 (主測點)
+            </button>
+            <button onclick="selectProbe('3135')" id="btn-probe-3135" class="px-2.5 py-1 rounded border border-slate-700 bg-slate-800 text-slate-300 hover:border-sky-400 transition">
+              3135 Pin2
+            </button>
+            <button onclick="selectProbe('3136')" id="btn-probe-3136" class="px-2.5 py-1 rounded border border-slate-700 bg-slate-800 text-slate-300 hover:border-sky-400 transition">
+              3136 Pin2
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+          <!-- 左側：示波器畫面 (佔 7 欄) -->
+          <div class="md:col-span-7 bg-[#050911] border border-slate-800 rounded-lg p-2.5 flex flex-col justify-between">
+            <div class="flex justify-between items-center text-[11px] font-mono-tech text-slate-400 mb-1">
+              <span>CH1: <strong id="scope-channel-label" class="text-amber-300">3138 Pin 2 (LIN IN)</strong></span>
+              <span>5.0V/div | 200µs/div</span>
+            </div>
+            <div class="relative w-full h-36 bg-[#03060c] rounded border border-slate-800/80 overflow-hidden">
+              <canvas id="oscilloscope-canvas" class="w-full h-full block"></canvas>
+            </div>
+            <div id="scope-diagnosis-caption" class="mt-1.5 text-xs text-sky-300 font-medium">
+              波形判讀：0V – 12V 標準數位方波，主控 VSM1 封包正常傳遞。
+            </div>
+          </div>
+
+          <!-- 右側：數位三用電表 (佔 5 欄) -->
+          <div class="md:col-span-5 bg-[#0b1322] border border-slate-800 rounded-lg p-3 flex flex-col justify-between font-mono-tech">
+            <div>
+              <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1">
+                <span>DIGITAL MULTIMETER</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-amber-400">DC V / Ω</span>
+              </div>
+              <!-- 液晶螢幕讀數 -->
+              <div class="bg-[#132018] border-2 border-slate-700 rounded p-2.5 my-1.5 shadow-inner">
+                <div class="flex justify-between items-baseline">
+                  <span class="text-[10px] text-emerald-500/80">PIN 2/3 對搭鐵</span>
+                  <span id="dmm-mode-tag" class="text-[10px] text-emerald-400">AVG FLUCTUATING</span>
+                </div>
+                <div id="dmm-voltage-readout" class="text-2xl md:text-3xl font-bold text-emerald-400 tracking-wider text-right my-0.5">
+                  9.42 V ~
+                </div>
+                <div class="border-t border-emerald-900/60 pt-1 mt-1 flex justify-between text-[11px] text-emerald-300/90">
+                  <span>Pin 1 供電: <strong id="dmm-pin1">12.4V</strong></span>
+                  <span>Pin 4 搭鐵: <strong id="dmm-pin4">0.01V</strong></span>
+                </div>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-300 bg-slate-900/90 p-2 rounded border border-slate-800 leading-relaxed" id="dmm-note">
+              電表判讀：因 LIN 方波高速切換，三用電表顯示跳動平均電壓。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右欄：步驟控制按鈕、原理拆解與實戰隨堂考 (佔 5 欄) -->
+    <aside class="lg:col-span-5 flex flex-col gap-4">
+
+      <!-- 1. 四階段診斷模擬控制面板 -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-2xl">
+        <h2 class="font-serif-tc text-base font-bold text-slate-100 mb-3 flex items-center gap-2">
+          <span class="w-1.5 h-4 bg-sky-400 rounded-sm"></span>
+          實戰排故情境模擬（點擊切換階段）
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <button onclick="setScenario(1)" id="scen-btn-1" class="text-left p-3 rounded-lg border-2 border-sky-500 bg-sky-950/40 transition">
+            <div class="text-xs font-mono-tech text-sky-400 font-bold">STEP 01</div>
+            <div class="text-sm font-bold text-white mt-0.5">正常作動狀態</div>
+            <div class="text-[11px] text-slate-300 mt-0.5">2+2 並聯供電 / LIN 全車貫通</div>
+          </button>
+
+          <button onclick="setScenario(2)" id="scen-btn-2" class="text-left p-3 rounded-lg border border-slate-700 bg-slate-800/60 hover:border-slate-500 transition">
+            <div class="text-xs font-mono-tech text-rose-400 font-bold">STEP 02</div>
+            <div class="text-sm font-bold text-slate-100 mt-0.5">客訴故障 (3103A 斷線)</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">僅副駕門 3137 亮，其餘全滅</div>
+          </button>
+
+          <button onclick="setScenario(3)" id="scen-btn-3" class="text-left p-3 rounded-lg border border-slate-700 bg-slate-800/60 hover:border-slate-500 transition">
+            <div class="text-xs font-mono-tech text-amber-400 font-bold">STEP 03</div>
+            <div class="text-sm font-bold text-slate-100 mt-0.5">拔除 3137 插頭盲點實驗</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">上游斷開為何 3138 還有 8-12V？</div>
+          </button>
+
+          <button onclick="setScenario(4)" id="scen-btn-4" class="text-left p-3 rounded-lg border border-slate-700 bg-slate-800/60 hover:border-slate-500 transition">
+            <div class="text-xs font-mono-tech text-yellow-300 font-bold">STEP 04</div>
+            <div class="text-sm font-bold text-slate-100 mt-0.5">跨接修復與閉環驗證</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">飛線 3137 P3 ➔ 3138 P2</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. 動態原理解析卡片 (隨情境即時切換說明) -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-2xl flex-1 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span id="detail-badge" class="text-xs font-mono-tech px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800">
+              架構拓撲解析
+            </span>
+            <span class="text-xs text-slate-500 font-mono-tech">LOGIC DECONSTRUCTION</span>
+          </div>
+          <h3 id="detail-title" class="font-serif-tc text-lg font-bold text-white mb-2">
+            供電兩隊並聯、搭鐵三路獨立、LIN 單線一條龍串接
+          </h3>
+          <div id="detail-body" class="text-sm text-slate-300 space-y-2.5 leading-relaxed">
+            <p>
+              • <strong class="text-red-400">供電（Pin 1）2+2 兩隊並聯：</strong>正電由 <code class="text-slate-200">IDB1</code> 經 <code class="text-slate-200">EZ01</code> 分兩隊，第一隊（ZB21A）給前車門組（3137、3138）；第二隊經 <code class="text-slate-200">EZB21</code> 給儀表台組（3135、3136）。
+            </p>
+            <p>
+              • <strong class="text-emerald-400">搭鐵（Pin 4）各自獨立：</strong>3137 獨立接 <code class="text-slate-200">MC46</code>，3138 獨立接 <code class="text-slate-200">MC47</code>，3135 與 3136 共地接 <code class="text-slate-200">MC51</code>。
+            </p>
+            <p>
+              • <strong class="text-sky-400">通訊（Pin 2 進 / Pin 3 出）單線串接：</strong>VSM1 訊號依序穿過 <code class="text-slate-200">3137 ➔ 3138 ➔ 3135 ➔ 3136</code>。只要中間任一環節斷開，斷點後方全數熄滅。
+            </p>
+          </div>
+        </div>
+
+        <!-- 關鍵技術金句提示框 -->
+        <div id="detail-takeaway" class="mt-4 p-3 rounded-lg bg-slate-950 border-l-4 border-sky-400 text-xs text-slate-300 leading-relaxed">
+          <strong class="text-sky-300">診斷心法：</strong>先看懂電路拓撲再動手。若為電源或搭鐵故障，只會影響單隊或單顆；「從第二站起全滅」直接鎖定跨隊通訊線斷路。
+        </div>
+      </div>
+
+      <!-- 3. 互動隨堂考 (Q1) -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 shadow-2xl">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-serif-tc text-base font-bold text-amber-300">
+            現場隨堂考 Q1：若只有最後一站 3136 不亮，優先檢查哪一腳？
+          </h3>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">
+          提示：已知 3137、3138、3135 皆正常點亮，觀察左圖 3136 (ECU 2) 的接腳定義。
+        </p>
+
+        <div class="grid grid-cols-2 gap-2 text-xs font-mono-tech" id="quiz-options">
+          <button onclick="checkQuiz('E')" id="quiz-btn-E" class="p-2.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:border-slate-500 text-left transition">
+            <span class="font-bold text-slate-200">E：Pin 1 供電 (ZB21C)</span>
+          </button>
+          <button onclick="checkQuiz('H')" id="quiz-btn-H" class="p-2.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:border-slate-500 text-left transition">
+            <span class="font-bold text-slate-200">H：Pin 2 訊號 (3101)</span>
+          </button>
+          <button onclick="checkQuiz('M')" id="quiz-btn-M" class="p-2.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:border-slate-500 text-left transition">
+            <span class="font-bold text-slate-200">M：Pin 3 訊號輸出</span>
+          </button>
+          <button onclick="checkQuiz('D')" id="quiz-btn-D" class="p-2.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:border-slate-500 text-left transition">
+            <span class="font-bold text-slate-200">D：Pin 4 搭地 (M3136)</span>
+          </button>
+        </div>
+
+        <div id="quiz-feedback" class="hidden mt-3 p-3 rounded-lg text-xs leading-relaxed"></div>
+      </div>
+
+    </aside>
+  </main>
+
+  <script>
+    // ==================== 狀態管理 ====================
+    let currentScenario = 1;
+    let currentProbe = '3138';
+    let wavePhase = 0;
+
+    // 情境資料定義
+    const SCENARIOS = {
+      1: {
+        badge: 'STEP 01 | 正常作動狀態',
+        badgeClass: 'bg-sky-950 text-sky-300 border-sky-800',
+        statusHeader: 'STATUS: NORMAL (4/4 ON)',
+        statusHeaderClass: 'bg-emerald-950/80 border-emerald-700/70 text-emerald-300',
+        title: '供電兩隊並聯、搭鐵三路獨立、LIN 單線一條龍串接',
+        body: `
+          <p>• <strong class="text-red-400">供電（Pin 1）2+2 兩隊並聯：</strong>正電由 <code>IDB1</code> 經 <code>EZ01</code> 分兩隊，第一隊（ZB21A）給前車門組（3137、3138）；第二隊經 <code>EZB21</code> 給儀表台組（3135、3136）。</p>
+          <p>• <strong class="text-emerald-400">搭鐵（Pin 4）各自獨立：</strong>3137 獨立接 <code>MC46</code>，3138 獨立接 <code>MC47</code>，3135 與 3136 共地接 <code>MC51</code>。</p>
+          <p>• <strong class="text-sky-400">通訊（Pin 2 進 / Pin 3 出）單線串接：</strong>VSM1 訊號依序穿過 <code>3137 ➔ 3138 ➔ 3135 ➔ 3136</code>，四區氣氛燈同時點亮。</p>
+        `,
+        takeaway: '<strong>診斷心法：</strong>先看懂電路拓撲再動手。正常的 LIN 通訊在示波器上呈現 0V–12V 高速數位方波，三用電表則顯示跳動平均電壓。'
+      },
+      2: {
+        badge: 'STEP 02 | 客訴故障重現',
+        badgeClass: 'bg-rose-950 text-rose-300 border-rose-800',
+        statusHeader: 'FAULT: 3103A OPEN (1/4 ON)',
+        statusHeaderClass: 'bg-rose-950/80 border-rose-700/70 text-rose-300',
+        title: '用現象做減法：僅第一站 3137 亮，鎖定 3103A 斷路',
+        body: `
+          <p>• <strong class="text-sky-300">第一站 3137（副駕門）正常亮起：</strong>直接證明 <code>VSM1</code> 主機正常、軟體配置無誤、主幹線 <code>9A50A</code> 也沒斷。</p>
+          <p>• <strong class="text-rose-400">3138、3135、3136 同時全滅：</strong>三顆燈具同時燒毀機率趨近於零，且它們電源與搭鐵各自並聯，唯一解釋是<strong>串接訊號鏈在 3137 交棒給 3138 的 3103A 這段斷了</strong>。</p>
+          <p>• <strong class="text-slate-200">鎖定排查區間：</strong><code>3137 Pin 3 ➔ IC1PA ➔ ICV5A ➔ ICV4A ➔ IC1NA ➔ 3138 Pin 2</code>。</p>
+        `,
+        takeaway: '<strong>診斷心法：</strong>照 L1 標準流程盲目更換 VSM1 或做配置下載在此完全無效，因為斷點在車門中繼線束上。'
+      },
+      3: {
+        badge: 'STEP 03 | 拔插頭盲點實驗',
+        badgeClass: 'bg-amber-950 text-amber-300 border-amber-800',
+        statusHeader: 'TEST: 3137 UNPLUGGED (PULL-UP)',
+        statusHeaderClass: 'bg-amber-950/80 border-amber-700/70 text-amber-300',
+        title: '解開反直覺盲點：拔掉上游 3137，為何 3138 還有 8V–12V？',
+        body: `
+          <p>• <strong class="text-amber-300">LIN Bus 的「上拉電阻」特性：</strong>LIN 訊號線在閒置時並非 0V。每顆燈具晶片內部都有上拉電阻，只要 <code>Pin 1</code> 有電、<code>Pin 4</code> 有搭鐵，就會把通訊腳拉高到 8V–12V 待機高電位。</p>
+          <p>• <strong class="text-sky-300">那 8V–12V 是 3138 自己發出的：</strong>拔掉 3137 雖斷了 VSM1 指令，但 3138 仍插著電，量到的是它自己的待機偏壓，並非上游傳來的訊號。</p>
+          <p>• <strong class="text-rose-300">死寂直線 vs. 方波：</strong>沒有 0V 下拉方波進來，代表訊號被擋在門外。</p>
+        `,
+        takeaway: '<strong>核心鐵律：有電壓 ≠ 有通訊！</strong>三用電表量到「恆定不動的 8V–12V」反而證實通訊完全中斷，必須用示波器看波形才算數。'
+      },
+      4: {
+        badge: 'STEP 04 | 跨接修復與閉環',
+        badgeClass: 'bg-yellow-950 text-yellow-300 border-yellow-800',
+        statusHeader: 'FIXED: BYPASS WIRE OK (4/4 ON)',
+        statusHeaderClass: 'bg-emerald-950/80 border-emerald-700/70 text-emerald-300',
+        title: '導通性實測與跨接飛線驗證，全車氣氛燈恢復正常',
+        body: `
+          <p>• <strong class="text-slate-200">開路確認：</strong>拔開兩端插頭，以歐姆檔直接量測 <code>3137 Pin 3</code> 至 <code>3138 Pin 2</code>，確認電阻為無窮大（開路）。</p>
+          <p>• <strong class="text-yellow-300">跨接飛線修復：</strong>拉一條新線直接連接 <code>3137 Pin 3 ➔ 3138 Pin 2</code>，繞過異常的車門與座艙中繼接頭（IC1PA / ICV5A / ICV4A / IC1NA）。</p>
+          <p>• <strong class="text-sky-300">波形與燈光恢復：</strong>0V–12V 數位方波重新流進 3138 并一路貫通至 3135、3136，全車氣氛燈瞬間點亮。</p>
+        `,
+        takeaway: '<strong>收盤復盤總結：</strong>先看架構、再用現象做減法、以示波器驗證數位方波，就能在面對現代車輛匯流排系統時精準出手、不走冤枉路。'
+      }
+    };
+
+    // 切換情境函式
+    function setScenario(step) {
+      currentScenario = step;
+      const data = SCENARIOS[step];
+
+      // 更新按鈕樣式
+      for (let i = 1; i <= 4; i++) {
+        const btn = document.getElementById(`scen-btn-${i}`);
+        if (i === step) {
+          btn.className = 'text-left p-3 rounded-lg border-2 border-sky-400 bg-sky-950/50 shadow-[0_0_15px_rgba(56,189,248,0.2)] transition';
+        } else {
+          btn.className = 'text-left p-3 rounded-lg border border-slate-700 bg-slate-800/60 hover:border-slate-500 transition';
+        }
+      }
+
+      // 更新頂部狀態與右側文字說明
+      const headerBadge = document.getElementById('header-status-badge');
+      headerBadge.textContent = data.statusHeader;
+      headerBadge.className = `px-2.5 py-1 rounded border text-xs font-mono-tech ${data.statusHeaderClass}`;
+
+      const detailBadge = document.getElementById('detail-badge');
+      detailBadge.textContent = data.badge;
+      detailBadge.className = `text-xs font-mono-tech px-2 py-0.5 rounded border ${data.badgeClass}`;
+
+      document.getElementById('detail-title').textContent = data.title;
+      document.getElementById('detail-body').innerHTML = data.body;
+      document.getElementById('detail-takeaway').innerHTML = data.takeaway;
+
+      // 在情境 3 時自動將探針切到 3138 以突顯盲點實驗
+      if (step === 3) {
+        selectProbe('3138');
+      }
+
+      updateSvgVisuals();
+      updateMeterReadout();
+    }
+
+    // 切換探針量測點
+    function selectProbe(ecuId) {
+      currentProbe = ecuId;
+
+      ['3137', '3138', '3135', '3136'].forEach(id => {
+        const ring = document.getElementById(`probe-${id}`);
+        const btn = document.getElementById(`btn-probe-${id}`);
+        if (id === ecuId) {
+          ring.style.display = 'block';
+          btn.className = 'px-2.5 py-1 rounded border border-amber-400 bg-amber-950/60 text-amber-300 font-bold transition';
+        } else {
+          ring.style.display = 'none';
+          btn.className = 'px-2.5 py-1 rounded border border-slate-700 bg-slate-800 text-slate-300 hover:border-sky-400 transition';
+        }
+      });
+
+      const labelMap = {
+        '3137': '3137 Pin 2/3 (副駕門第一站)',
+        '3138': '3138 Pin 2/3 (駕駛門第二站)',
+        '3135': '3135 Pin 2 (中控儀表第三站)',
+        '3136': '3136 Pin 2 (右儀表台第四站)'
+      };
+      document.getElementById('scope-channel-label').textContent = labelMap[ecuId];
+      updateMeterReadout();
+    }
+
+    // 判斷指定 ECU 在當前情境下是否有有效 LIN 方波、燈光是否亮起
+    function getEcuState(ecuId) {
+      if (currentScenario === 1 || currentScenario === 4) {
+        return { hasPower: true, hasWave: true, lightOn: true, unplugged: false };
+      }
+      if (currentScenario === 2) {
+        // 3103A 斷路：只有 3137 有訊號且燈亮，其餘無方波（但有上拉高電位）
+        if (ecuId === '3137') {
+          return { hasPower: true, hasWave: true, lightOn: true, unplugged: false };
+        }
+        return { hasPower: true, hasWave: false, lightOn: false, unplugged: false };
+      }
+      if (currentScenario === 3) {
+        // 3137 插頭拔除：3137 無電無訊號；3138/3135/3136 有電無方波（上拉待機電壓）
+        if (ecuId === '3137') {
+          return { hasPower: false, hasWave: false, lightOn: false, unplugged: true };
+        }
+        return { hasPower: true, hasWave: false, lightOn: false, unplugged: false };
+      }
+    }
+
+    // 更新 SVG 車艙圖視覺狀態
+    function updateSvgVisuals() {
+      const seg1 = document.getElementById('lin-seg-1');
+      const seg2 = document.getElementById('lin-seg-2');
+      const seg3 = document.getElementById('lin-seg-3');
+      const seg4 = document.getElementById('lin-seg-4');
+      const faultMarker = document.getElementById('fault-break-marker');
+      const bypassGroup = document.getElementById('bypass-wire-group');
+      const unpluggedBadge = document.getElementById('unplugged-3137-badge');
+
+      // 預設重置
+      faultMarker.style.display = 'none';
+      bypassGroup.style.display = 'none';
+      unpluggedBadge.style.display = 'none';
+
+      // Segment 1 (VSM1 -> 3137)
+      if (currentScenario === 3) {
+        seg1.setAttribute('stroke', '#475569');
+        seg1.classList.remove('flow-fast');
+      } else {
+        seg1.setAttribute('stroke', '#38bdf8');
+        seg1.classList.add('flow-fast');
+      }
+
+      // Segment 2 (3137 -> 3138 3103A)
+      if (currentScenario === 1) {
+        seg2.setAttribute('stroke', '#38bdf8');
+        seg2.classList.add('flow-fast');
+      } else if (currentScenario === 2 || currentScenario === 3) {
+        seg2.setAttribute('stroke', '#ef4444');
+        seg2.classList.remove('flow-fast');
+        faultMarker.style.display = 'block';
+        if (currentScenario === 3) {
+          unpluggedBadge.style.display = 'block';
+        }
+      } else if (currentScenario === 4) {
+        seg2.setAttribute('stroke', '#ef4444');
+        seg2.classList.remove('flow-fast');
+        faultMarker.style.display = 'block';
+        bypassGroup.style.display = 'block';
+      }
+
+      // Segment 3 & 4 (3138 -> 3135 -> 3136)
+      if (currentScenario === 1 || currentScenario === 4) {
+        seg3.setAttribute('stroke', '#38bdf8');
+        seg3.classList.add('flow-fast');
+        seg4.setAttribute('stroke', '#38bdf8');
+        seg4.classList.add('flow-fast');
+      } else {
+        // 斷訊時維持暗色高電位線
+        seg3.setAttribute('stroke', '#334155');
+        seg3.classList.remove('flow-fast');
+        seg4.setAttribute('stroke', '#334155');
+        seg4.classList.remove('flow-fast');
+      }
+
+      // 更新四顆 ECU 燈條與狀態框
+      ['3137', '3138', '3135', '3136'].forEach(id => {
+        const st = getEcuState(id);
+        const strip = document.getElementById(`strip-${id}`);
+        const box = document.getElementById(`box-${id}`);
+        const txt = document.getElementById(`status-txt-${id}`);
+
+        if (st.lightOn) {
+          strip.setAttribute('class', 'ambient-strip-on');
+          box.setAttribute('stroke', '#38bdf8');
+          txt.setAttribute('fill', '#38bdf8');
+          txt.textContent = (id === '3137' || id === '3138') ? '● 燈亮 (方波正常)' : '● 燈亮';
+        } else {
+          strip.setAttribute('class', 'ambient-strip-off');
+          if (st.unplugged) {
+            box.setAttribute('stroke', '#f59e0b');
+            txt.setAttribute('fill', '#fbbf24');
+            txt.textContent = '⚠ 插頭拔除 (無電)';
+          } else {
+            box.setAttribute('stroke', '#475569');
+            txt.setAttribute('fill', '#94a3b8');
+            txt.textContent = (id === '3138') ? '○ 熄滅 (待機8-12V)' : '○ 熄滅 (無方波)';
+          }
+        }
+      });
+    }
+
+    // 更新三用電表與示波器文字說明
+    function updateMeterReadout() {
+      const st = getEcuState(currentProbe);
+      const voltEl = document.getElementById('dmm-voltage-readout');
+      const modeEl = document.getElementById('dmm-mode-tag');
+      const pin1El = document.getElementById('dmm-pin1');
+      const pin4El = document.getElementById('dmm-pin4');
+      const noteEl = document.getElementById('dmm-note');
+      const scopeCap = document.getElementById('scope-diagnosis-caption');
+
+      if (st.unplugged) {
+        voltEl.textContent = '0.00 V';
+        voltEl.className = 'text-2xl md:text-3xl font-bold text-slate-400 tracking-wider text-right my-0.5';
+        modeEl.textContent = 'OPEN / UNPLUGGED';
+        pin1El.textContent = '0.00V (已拔)';
+        pin4El.textContent = 'OPEN';
+        noteEl.textContent = '3137 插頭已拔除，無供電亦無上拉電位。';
+        scopeCap.textContent = '波形判讀：0V 水平線（插頭已拔除）。';
+        scopeCap.className = 'mt-1.5 text-xs text-slate-400 font-medium';
+        return;
+      }
+
+      pin1El.textContent = '12.4V';
+      pin4El.textContent = '0.01V';
+
+      if (st.hasWave) {
+        voltEl.textContent = '9.38 V ~';
+        voltEl.className = 'text-2xl md:text-3xl font-bold text-emerald-400 tracking-wider text-right my-0.5';
+        modeEl.textContent = 'LIN ACTIVE (FLUCTUATING)';
+        noteEl.textContent = '電表判讀：因 0V–12V 方波高速跳動，電表顯示浮動平均電壓。';
+        scopeCap.textContent = '波形判讀：0V – 12V 標準數位方波，主控 VSM1 通訊正常！';
+        scopeCap.className = 'mt-1.5 text-xs text-sky-300 font-medium';
+      } else {
+        voltEl.textContent = '10.85 V';
+        voltEl.className = 'text-2xl md:text-3xl font-bold text-amber-400 tracking-wider text-right my-0.5';
+        modeEl.textContent = 'STATIC PULL-UP (NO DATA)';
+        noteEl.textContent = '電表盲點：恆定不動的 8V–12V 是燈具內部「上拉電阻」建立的待機偏壓，並非有訊號！';
+        scopeCap.textContent = '波形判讀：死寂的 8V–12V 水平直線！無 0V 下拉方波（有電壓 ≠ 有通訊）。';
+        scopeCap.className = 'mt-1.5 text-xs text-amber-300 font-medium';
+      }
+    }
+
+    // ==================== 示波器 Canvas 即時繪圖迴圈 ====================
+    const canvas = document.getElementById('oscilloscope-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // 模擬一組真實感 LIN 封包位元序列 (Sync Break + Sync Byte + PID + Data)
+    const linBits = [
+      1,1,1,1, 0,0,0,0,0,0,0,0,0,0,0,0,0, 1, // Sync Break (13位顯性低電位)
+      0,1,0,1,0,1,0,1, 1,                   // Sync Field (0x55)
+      0,1,1,0,0,1,0,1, 1,                   // Protected ID
+      0,0,1,1,1,0,1,0, 1,                   // Data Byte 1 (顏色/亮度指令)
+      1,0,1,0,1,1,0,0, 1,1,1,1              // Data Byte 2 + Idle
+    ];
+
+    function drawOscilloscope() {
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // 繪製示波器刻度格線
+      ctx.strokeStyle = '#132238';
+      ctx.lineWidth = 1;
+      const cols = 10;
+      const rows = 4;
+      for (let i = 1; i < cols; i++) {
+        ctx.beginPath();
+        ctx.moveTo((w / cols) * i, 0);
+        ctx.lineTo((w / cols) * i, h);
+        ctx.stroke();
+      }
+      for (let j = 1; j < rows; j++) {
+        ctx.beginPath();
+        ctx.moveTo(0, (h / rows) * j);
+        ctx.lineTo(w, (h / rows) * j);
+        ctx.stroke();
+      }
+
+      // 電壓基準標示 (12V 與 0V)
+      const yHigh = h * 0.2;  // 12V 位置
+      const yLow = h * 0.82;  // 0V 位置
+      const yStatic = h * 0.26; // 待機 10.8V 位置
+
+      ctx.fillStyle = '#475569';
+      ctx.font = '10px JetBrains Mono';
+      ctx.fillText('12V', 6, yHigh - 4);
+      ctx.fillText('0V', 6, yLow + 11);
+
+      const st = getEcuState(currentProbe);
+
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+
+      if (st.unplugged) {
+        // 0V 水平線
+        ctx.strokeStyle = '#64748b';
+        ctx.moveTo(0, yLow);
+        ctx.lineTo(w, yLow);
+        ctx.stroke();
+      } else if (st.hasWave) {
+        // 繪製滾動的 0V - 12V LIN 數位方波
+        ctx.strokeStyle = '#38bdf8';
+        ctx.shadowColor = '#0ea5e9';
+        ctx.shadowBlur = 6;
+
+        const bitWidth = 9;
+        const totalPatternWidth = linBits.length * bitWidth;
+        wavePhase = (wavePhase + 1.4) % totalPatternWidth;
+
+        let prevY = null;
+        for (let x = 0; x <= w; x += 2) {
+          const virtualX = (x + wavePhase) % totalPatternWidth;
+          const bitIndex = Math.floor(virtualX / bitWidth);
+          const bitVal = linBits[bitIndex];
+          const y = bitVal === 1 ? yHigh : yLow;
+
+          if (x === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            if (prevY !== null && prevY !== y) {
+              ctx.lineTo(x, prevY);
+              ctx.lineTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          }
+          prevY = y;
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      } else {
+        // 繪製死寂的 8V–12V 上拉待機直線
+        ctx.strokeStyle = '#fbbf24';
+        ctx.shadowColor = '#f59e0b';
+        ctx.shadowBlur = 5;
+        ctx.moveTo(0, yStatic);
+        ctx.lineTo(w, yStatic);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      // 動態電表數字微幅跳動模擬
+      if (st.hasWave && Math.random() < 0.12) {
+        const simV = (9.15 + Math.random() * 0.65).toFixed(2);
+        document.getElementById('dmm-voltage-readout').textContent = `${simV} V ~`;
+      }
+
+      requestAnimationFrame(drawOscilloscope);
+    }
+
+    // ==================== 互動隨堂考邏輯 ====================
+    function checkQuiz(choice) {
+      const feedback = document.getElementById('quiz-feedback');
+      ['E', 'H', 'M', 'D'].forEach(opt => {
+        const b = document.getElementById(`quiz-btn-${opt}`);
+        b.className = 'p-2.5 rounded-lg border border-slate-700 bg-slate-800/80 text-left transition opacity-75';
+      });
+
+      const selectedBtn = document.getElementById(`quiz-btn-${choice}`);
+      const correctBtn = document.getElementById('quiz-btn-H');
+
+      feedback.classList.remove('hidden');
+
+      if (choice === 'H') {
+        selectedBtn.className = 'p-2.5 rounded-lg border-2 border-emerald-400 bg-emerald-950/60 text-left transition font-bold';
+        feedback.className = 'mt-3 p-3 rounded-lg bg-emerald-950/60 border border-emerald-700 text-emerald-200 text-xs leading-relaxed';
+        feedback.innerHTML = `
+          <strong>✔ 正確答案：H（Pin 2 訊號線 3101）！</strong><br/>
+          因為前面三顆（3137、3138、3135）都亮，代表 VSM1 主機與前段 LIN 訊號正常，訊號已抵達 3135。交棒給最後一站 3136 的唯一入口就是 <strong>Pin 2（線號 3101）</strong>（實務拆插頭時也會順便確認 Pin 1 供電與 Pin 4 搭地）。
+        `;
+      } else if (choice === 'M') {
+        selectedBtn.className = 'p-2.5 rounded-lg border-2 border-rose-500 bg-rose-950/60 text-left transition';
+        correctBtn.className = 'p-2.5 rounded-lg border-2 border-emerald-400 bg-emerald-950/40 text-left transition';
+        feedback.className = 'mt-3 p-3 rounded-lg bg-rose-950/60 border border-rose-700 text-rose-200 text-xs leading-relaxed';
+        feedback.innerHTML = `
+          <strong>✘ 錯誤！M（Pin 3）絕對不用查：</strong><br/>
+          3136 是整條 LIN Bus 串接鏈的最後一站，後方沒有下一顆燈，因此 <strong>Pin 3 是空腳（未接線）</strong>！優先檢查應為 <strong>H：Pin 2 訊號（3101）</strong>。
+        `;
+      } else {
+        selectedBtn.className = 'p-2.5 rounded-lg border-2 border-amber-500 bg-amber-950/60 text-left transition';
+        correctBtn.className = 'p-2.5 rounded-lg border-2 border-emerald-400 bg-emerald-950/40 text-left transition';
+        feedback.className = 'mt-3 p-3 rounded-lg bg-amber-950/60 border border-amber-700 text-amber-200 text-xs leading-relaxed';
+        feedback.innerHTML = `
+          <strong>△ 實務上會順便量，但考點優先選 H（Pin 2 訊號 3101）：</strong><br/>
+          雖然 3136 的 Pin 1（ZB21C）與 Pin 4（M3136）確實是獨立支線，但本題針對「LIN 串接鏈末端斷訊」設計，前三顆既已點亮，代表訊號已走到最後一棒交接處，故優先檢查 <strong>H：Pin 2（線號 3101）</strong>。
+        `;
+      }
+    }
+
+    // 視窗載入後啟動初始化與示波器動畫
+    window.onload = function () {
+      resizeCanvas();
+      setScenario(1);
+      selectProbe('3138');
+      drawOscilloscope();
+    };
+  </script>
+</body>
+</html>
