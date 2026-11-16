@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Peugeot 307 2.0 充電系統 (01 CBP) 動態診斷模擬器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #0b0f17;
+      color: #e2e8f0;
+      font-family: "Noto Sans TC", "Inter", sans-serif;
+    }
+    .font-serif-tc {
+      font-family: "Noto Serif TC", serif;
+    }
+    .font-mono-tech {
+      font-family: "JetBrains Mono", monospace;
+    }
+    /* Custom scrollbar for sleek engineering look */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    @keyframes pulseGlowRed {
+      0%, 100% { filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.85)); }
+      50% { filter: drop-shadow(0 0 14px rgba(239, 68, 68, 1)); }
+    }
+    .lamp-active {
+      animation: pulseGlowRed 1.1s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-cyan-500/30 selection:text-cyan-200">
+  <!-- Top Engineering Header -->
+  <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur px-4 py-3 sm:px-6">
+    <div class="max-w-[1440px] mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+      <div>
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <span class="px-2 py-0.5 text-xs font-mono-tech font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded">PSA SEDRE 01 CBP</span>
+          <span class="px-2 py-0.5 text-xs font-mono-tech font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 rounded">RPO 11111</span>
+          <span class="text-xs text-slate-400">尚鵬汽車 內湖服務廠｜技術培訓互動模擬</span>
+        </div>
+        <h1 class="font-serif-tc text-lg sm:text-xl font-bold text-slate-100 mt-1 tracking-wide">
+          Peugeot 307 2.0 汽油｜發電機 <span class="text-amber-400 font-mono-tech">2V NR</span> 雙線控制與「怠速不充／電瓶燈鎖死」物理邏輯模擬器
+        </h1>
+      </div>
+      <!-- Quick Status Pill Bar -->
+      <div class="flex items-center gap-3 bg-slate-900/90 border border-slate-800 px-3 py-2 rounded-xl self-start md:self-auto">
+        <div class="text-right">
+          <div class="text-[11px] text-slate-400">引擎轉速 RPM</div>
+          <div id="hudRpm" class="font-mono-tech text-base font-bold text-cyan-300">800 RPM</div>
+        </div>
+        <div class="h-7 w-px bg-slate-800"></div>
+        <div class="text-right">
+          <div class="text-[11px] text-slate-400">系統電瓶電壓</div>
+          <div id="hudVolt" class="font-mono-tech text-base font-bold text-emerald-400">14.2 V</div>
+        </div>
+        <div class="h-7 w-px bg-slate-800"></div>
+        <div class="text-right">
+          <div class="text-[11px] text-slate-400">怠速異常計時</div>
+          <div id="hudTimer" class="font-mono-tech text-base font-bold text-slate-300">00:00</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-[1440px] w-full mx-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
+    
+    <!-- LEFT PANEL: Interactive Animated Wiring & Physics Canvas (7 cols) -->
+    <section class="lg:col-span-7 flex flex-col gap-4">
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3 sm:p-4 shadow-2xl flex flex-col">
+        <div class="flex items-center justify-between mb-2 px-1 flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+            <h2 class="text-sm font-bold text-slate-200 tracking-wide">原廠電路動態拓撲圖（BSI1 ↔ 1020 發電機 ↔ 1320 引擎電腦）</h2>
+          </div>
+          <div class="flex items-center gap-3 text-xs">
+            <span class="flex items-center gap-1.5 text-amber-400">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span>1030 線：12V 激磁去程
+            </span>
+            <span class="flex items-center gap-1.5 text-cyan-400">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span>104 線：5V DFM 方波回程
+            </span>
+          </div>
+        </div>
+
+        <!-- SVG Schematic + Animated Physics -->
+        <div class="relative w-full bg-[#070a10] border border-slate-800/90 rounded-xl overflow-hidden">
+          <svg id="circuitSvg" viewBox="0 0 860 540" class="w-full h-auto block select-none">
+            <defs>
+              <!-- Grid Pattern -->
+              <pattern id="techGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+                <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#111827" stroke-width="1" />
+              </pattern>
+              <!-- Glow Filters -->
+              <filter id="glowAmber" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="3.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id="glowCyan" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="3.5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id="glowEmerald" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id="glowRed" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            <!-- Background Grid -->
+            <rect width="860" height="540" fill="url(#techGrid)" />
+
+            <!-- Top Dashboard Instrument Cluster Strip -->
+            <g transform="translate(24, 16)">
+              <rect x="0" y="0" width="812" height="58" rx="10" fill="#0f172a" stroke="#1e293b" stroke-width="1.5" />
+              <!-- Ignition Key Status -->
+              <g transform="translate(16, 11)">
+                <rect x="0" y="0" width="146" height="36" rx="7" fill="#1e293b" stroke="#334155" />
+                <circle id="igLed" cx="18" cy="18" r="6" fill="#22c55e" />
+                <text x="32" y="15" fill="#94a3b8" font-size="10">點火開關狀態</text>
+                <text id="igStatusText" x="32" y="29" fill="#f8fafc" font-size="12" font-weight="bold" class="font-mono-tech">IG ON (運轉中)</text>
+              </g>
+
+              <!-- Throttle Rev Button inside Schematic -->
+              <g id="svgRevTrigger" transform="translate(174, 11)" class="cursor-pointer">
+                <rect x="0" y="0" width="184" height="36" rx="7" fill="#172554" stroke="#3b82f6" stroke-width="1.5" />
+                <text x="92" y="15" text-anchor="middle" fill="#93c5fd" font-size="10">物理激磁測試</text>
+                <text x="92" y="29" text-anchor="middle" fill="#ffffff" font-size="11.5" font-weight="bold">⚡ 踩油門拉轉 (&gt;2500轉)</text>
+              </g>
+
+              <!-- 3-Minute Debounce Timer Display -->
+              <g transform="translate(370, 11)">
+                <rect x="0" y="0" width="210" height="36" rx="7" fill="#1e293b" stroke="#334155" />
+                <text x="12" y="15" fill="#94a3b8" font-size="10">BSI1/ECU 異常確認計時器 (門檻 03:00)</text>
+                <rect x="12" y="21" width="132" height="8" rx="4" fill="#0f172a" />
+                <rect id="timerProgressBar" x="12" y="21" width="0" height="8" rx="4" fill="#f59e0b" />
+                <text id="svgTimerText" x="152" y="29" fill="#f8fafc" font-size="11.5" font-weight="bold" class="font-mono-tech">00:00</text>
+              </g>
+
+              <!-- Instrument Cluster Battery Warning Lamp -->
+              <g transform="translate(592, 8)">
+                <rect id="battLampBox" x="0" y="0" width="204" height="42" rx="8" fill="#18181b" stroke="#3f3f46" stroke-width="1.5" />
+                <!-- Battery Icon -->
+                <g id="battLampIcon" transform="translate(14, 9)" opacity="0.28">
+                  <rect x="0" y="4" width="32" height="20" rx="2.5" fill="none" stroke="#ef4444" stroke-width="2.2" />
+                  <rect x="5" y="0" width="6" height="4" fill="#ef4444" />
+                  <rect x="21" y="0" width="6" height="4" fill="#ef4444" />
+                  <line x1="6" y1="14" x2="12" y2="14" stroke="#ef4444" stroke-width="2" />
+                  <line x1="20" y1="14" x2="26" y2="14" stroke="#ef4444" stroke-width="2" />
+                  <line x1="23" y1="11" x2="23" y2="17" stroke="#ef4444" stroke-width="2" />
+                </g>
+                <text x="56" y="17" fill="#a1a1aa" font-size="10">儀表板電瓶故障燈</text>
+                <text id="battLampStatus" x="56" y="33" fill="#71717a" font-size="11.5" font-weight="bold">熄滅 (系統正常)</text>
+              </g>
+            </g>
+
+            <!-- ==================== WIRING PATHS ==================== -->
+
+            <!-- 1. Line 1030: BSI1 (40V NR Pin 11) -> BM34 -> Alternator 1020 (2V NR Pin 1) -->
+            <path id="wire1030_part1" d="M 105 385 L 105 140 L 235 140 L 235 385" fill="none" stroke="#475569" stroke-width="3.5" stroke-linejoin="round" />
+            <path id="wire1030_part2" d="M 285 385 L 285 140 L 468 140 L 468 258" fill="none" stroke="#475569" stroke-width="3.5" stroke-linejoin="round" />
+            <!-- Active glowing overlay for Line 1030 -->
+            <path id="glow1030_part1" d="M 105 385 L 105 140 L 235 140 L 235 385" fill="none" stroke="#f59e0b" stroke-width="3.5" stroke-linejoin="round" opacity="0.9" />
+            <path id="glow1030_part2" d="M 285 385 L 285 140 L 468 140 L 468 258" fill="none" stroke="#f59e0b" stroke-width="3.5" stroke-linejoin="round" opacity="0.9" />
+
+            <!-- Line 1030 Labels -->
+            <text x="170" y="130" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold" class="font-mono-tech">線號 1030 (12V 激磁控制)</text>
+            <text x="376" y="130" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold" class="font-mono-tech">1030 → L 腳點火電流</text>
+
+            <!-- 2. Main Power B02: Alternator 1020 -> Starter 1010 -> Battery B03 -->
+            <path d="M 432 280 L 432 185 L 352 185 L 352 385" fill="none" stroke="#334155" stroke-width="5" stroke-linejoin="round" />
+            <path id="glowB02" d="M 432 280 L 432 185 L 352 185 L 352 385" fill="none" stroke="#10b981" stroke-width="5" stroke-linejoin="round" opacity="0.85" />
+            <text x="392" y="176" text-anchor="middle" fill="#34d399" font-size="10.5" font-weight="bold" class="font-mono-tech">B02 主充電線</text>
+
+            <!-- 3. Line 104: Alternator 1020 (2V NR Pin 2) -> IC61 (2V VE Pin 2) -> ECU 1320 (32V GR Pin B1) -->
+            <path id="wire104" d="M 508 258 L 508 140 L 755 140 L 755 385" fill="none" stroke="#475569" stroke-width="3.5" stroke-linejoin="round" />
+            <path id="glow104" d="M 508 258 L 508 140 L 755 140 L 755 385" fill="none" stroke="#22d3ee" stroke-width="3.5" stroke-linejoin="round" opacity="0.9" />
+            <text x="632" y="130" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold" class="font-mono-tech">線號 104 (0-5V DFM 負荷方波)</text>
+
+            <!-- Intermediate Connector IC61 (2V VE Pin 2) -->
+            <g transform="translate(602, 124)">
+              <rect x="0" y="0" width="66" height="32" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5" />
+              <text x="33" y="14" text-anchor="middle" fill="#a7f3d0" font-size="9.5" font-weight="bold" class="font-mono-tech">IC61 2V VE</text>
+              <text x="33" y="26" text-anchor="middle" fill="#ffffff" font-size="9.5" class="font-mono-tech">Pin 2</text>
+            </g>
+
+            <!-- ==================== SHORT CIRCUIT BRIDGE (1030 <-> 104) ==================== -->
+            <g id="shortCircuitGroup" opacity="0">
+              <!-- Insulation crack & melted copper bridge between Pin 1 (x=468) and Pin 2 (x=508) above connector -->
+              <rect x="458" y="202" width="60" height="24" rx="5" fill="#450a0a" stroke="#ef4444" stroke-width="2" stroke-dasharray="3 2" />
+              <path d="M 468 214 L 480 208 L 488 220 L 496 208 L 508 214" fill="none" stroke="#f87171" stroke-width="3" filter="url(#glowRed)" />
+              <text x="488" y="196" text-anchor="middle" fill="#fca5a5" font-size="10" font-weight="bold">🔥 絕緣脆化兩線黏連短路!</text>
+            </g>
+
+            <!-- ==================== ANIMATED CURRENT PARTICLES CONTAINER ==================== -->
+            <g id="particlesLayer"></g>
+
+            <!-- ==================== COMPONENT BOXES ==================== -->
+
+            <!-- 1. BSI1 (Body Systems Interface) -->
+            <g transform="translate(30, 385)">
+              <rect x="0" y="0" width="145" height="125" rx="10" fill="#0f172a" stroke="#334155" stroke-width="2" />
+              <rect x="0" y="0" width="145" height="28" rx="10" fill="#1e293b" />
+              <text x="72" y="19" text-anchor="middle" fill="#f8fafc" font-size="13" font-weight="bold" class="font-mono-tech">BSI1 車身電腦</text>
+              <!-- Connector Badge -->
+              <rect x="28" y="-14" width="94" height="20" rx="4" fill="#1e1b4b" stroke="#6366f1" stroke-width="1.2" />
+              <text x="75" y="0" text-anchor="middle" fill="#c7d2fe" font-size="10" font-weight="bold" class="font-mono-tech">40V NR Pin 11</text>
+              <!-- Internal IC Symbol -->
+              <rect x="44" y="42" width="56" height="44" rx="4" fill="#1e293b" stroke="#64748b" stroke-width="1.5" />
+              <text x="72" y="62" text-anchor="middle" fill="#fbbf24" font-size="10.5" font-weight="bold">12V 上拉供電</text>
+              <text x="72" y="76" text-anchor="middle" fill="#94a3b8" font-size="9.5">主動送出激磁</text>
+              <text id="bsiOutLabel" x="72" y="110" text-anchor="middle" fill="#fbbf24" font-size="11" font-weight="bold" class="font-mono-tech">輸出: 11.8V</text>
+            </g>
+
+            <!-- 2. BM34 (Engine Fuse Box) -->
+            <g transform="translate(195, 385)">
+              <rect x="0" y="0" width="120" height="125" rx="10" fill="#0f172a" stroke="#334155" stroke-width="2" />
+              <rect x="0" y="0" width="120" height="28" rx="10" fill="#1e293b" />
+              <text x="60" y="19" text-anchor="middle" fill="#f8fafc" font-size="12.5" font-weight="bold" class="font-mono-tech">BM34 保險絲盒</text>
+              <text x="38" y="46" text-anchor="middle" fill="#94a3b8" font-size="9.5" class="font-mono-tech">16V GR</text>
+              <text x="38" y="58" text-anchor="middle" fill="#cbd5e1" font-size="9.5" class="font-mono-tech">Pin 2</text>
+              <text x="86" y="46" text-anchor="middle" fill="#94a3b8" font-size="9.5" class="font-mono-tech">2V NR</text>
+              <text x="86" y="58" text-anchor="middle" fill="#cbd5e1" font-size="9.5" class="font-mono-tech">Pin 2</text>
+              <!-- Internal Pass-through line -->
+              <path d="M 40 0 L 40 78 L 90 78 L 90 0" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+              <text x="60" y="106" text-anchor="middle" fill="#94a3b8" font-size="10">1030 迴路中繼</text>
+            </g>
+
+            <!-- 3. Starter 1010 & Battery B03 -->
+            <g transform="translate(330, 385)">
+              <rect x="0" y="0" width="76" height="125" rx="10" fill="#0f172a" stroke="#334155" stroke-width="2" />
+              <rect x="0" y="0" width="76" height="28" rx="10" fill="#1e293b" />
+              <text x="38" y="19" text-anchor="middle" fill="#f8fafc" font-size="11.5" font-weight="bold" class="font-mono-tech">1010/電瓶</text>
+              <text x="38" y="48" text-anchor="middle" fill="#34d399" font-size="10" class="font-mono-tech">B02 → B03</text>
+              <rect x="14" y="60" width="48" height="32" rx="4" fill="#064e3b" stroke="#10b981" />
+              <text id="battBoxVolt" x="38" y="80" text-anchor="middle" fill="#ecfdf5" font-size="11.5" font-weight="bold" class="font-mono-tech">14.2V</text>
+              <text id="battChargeState" x="38" y="110" text-anchor="middle" fill="#34d399" font-size="10" font-weight="bold">充電中</text>
+            </g>
+
+            <!-- 4. Alternator 1020 (Centerpiece Physics Unit) -->
+            <g transform="translate(420, 268)">
+              <!-- Main Housing -->
+              <rect x="0" y="0" width="235" height="242" rx="12" fill="#0f172a" stroke="#475569" stroke-width="2.2" />
+              <rect x="0" y="0" width="235" height="30" rx="12" fill="#1e293b" />
+              <text x="117" y="20" text-anchor="middle" fill="#f8fafc" font-size="13" font-weight="bold" class="font-mono-tech">1020 發電機總成</text>
+
+              <!-- 2V NR Black Connector Visual -->
+              <g id="connector2VNR" transform="translate(34, -22)">
+                <rect x="0" y="0" width="72" height="26" rx="5" fill="#18181b" stroke="#94a3b8" stroke-width="1.8" />
+                <text x="36" y="-5" text-anchor="middle" fill="#e2e8f0" font-size="10.5" font-weight="bold" class="font-mono-tech">2V NR 黑色插頭</text>
+                <!-- Pin 1 -->
+                <circle id="pin1Dot" cx="14" cy="13" r="5" fill="#f59e0b" />
+                <text x="23" y="16" fill="#fbbf24" font-size="9.5" font-weight="bold" class="font-mono-tech">1</text>
+                <!-- Pin 2 -->
+                <circle id="pin2Dot" cx="48" cy="13" r="5" fill="#22d3ee" />
+                <text x="57" y="16" fill="#22d3ee" font-size="9.5" font-weight="bold" class="font-mono-tech">2</text>
+                <!-- Unplugged / Bad Contact X badge -->
+                <g id="badContactBadge" opacity="0">
+                  <rect x="-12" y="2" width="96" height="22" rx="4" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5" />
+                  <text x="36" y="16" text-anchor="middle" fill="#fecaca" font-size="9.5" font-weight="bold">⚠ 退針 / 接觸斷開</text>
+                </g>
+              </g>
+
+              <!-- Spinning Rotor + Magnetic Field Visualization -->
+              <g transform="translate(118, 122)">
+                <!-- Outer Magnetic Field Glow Rings -->
+                <circle id="magRingOuter" cx="0" cy="0" r="64" fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6 4" opacity="0.75" />
+                <circle id="magRingInner" cx="0" cy="0" r="52" fill="rgba(56, 189, 248, 0.08)" stroke="#0284c7" stroke-width="1.5" opacity="0.8" />
+                
+                <!-- Stator Core -->
+                <circle cx="0" cy="0" r="42" fill="#1e293b" stroke="#64748b" stroke-width="3" />
+                
+                <!-- Rotating Rotor Blades -->
+                <g id="rotorSpinner">
+                  <rect x="-6" y="-34" width="12" height="68" rx="3" fill="#94a3b8" />
+                  <rect x="-34" y="-6" width="68" height="12" rx="3" fill="#94a3b8" />
+                  <circle cx="0" cy="0" r="16" fill="#334155" stroke="#cbd5e1" stroke-width="2" />
+                  <circle cx="0" cy="0" r="5" fill="#38bdf8" />
+                </g>
+              </g>
+
+              <!-- Rotor & Regulator Status Labels -->
+              <text id="magFieldLabel" x="118" y="206" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold">轉子磁場：正常建立 (外部激磁)</text>
+              <text id="icModeLabel" x="118" y="226" text-anchor="middle" fill="#94a3b8" font-size="10">調節器 IC：正常輸出 14.2V + DFM方波</text>
+            </g>
+
+            <!-- 5. Engine ECU 1320 -->
+            <g transform="translate(680, 385)">
+              <rect x="0" y="0" width="150" height="125" rx="10" fill="#0f172a" stroke="#334155" stroke-width="2" />
+              <rect x="0" y="0" width="150" height="28" rx="10" fill="#1e293b" />
+              <text x="75" y="19" text-anchor="middle" fill="#f8fafc" font-size="13" font-weight="bold" class="font-mono-tech">1320 引擎電腦</text>
+              <!-- Connector Badge -->
+              <rect x="26" y="-14" width="98" height="20" rx="4" fill="#083344" stroke="#06b6d4" stroke-width="1.2" />
+              <text x="75" y="0" text-anchor="middle" fill="#a5f3fc" font-size="10" font-weight="bold" class="font-mono-tech">32V GR Pin B1</text>
+              <!-- Internal Receiver -->
+              <rect x="22" y="42" width="106" height="44" rx="4" fill="#1e293b" stroke="#64748b" stroke-width="1.5" />
+              <text x="75" y="62" text-anchor="middle" fill="#22d3ee" font-size="10.5" font-weight="bold">5V DFM 訊號接收</text>
+              <text x="75" y="76" text-anchor="middle" fill="#94a3b8" font-size="9.5">監控發電負荷方波</text>
+              <text id="ecuInLabel" x="75" y="110" text-anchor="middle" fill="#22d3ee" font-size="11" font-weight="bold" class="font-mono-tech">接收: 0-5V 方波</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Bottom Legend & Logic Summary -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3 text-xs">
+          <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-2.5 flex items-start gap-2.5">
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono-tech font-bold shrink-0">Pin 1 (1030)</span>
+            <p class="text-slate-300 leading-relaxed">
+              <strong class="text-amber-300">去程供電（12V）：</strong>由 <span class="font-mono-tech">BSI1 Pin 11</span> 經 <span class="font-mono-tech">BM34</span> 送出初始激磁電流給發電機轉子「點火建立磁場」。
+            </p>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800/90 rounded-xl p-2.5 flex items-start gap-2.5">
+            <span class="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-mono-tech font-bold shrink-0">Pin 2 (104)</span>
+            <p class="text-slate-300 leading-relaxed">
+              <strong class="text-cyan-300">回程訊號（5V 方波）：</strong>發電機調節器轉換為 <span class="font-mono-tech">0–5V</span> 負荷脈衝，經 <span class="font-mono-tech">IC61</span> 回報給引擎電腦 <span class="font-mono-tech">1320 Pin B1</span>。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Scenario Controls, Digital Multimeter & Explanation (5 cols) -->
+    <section class="lg:col-span-5 flex flex-col gap-4">
+      
+      <!-- 1. Scenario Mode Selector -->
+      <div class="bg-slate-900/85 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+            一、 實車故障情境演練（點擊切換）
+          </h2>
+          <span id="scenarioTag" class="text-[11px] font-mono-tech px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">正常模式</span>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2">
+          <button onclick="setScenario('normal')" id="btn-normal" class="scenario-btn text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between bg-emerald-950/40 border-emerald-500/60 text-emerald-100">
+            <div>
+              <div class="text-xs font-bold">1. 正常狀態：2V NR 插頭接觸良好</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">怠速 800 RPM 即獲 12V 激磁，14.2V 充電、5V 方波正常</div>
+            </div>
+            <span class="text-xs font-mono-tech text-emerald-400 font-bold">14.2V</span>
+          </button>
+
+          <button onclick="setScenario('bad_contact')" id="btn-bad_contact" class="scenario-btn text-left px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-slate-700 transition-all flex items-center justify-between text-slate-200">
+            <div>
+              <div class="text-xs font-bold text-rose-300">2. 故障狀態：2V NR 插頭退針 / 接觸不良</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">怠速無激磁不充電 (12.3V)，計時滿 3 分鐘電瓶燈亮起並鎖死</div>
+            </div>
+            <span class="text-xs font-mono-tech text-rose-400 font-bold">12.3V</span>
+          </button>
+
+          <button onclick="triggerRevSelfExcite()" id="btn-self_excite" class="scenario-btn text-left px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-amber-500/50 transition-all flex items-center justify-between text-slate-200">
+            <div>
+              <div class="text-xs font-bold text-amber-300">3. 故障中踩油門：拉轉 &gt; 2,500 RPM（剩磁自激發電）</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">衝破二極體門檻恢復 14.1V 充電，但電瓶燈維持鎖死不滅！</div>
+            </div>
+            <span class="text-xs font-mono-tech text-amber-400 font-bold">自激 14.1V</span>
+          </button>
+
+          <button onclick="setScenario('short_circuit')" id="btn-short_circuit" class="scenario-btn text-left px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-slate-700 transition-all flex items-center justify-between text-slate-200">
+            <div>
+              <div class="text-xs font-bold text-orange-300">4. 線束通病：1030 與 104 脆化黏連短路</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">12V 與 5V 訊號線黏在一起分壓拉低至 ~6.4V，怠速罷工</div>
+            </div>
+            <span class="text-xs font-mono-tech text-orange-400 font-bold">線間短路</span>
+          </button>
+
+          <button onclick="resetIgnition()" class="mt-1 w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-[0.99] border border-slate-700 text-xs font-bold text-slate-100 flex items-center justify-center gap-2 transition">
+            <span>🔑 點火開關重置（IG OFF 休眠 → 重新 IG ON 發動）</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. Digital Multimeter & Oscilloscope Probe Simulator -->
+      <div class="bg-slate-900/85 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            二、 三用電表實戰量測工具（SOP 驗證）
+          </h2>
+          <!-- Toggle Unplugged vs Plugged -->
+          <div class="inline-flex rounded-lg bg-slate-950 p-0.5 border border-slate-800 text-[11px]">
+            <button id="modeUnplugged" onclick="setProbeConnection(false)" class="px-2.5 py-1 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 transition">
+              拔下插頭 (IG ON 空載)
+            </button>
+            <button id="modePlugged" onclick="setProbeConnection(true)" class="px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-slate-200 transition">
+              插上插頭 (運轉動態)
+            </button>
+          </div>
+        </div>
+
+        <!-- Probe Point Buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-3">
+          <button onclick="setProbeTarget('pin1')" id="probe-pin1" class="probe-btn px-2 py-2 rounded-lg border border-amber-500/60 bg-amber-950/40 text-amber-200 text-xs font-bold text-center transition">
+            Pin 1 (1030)<br><span class="text-[10px] font-normal text-slate-400">對負極 DC V</span>
+          </button>
+          <button onclick="setProbeTarget('pin2')" id="probe-pin2" class="probe-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-950/70 text-slate-300 text-xs font-bold text-center hover:border-slate-700 transition">
+            Pin 2 (104)<br><span class="text-[10px] font-normal text-slate-400">對負極 DC V</span>
+          </button>
+          <button onclick="setProbeTarget('ohm')" id="probe-ohm" class="probe-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-950/70 text-slate-300 text-xs font-bold text-center hover:border-slate-700 transition">
+            Pin 1 ↔ Pin 2<br><span class="text-[10px] font-normal text-slate-400">線間電阻 Ω</span>
+          </button>
+          <button onclick="setProbeTarget('batt')" id="probe-batt" class="probe-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-950/70 text-slate-300 text-xs font-bold text-center hover:border-slate-700 transition">
+            電瓶 B+ 端<br><span class="text-[10px] font-normal text-slate-400">系統充電電壓</span>
+          </button>
+        </div>
+
+        <!-- Multimeter LCD Screen + Mini Oscilloscope -->
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+          <!-- Digital Multimeter LCD -->
+          <div class="sm:col-span-7 bg-[#0c1612] border-2 border-slate-700 rounded-xl p-3 flex flex-col justify-between relative overflow-hidden">
+            <div class="flex items-center justify-between text-[10px] font-mono-tech text-emerald-500/80">
+              <span id="dmmModeLabel">AUTO DC VOLTS</span>
+              <span id="dmmStateBadge" class="px-1.5 py-0.2 bg-emerald-950 rounded text-emerald-300">拔插頭空載</span>
+            </div>
+            <div class="my-1.5 flex items-baseline justify-end gap-1.5">
+              <span id="dmmReadout" class="font-mono-tech text-3xl font-bold tracking-wider text-emerald-300 drop-shadow-[0_0_8px_rgba(52,211,153,0.45)]">11.82</span>
+              <span id="dmmUnit" class="font-mono-tech text-sm font-bold text-emerald-400">V</span>
+            </div>
+            <div id="dmmHint" class="text-[11px] text-emerald-200/80 border-t border-emerald-900/60 pt-1.5 leading-snug">
+              BSI1 Pin 11 正常送出 12V 激磁基準電壓
+            </div>
+          </div>
+
+          <!-- Mini Oscilloscope for Pin 2 (104 DFM 5V Square Wave) -->
+          <div class="sm:col-span-5 bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-[10px] font-mono-tech text-cyan-400">
+              <span>Pin 2 (104) 波形</span>
+              <span>0V–5V</span>
+            </div>
+            <canvas id="scopeCanvas" width="180" height="64" class="w-full h-16 rounded bg-[#05080f] my-1 border border-slate-900"></canvas>
+            <div id="scopeStatusText" class="text-[10px] text-slate-400 font-mono-tech text-right">PWM 方波正常</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Dynamic Engineering Explanation Box -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="px-2 py-0.5 text-[11px] font-bold rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">物理與電腦邏輯解析</span>
+            <h3 id="expTitle" class="text-sm font-bold text-slate-100">正常外部激磁模式：BSI1 供電點火 + 5V 負荷回報閉環</h3>
+          </div>
+          <p id="expBody" class="text-xs sm:text-[13px] text-slate-300 leading-relaxed space-y-2">
+            紅火發動瞬間，BSI1（40V NR Pin 11）透過線號 1030 主動送出約 12V 激磁電流進入發電機 2V NR Pin 1，轉子線圈立刻建立強大磁場。在怠速 800 RPM 下即可穩定輸出 14.2V 充電電壓；同時發電機調節器透過 Pin 2（線號 104）將負載轉換為 0–5V 方波回傳給引擎電腦 1320（Pin B1），雙方確認閉環正常，電瓶故障燈維持熄滅。
+          </p>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+          <span>口訣：<strong class="text-amber-300">1030 去程送 12V</strong>／<strong class="text-cyan-300">104 回程傳 5V 方波</strong></span>
+          <span class="font-mono-tech text-slate-500">Peugeot 307 2.0</span>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    // ==================== SIMULATION STATE ====================
+    const state = {
+      scenario: 'normal',        // 'normal' | 'bad_contact' | 'short_circuit'
+      rpm: 800,
+      targetRpm: 800,
+      rotorAngle: 0,
+      isCharging: true,
+      selfExcited: false,
+      idleFaultSeconds: 0,       // Counts up to 180s (3 minutes)
+      lampLatched: false,        // Once true, stays ON until ignition reset!
+      probeUnplugged: true,      // true = 拔下 2V NR 插頭 (IG ON 空載), false = 插上運轉動態
+      probeTarget: 'pin1',       // 'pin1' | 'pin2' | 'ohm' | 'batt'
+      particles1030: [],
+      particles104: [],
+      scopePhase: 0,
+      revTimeout: null
+    };
+
+    // Initialize animated particles along SVG paths
+    for (let i = 0; i < 6; i++) {
+      state.particles1030.push({ t: i / 6 });
+      state.particles104.push({ t: i / 6 });
+    }
+
+    // ==================== DOM REFERENCES ====================
+    const el = {
+      hudRpm: document.getElementById('hudRpm'),
+      hudVolt: document.getElementById('hudVolt'),
+      hudTimer: document.getElementById('hudTimer'),
+      svgTimerText: document.getElementById('svgTimerText'),
+      timerProgressBar: document.getElementById('timerProgressBar'),
+      battLampBox: document.getElementById('battLampBox'),
+      battLampIcon: document.getElementById('battLampIcon'),
+      battLampStatus: document.getElementById('battLampStatus'),
+      rotorSpinner: document.getElementById('rotorSpinner'),
+      magRingOuter: document.getElementById('magRingOuter'),
+      magRingInner: document.getElementById('magRingInner'),
+      magFieldLabel: document.getElementById('magFieldLabel'),
+      icModeLabel: document.getElementById('icModeLabel'),
+      battBoxVolt: document.getElementById('battBoxVolt'),
+      battChargeState: document.getElementById('battChargeState'),
+      bsiOutLabel: document.getElementById('bsiOutLabel'),
+      ecuInLabel: document.getElementById('ecuInLabel'),
+      glow1030_1: document.getElementById('glow1030_part1'),
+      glow1030_2: document.getElementById('glow1030_part2'),
+      glow104: document.getElementById('glow104'),
+      glowB02: document.getElementById('glowB02'),
+      badContactBadge: document.getElementById('badContactBadge'),
+      shortCircuitGroup: document.getElementById('shortCircuitGroup'),
+      particlesLayer: document.getElementById('particlesLayer'),
+      scenarioTag: document.getElementById('scenarioTag'),
+      expTitle: document.getElementById('expTitle'),
+      expBody: document.getElementById('expBody'),
+      dmmModeLabel: document.getElementById('dmmModeLabel'),
+      dmmStateBadge: document.getElementById('dmmStateBadge'),
+      dmmReadout: document.getElementById('dmmReadout'),
+      dmmUnit: document.getElementById('dmmUnit'),
+      dmmHint: document.getElementById('dmmHint'),
+      scopeCanvas: document.getElementById('scopeCanvas'),
+      scopeStatusText: document.getElementById('scopeStatusText'),
+      igLed: document.getElementById('igLed'),
+      igStatusText: document.getElementById('igStatusText')
+    };
+
+    const scopeCtx = el.scopeCanvas.getContext('2d');
+
+    // ==================== PATH INTERPOLATION HELPERS ====================
+    // Path 1030: BSI1(105,385)->(105,140)->(235,140)->BM34(235,385) then BM34(285,385)->(285,140)->(468,140)->Alt(468,258)
+    const pts1030 = [
+      { x: 105, y: 385 }, { x: 105, y: 140 }, { x: 235, y: 140 }, { x: 235, y: 385 },
+      { x: 285, y: 385 }, { x: 285, y: 140 }, { x: 468, y: 140 }, { x: 468, y: 258 }
+    ];
+    // Path 104: Alt(508,258)->(508,140)->(755,140)->ECU(755,385)
+    const pts104 = [
+      { x: 508, y: 258 }, { x: 508, y: 140 }, { x: 755, y: 140 }, { x: 755, y: 385 }
+    ];
+
+    function samplePolyline(points, t, maxT = 1) {
+      const clampedT = Math.min(t, maxT);
+      let totalLen = 0;
+      const segs = [];
+      for (let i = 0; i < points.length - 1; i++) {
+        // Skip jump inside BM34 box (index 3 to 4)
+        if (points === pts1030 && i === 3) continue;
+        const dx = points[i + 1].x - points[i].x;
+        const dy = points[i + 1].y - points[i].y;
+        const len = Math.hypot(dx, dy);
+        segs.push({ p1: points[i], p2: points[i + 1], len });
+        totalLen += len;
+      }
+      let targetDist = clampedT * totalLen;
+      for (const s of segs) {
+        if (targetDist <= s.len) {
+          const r = targetDist / s.len;
+          return {
+            x: s.p1.x + (s.p2.x - s.p1.x) * r,
+            y: s.p1.y + (s.p2.y - s.p1.y) * r
+          };
+        }
+        targetDist -= s.len;
+      }
+      return segs[segs.length - 1].p2;
+    }
+
+    // ==================== SCENARIO CONTROLS ====================
+    function setScenario(mode) {
+      state.scenario = mode;
+      state.selfExcited = false;
+      state.targetRpm = 800;
+      if (state.revTimeout) clearTimeout(state.revTimeout);
+
+      // Update button highlight styles
+      document.querySelectorAll('.scenario-btn').forEach(btn => {
+        btn.className = 'scenario-btn text-left px-3.5 py-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-slate-700 transition-all flex items-center justify-between text-slate-200';
+      });
+
+      if (mode === 'normal') {
+        state.isCharging = true;
+        state.idleFaultSeconds = 0;
+        state.lampLatched = false;
+        document.getElementById('btn-normal').className = 'scenario-btn text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between bg-emerald-950/40 border-emerald-500/60 text-emerald-100';
+        el.scenarioTag.textContent = '正常外部激磁模式';
+        el.scenarioTag.className = 'text-[11px] font-mono-tech px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+      } else if (mode === 'bad_contact') {
+        state.isCharging = false;
+        state.idleFaultSeconds = 0;
+        state.lampLatched = false;
+        document.getElementById('btn-bad_contact').className = 'scenario-btn text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between bg-rose-950/40 border-rose-500/60 text-rose-100';
+        el.scenarioTag.textContent = '故障：2V NR 退針斷開';
+        el.scenarioTag.className = 'text-[11px] font-mono-tech px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30';
+      } else if (mode === 'short_circuit') {
+        state.isCharging = false;
+        state.idleFaultSeconds = 0;
+        state.lampLatched = false;
+        document.getElementById('btn-short_circuit').className = 'scenario-btn text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between bg-orange-950/40 border-orange-500/60 text-orange-100';
+        el.scenarioTag.textContent = '故障：1030/104 黏連短路';
+        el.scenarioTag.className = 'text-[11px] font-mono-tech px-2 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30';
+      }
+
+      updateExplanation();
+      updateMultimeter();
+    }
+
+    function triggerRevSelfExcite() {
+      // If currently in normal mode, switch to bad_contact first so user sees the classic fault-rev behavior
+      if (state.scenario === 'normal') {
+        setScenario('bad_contact');
+      }
+      state.targetRpm = 2850;
+      document.getElementById('btn-self_excite').className = 'scenario-btn text-left px-3.5 py-2.5 rounded-xl border transition-all flex items-center justify-between bg-amber-950/50 border-amber-400 text-amber-100';
+
+      if (state.revTimeout) clearTimeout(state.revTimeout);
+      state.revTimeout = setTimeout(() => {
+        // High RPM residual magnetism breaks diode threshold -> enters Self-Excitation!
+        state.selfExcited = true;
+        state.isCharging = true;
+        state.targetRpm = 800; // Returns to idle, but keeps charging!
+        updateExplanation();
+        updateMultimeter();
+      }, 1100);
+
+      updateExplanation();
+    }
+
+    document.getElementById('svgRevTrigger').addEventListener('click', triggerRevSelfExcite);
+
+    function resetIgnition() {
+      // Simulate IG OFF -> IG ON reset
+      el.igLed.setAttribute('fill', '#ef4444');
+      el.igStatusText.textContent = 'IG OFF (斷電休眠重置中...)';
+      state.rpm = 0;
+      state.targetRpm = 0;
+      state.selfExcited = false;
+      state.idleFaultSeconds = 0;
+      state.lampLatched = false;
+      state.isCharging = false;
+
+      setTimeout(() => {
+        el.igLed.setAttribute('fill', '#22c55e');
+        el.igStatusText.textContent = 'IG ON (重新發動運轉)';
+        state.targetRpm = 800;
+        if (state.scenario === 'normal') {
+          state.isCharging = true;
+        } else {
+          state.isCharging = false;
+        }
+        updateExplanation();
+        updateMultimeter();
+      }, 650);
+    }
+
+    // ==================== MULTIMETER CONTROLS ====================
+    function setProbeConnection(plugged) {
+      state.probeUnplugged = !plugged;
+      const btnUn = document.getElementById('modeUnplugged');
+      const btnPl = document.getElementById('modePlugged');
+      if (state.probeUnplugged) {
+        btnUn.className = 'px-2.5 py-1 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 transition';
+        btnPl.className = 'px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-slate-200 transition';
+        el.dmmStateBadge.textContent = '拔插頭空載';
+      } else {
+        btnPl.className = 'px-2.5 py-1 rounded-md font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 transition';
+        btnUn.className = 'px-2.5 py-1 rounded-md font-medium text-slate-400 hover:text-slate-200 transition';
+        el.dmmStateBadge.textContent = '插頭插上動態';
+      }
+      updateMultimeter();
+    }
+
+    function setProbeTarget(target) {
+      state.probeTarget = target;
+      document.querySelectorAll('.probe-btn').forEach(btn => {
+        btn.className = 'probe-btn px-2 py-2 rounded-lg border border-slate-800 bg-slate-950/70 text-slate-300 text-xs font-bold text-center hover:border-slate-700 transition';
+      });
+      const activeBtn = document.getElementById('probe-' + target);
+      activeBtn.className = 'probe-btn px-2 py-2 rounded-lg border border-cyan-400 bg-cyan-950/50 text-cyan-200 text-xs font-bold text-center transition';
+      updateMultimeter();
+    }
+
+    function updateMultimeter() {
+      const t = state.probeTarget;
+      const un = state.probeUnplugged;
+      const sc = state.scenario;
+
+      if (t === 'ohm') {
+        el.dmmModeLabel.textContent = 'RESISTANCE (Ω) 蜂鳴/電阻檔';
+        if (sc === 'short_circuit') {
+          el.dmmReadout.textContent = '0.4';
+          el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-rose-400';
+          el.dmmUnit.textContent = 'Ω 🔔';
+          el.dmmHint.textContent = '⚠ 蜂鳴導通！1030 與 104 絕緣破損兩線黏在一起短路！';
+        } else {
+          el.dmmReadout.textContent = 'O.L';
+          el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-emerald-300';
+          el.dmmUnit.textContent = 'MΩ';
+          el.dmmHint.textContent = '正常無窮大 (OL)：兩條控制線絕緣良好，無線間短路。';
+        }
+        return;
+      }
+
+      el.dmmModeLabel.textContent = 'AUTO DC VOLTS (20V檔)';
+
+      if (t === 'pin1') {
+        el.dmmUnit.textContent = 'V';
+        if (sc === 'short_circuit') {
+          el.dmmReadout.textContent = '6.42';
+          el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-orange-400';
+          el.dmmHint.textContent = '異常分壓！12V 被短路到 104 訊號線拉低，無法建立磁場。';
+        } else if (un) {
+          el.dmmReadout.textContent = '11.82';
+          el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-emerald-300';
+          el.dmmHint.textContent = '正常基準：BSI1 Pin 11 主動送出 ~12V 激磁電源至插頭端。';
+        } else {
+          // Plugged in running
+          if (sc === 'normal') {
+            el.dmmReadout.textContent = '14.15';
+            el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-emerald-300';
+            el.dmmHint.textContent = '正常充電中：調節器已將 L 腳電位抬升至與系統電壓一致。';
+          } else {
+            // Bad contact at connector
+            el.dmmReadout.textContent = state.selfExcited ? '11.80' : '11.80';
+            el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-amber-300';
+            el.dmmHint.textContent = '線束端有 11.8V，但因母端子退針未真正接觸發電機針腳！';
+          }
+        }
+      } else if (t === 'pin2') {
+        el.dmmUnit.textContent = 'V';
+        if (sc === 'short_circuit') {
+          el.dmmReadout.textContent = '6.42';
+          el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-orange-400';
+          el.dmmHint.textContent = '⚠ 與 Pin 1 電壓完全相同！證實兩線黏連，ECU 收到錯誤高壓。';
+        } else if (un) {
+          el.dmmReadout.textContent = '0.02';
+          el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-cyan-300';
+          el.dmmHint.textContent = '正常一高一低：1320 電腦端為 5V 訊號接收腳，拔插頭空載為 ~0V。';
+        } else {
+          if (sc === 'normal') {
+            el.dmmReadout.textContent = '3.45';
+            el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-cyan-300';
+            el.dmmHint.textContent = '正常 DFM 負荷方波平均電壓（0–5V 脈衝回報引擎電腦 1320）。';
+          } else {
+            el.dmmReadout.textContent = '0.00';
+            el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-rose-400';
+            el.dmmHint.textContent = '異常 0V：插頭斷開導致 1320 收不到 5V 方波，滿 3 分鐘亮電瓶燈。';
+          }
+        }
+      } else if (t === 'batt') {
+        el.dmmUnit.textContent = 'V';
+        if (state.isCharging) {
+          const v = state.selfExcited ? '14.12' : '14.24';
+          el.dmmReadout.textContent = v;
+          el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-emerald-300';
+          el.dmmHint.textContent = state.selfExcited
+            ? '自激發電充電中（但 2V NR 仍斷線，電瓶燈依舊鎖死不熄滅）。'
+            : '充電系統正常發電中（標準範圍 13.8V – 14.4V）。';
+        } else {
+          el.dmmReadout.textContent = '12.28';
+          el.dmmReadout.className = 'font-mono-tech text-3xl font-bold tracking-wider text-rose-400';
+          el.dmmHint.textContent = '未充電！僅剩電瓶靜態電壓，持續消耗電瓶電力中。';
+        }
+      }
+    }
+
+    function updateExplanation() {
+      const sc = state.scenario;
+      if (sc === 'normal') {
+        el.expTitle.textContent = '正常外部激磁模式：BSI1 送 12V 點火 + 發電機回傳 5V 方波';
+        el.expBody.innerHTML = `
+          <p>1. <strong>去程點火（1030 線）：</strong><span class="font-mono-tech text-amber-300">BSI1 (40V NR Pin 11)</span> 主動送出 12V 激磁電流至發電機 <span class="font-mono-tech">Pin 1</span>，轉子在怠速 800 RPM 即可建立強大磁場，立即輸出 <strong>14.2V</strong> 充電。</p>
+          <p>2. <strong>回程閉環（104 線）：</strong>發電機調節器將負荷轉為 <strong>0–5V 方波</strong>經 <span class="font-mono-tech">IC61</span> 回報給引擎電腦 <span class="font-mono-tech text-cyan-300">1320 (Pin B1)</span>，系統確認無誤，電瓶燈保持熄滅。</p>
+        `;
+      } else if (sc === 'bad_contact' && !state.selfExcited) {
+        el.expTitle.textContent = '故障狀態（2V NR 退針）：怠速失磁不充電 → 滿 3 分鐘電瓶燈鎖死';
+        el.expBody.innerHTML = `
+          <p>1. <strong>怠速不充電：</strong><span class="font-mono-tech">2V NR</span> 插頭退針切斷了 <span class="font-mono-tech text-amber-300">1030 線 12V 激磁</span>，轉子無磁場、怠速剩磁太弱，電壓掉至 <strong>12.3V</strong>。</p>
+          <p>2. <strong>3 分鐘計時亮燈：</strong><span class="font-mono-tech">BSI1</span> 與 <span class="font-mono-tech">1320</span> 收不到正常回饋累積達 <strong>3 分鐘</strong>後點亮電瓶燈。請試著點擊上方「<strong>⚡ 踩油門拉轉 (&gt;2500轉)</strong>」觀察自激現象！</p>
+        `;
+      } else if (sc === 'bad_contact' && state.selfExcited) {
+        el.expTitle.textContent = '剩磁「自激發電」觸發：補油門後有充電，但電瓶燈鎖死需熄火重置！';
+        el.expBody.innerHTML = `
+          <p>1. <strong>為什麼補油門就充了？</strong>轉速衝破 2,500 轉時，鐵芯微弱「剩磁」切割出足夠電壓衝破調節器二極體門檻，發電機改從自身輸出抽電供給轉子（<strong>自激發電</strong>），即使降回怠速也維持 <strong>14.1V</strong>。</p>
+          <p>2. <strong>為什麼電瓶燈不滅？</strong>307 採 <span class="font-mono-tech">BSI1</span> 網路控制，觸發異常後啟動「<strong>當前駕駛循環鎖定 (Latch)</strong>」，必須<strong>熄火斷電再重新發動</strong>才會重置。</p>
+        `;
+      } else if (sc === 'short_circuit') {
+        el.expTitle.textContent = '老車線束通病：1030 (12V) 與 104 (5V) 脆化黏連短路';
+        el.expBody.innerHTML = `
+          <p>1. <strong>雙線分壓癱瘓：</strong>插頭後方高溫脆化導致 <span class="font-mono-tech text-amber-300">1030 (12V)</span> 與 <span class="font-mono-tech text-cyan-300">104 (5V訊號)</span> 兩條銅線黏在一起，電表量兩腳都會變成相同的 <strong>~6.4V</strong>。</p>
+          <p>2. <strong>雙重失能：</strong>發電機吃不到足夠激磁電流導致怠速不充電，同時引擎電腦 <span class="font-mono-tech">1320</span> 接收到失真高壓，3 分鐘後同樣亮起電瓶燈鎖死。</p>
+        `;
+      }
+    }
+
+    // ==================== MAIN ANIMATION LOOP ====================
+    let lastTime = performance.now();
+
+    function animate(now) {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      // Smooth RPM transition
+      state.rpm += (state.targetRpm - state.rpm) * Math.min(1, dt * 5);
+      const displayRpm = Math.round(state.rpm);
+      el.hudRpm.textContent = `${displayRpm} RPM`;
+
+      // Rotate Alternator Rotor proportional to RPM
+      if (displayRpm > 50) {
+        const degPerSec = (displayRpm / 800) * 260;
+        state.rotorAngle = (state.rotorAngle + degPerSec * dt) % 360;
+        el.rotorSpinner.setAttribute('transform', `rotate(${state.rotorAngle.toFixed(1)})`);
+      }
+
+      // Magnetic field & charging visuals
+      const hasMagneticField = (state.scenario === 'normal' && displayRpm > 100) || (state.selfExcited && displayRpm > 100);
+      if (hasMagneticField) {
+        el.magRingOuter.setAttribute('opacity', '0.85');
+        el.magRingInner.setAttribute('opacity', '0.9');
+        el.magRingOuter.setAttribute('stroke', state.selfExcited ? '#fbbf24' : '#38bdf8');
+        el.magFieldLabel.textContent = state.selfExcited
+          ? '轉子磁場：剩磁高速衝破門檻 (自激建立)'
+          : '轉子磁場：正常建立 (BSI1 外部激磁)';
+        el.magFieldLabel.setAttribute('fill', state.selfExcited ? '#fbbf24' : '#38bdf8');
+        el.glowB02.setAttribute('opacity', '0.9');
+        el.battBoxVolt.textContent = state.selfExcited ? '14.1V' : '14.2V';
+        el.battChargeState.textContent = '充電中';
+        el.battChargeState.setAttribute('fill', '#34d399');
+        el.hudVolt.textContent = state.selfExcited ? '14.1 V' : '14.2 V';
+        el.hudVolt.className = 'font-mono-tech text-base font-bold text-emerald-400';
+      } else {
+        el.magRingOuter.setAttribute('opacity', '0.12');
+        el.magRingInner.setAttribute('opacity', '0.1');
+        el.magFieldLabel.textContent = '轉子磁場：無磁場 (怠速剩磁不足)';
+        el.magFieldLabel.setAttribute('fill', '#f87171');
+        el.glowB02.setAttribute('opacity', '0.15');
+        el.battBoxVolt.textContent = '12.3V';
+        el.battChargeState.textContent = '未充電';
+        el.battChargeState.setAttribute('fill', '#f87171');
+        el.hudVolt.textContent = '12.3 V';
+        el.hudVolt.className = 'font-mono-tech text-base font-bold text-rose-400';
+      }
+
+      // Connector & Short circuit visual badges
+      el.badContactBadge.setAttribute('opacity', state.scenario === 'bad_contact' ? '1' : '0');
+      el.shortCircuitGroup.setAttribute('opacity', state.scenario === 'short_circuit' ? '1' : '0');
+
+      if (state.scenario === 'short_circuit') {
+        el.bsiOutLabel.textContent = '拉低: 6.4V';
+        el.ecuInLabel.textContent = '異常: 6.4V DC';
+        el.icModeLabel.textContent = '調節器 IC：兩線短路訊號癱瘓';
+      } else if (state.scenario === 'bad_contact') {
+        el.bsiOutLabel.textContent = '輸出: 11.8V';
+        el.ecuInLabel.textContent = state.selfExcited ? '斷線: 0V (鎖死)' : '斷線: 0V';
+        el.icModeLabel.textContent = state.selfExcited
+          ? '調節器 IC：自激輸出 14.1V (無通訊)'
+          : '調節器 IC：未收到激磁 (罷工中)';
+      } else {
+        el.bsiOutLabel.textContent = '輸出: 11.8V';
+        el.ecuInLabel.textContent = '接收: 0-5V 方波';
+        el.icModeLabel.textContent = '調節器 IC：正常輸出 14.2V + DFM方波';
+      }
+
+      // 3-Minute (180s) Debounce Timer Logic (Accelerated 30x so 6 seconds = 3 minutes)
+      if (!state.isCharging && displayRpm > 100 && !state.lampLatched) {
+        state.idleFaultSeconds = Math.min(180, state.idleFaultSeconds + dt * 30);
+        if (state.idleFaultSeconds >= 180) {
+          state.lampLatched = true;
+          updateExplanation();
+        }
+      }
+
+      const mins = Math.floor(state.idleFaultSeconds / 60);
+      const secs = Math.floor(state.idleFaultSeconds % 60);
+      const timeStr = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      el.hudTimer.textContent = timeStr;
+      el.svgTimerText.textContent = timeStr;
+      el.timerProgressBar.setAttribute('width', ((state.idleFaultSeconds / 180) * 132).toFixed(1));
+      el.timerProgressBar.setAttribute('fill', state.lampLatched ? '#ef4444' : '#f59e0b');
+
+      // Battery Warning Lamp Latch State
+      if (state.lampLatched) {
+        el.battLampBox.setAttribute('fill', '#450a0a');
+        el.battLampBox.setAttribute('stroke', '#ef4444');
+        el.battLampIcon.setAttribute('opacity', '1');
+        el.battLampIcon.classList.add('lamp-active');
+        el.battLampStatus.textContent = '點亮鎖死 (需熄火重置)';
+        el.battLampStatus.setAttribute('fill', '#fca5a5');
+      } else {
+        el.battLampBox.setAttribute('fill', '#18181b');
+        el.battLampBox.setAttribute('stroke', '#3f3f46');
+        el.battLampIcon.setAttribute('opacity', '0.28');
+        el.battLampIcon.classList.remove('lamp-active');
+        el.battLampStatus.textContent = '熄滅 (系統正常)';
+        el.battLampStatus.setAttribute('fill', '#71717a');
+      }
+
+      // Render Animated Current Pulses on SVG
+      renderParticles(dt);
+
+      // Render Oscilloscope Waveform on Canvas
+      renderOscilloscope(dt);
+
+      requestAnimationFrame(animate);
+    }
+
+    function renderParticles(dt) {
+      let svgContent = '';
+      const speed = 0.35;
+
+      // 1030 Line Particles (12V Amber pulses from BSI1 -> Alternator)
+      const maxT1030 = state.scenario === 'bad_contact' ? 0.94 : (state.scenario === 'short_circuit' ? 0.88 : 1.0);
+      state.particles1030.forEach(p => {
+        p.t = (p.t + speed * dt) % 1;
+        if (p.t <= maxT1030) {
+          const pos = samplePolyline(pts1030, p.t, maxT1030);
+          const color = state.scenario === 'short_circuit' ? '#fb923c' : '#fbbf24';
+          svgContent += `<circle cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="4.2" fill="${color}" filter="url(#glowAmber)" />`;
+        }
+      });
+
+      // 104 Line Particles (5V Cyan square-wave pulses from Alternator -> ECU 1320)
+      if (state.scenario === 'normal') {
+        state.particles104.forEach(p => {
+          p.t = (p.t + speed * dt) % 1;
+          const pos = samplePolyline(pts104, p.t, 1);
+          svgContent += `<rect x="${(pos.x - 4).toFixed(1)}" y="${(pos.y - 4).toFixed(1)}" width="8" height="8" rx="1.5" fill="#22d3ee" filter="url(#glowCyan)" />`;
+        });
+      }
+
+      el.particlesLayer.innerHTML = svgContent;
+    }
+
+    function renderOscilloscope(dt) {
+      const w = el.scopeCanvas.width;
+      const h = el.scopeCanvas.height;
+      scopeCtx.clearRect(0, 0, w, h);
+
+      // Draw faint grid
+      scopeCtx.strokeStyle = '#0f172a';
+      scopeCtx.lineWidth = 1;
+      for (let x = 0; x < w; x += 20) {
+        scopeCtx.beginPath(); scopeCtx.moveTo(x, 0); scopeCtx.lineTo(x, h); scopeCtx.stroke();
+      }
+      scopeCtx.beginPath(); scopeCtx.moveTo(0, h / 2); scopeCtx.lineTo(w, h / 2); scopeCtx.stroke();
+
+      scopeCtx.lineWidth = 2;
+      if (state.scenario === 'normal' && !state.probeUnplugged) {
+        // 0-5V PWM Square Wave
+        state.scopePhase = (state.scopePhase + dt * 60) % 36;
+        scopeCtx.strokeStyle = '#22d3ee';
+        scopeCtx.beginPath();
+        const highY = 12;
+        const lowY = h - 12;
+        const period = 36;
+        const duty = 0.55;
+        for (let x = 0; x < w; x++) {
+          const phase = (x + state.scopePhase) % period;
+          const y = phase < period * duty ? highY : lowY;
+          if (x === 0) scopeCtx.moveTo(x, y);
+          else scopeCtx.lineTo(x, y);
+        }
+        scopeCtx.stroke();
+        el.scopeStatusText.textContent = '0V–5V DFM 方波正常';
+        el.scopeStatusText.className = 'text-[10px] text-cyan-400 font-mono-tech text-right';
+      } else if (state.scenario === 'short_circuit') {
+        // Flat distorted 6.4V DC line (off-scale high)
+        scopeCtx.strokeStyle = '#fb923c';
+        scopeCtx.beginPath();
+        scopeCtx.moveTo(0, 8);
+        scopeCtx.lineTo(w, 8);
+        scopeCtx.stroke();
+        el.scopeStatusText.textContent = '異常 6.4V 直流 (短路)';
+        el.scopeStatusText.className = 'text-[10px] text-orange-400 font-mono-tech text-right';
+      } else {
+        // Flat 0V line
+        scopeCtx.strokeStyle = '#64748b';
+        scopeCtx.beginPath();
+        scopeCtx.moveTo(0, h - 10);
+        scopeCtx.lineTo(w, h - 10);
+        scopeCtx.stroke();
+        el.scopeStatusText.textContent = state.probeUnplugged ? '拔插頭無訊號 (0V)' : '斷線無回波 (0V)';
+        el.scopeStatusText.className = 'text-[10px] text-slate-400 font-mono-tech text-right';
+      }
+    }
+
+    // Initialize default UI state
+    setScenario('normal');
+    setProbeConnection(true);
+    setProbeTarget('pin1');
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
