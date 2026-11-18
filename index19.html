@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Peugeot e-2008 電動壓縮機完整檢修邏輯與 TSB 保固通關互動模擬器</title>
+  <!-- 載入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-graphite: #12151c;
+      --hv-orange: #ff6b00;
+      --safe-green: #10b981;
+      --danger-red: #ef4444;
+      --tech-blue: #3b82f6;
+    }
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: #12151c;
+      color: #f4f4f5;
+      overflow-x: hidden;
+    }
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* 數位 LCD 螢幕 */
+    .lcd-screen {
+      background: linear-gradient(145deg, #8fa395 0%, #7d9183 100%);
+      box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.15);
+      color: #18221b;
+    }
+    /* 紅燈高壓警告閃爍 */
+    @keyframes hvBlink {
+      0%, 100% {
+        background-color: #ef4444;
+        box-shadow: 0 0 18px #ef4444, 0 0 34px #dc2626;
+      }
+      50% {
+        background-color: #7f1d1d;
+        box-shadow: 0 0 2px #7f1d1d;
+      }
+    }
+    .hv-led-active {
+      animation: hvBlink 0.5s infinite ease-in-out;
+    }
+    /* 管路與電流流動虛線動畫 */
+    @keyframes flowForward {
+      to { stroke-dashoffset: -36; }
+    }
+    .flow-active {
+      stroke-dasharray: 8 10;
+      animation: flowForward 0.65s linear infinite;
+    }
+    @keyframes flowReverse {
+      to { stroke-dashoffset: 36; }
+    }
+    .discharge-active {
+      stroke-dasharray: 6 12;
+      animation: flowReverse 0.45s linear infinite;
+    }
+    /* 探棒移動過渡 */
+    .probe-move {
+      transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* 自訂捲軸 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #181c26; }
+    ::-webkit-scrollbar-thumb { background: #333b4d; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-orange-500 selection:text-white">
+
+  <!-- 頂部主導覽與系統標題 -->
+  <header class="bg-[#181c26] border-b border-slate-800 sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-[#ff6b00]/15 border border-[#ff6b00]/40 flex items-center justify-center text-[#ff6b00]">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-[11px] font-bold tracking-wider uppercase px-2 py-0.5 rounded bg-[#ff6b00]/20 text-[#ff6b00] border border-[#ff6b00]/40">STELLANTIS 技術教案</span>
+            <span class="text-xs text-slate-400 font-mono-tech">VIN: VR3UKZKXZPJ694548 | TSB 1PP1-C5HW015PQ0</span>
+          </div>
+          <h1 class="text-base sm:text-lg font-bold text-white mt-0.5">Peugeot e-2008 電動壓縮機完整檢修邏輯與 TSB 保固通關互動模擬器</h1>
+        </div>
+      </div>
+
+      <!-- 進度狀態標籤 -->
+      <div class="flex items-center gap-2 bg-[#12151c] border border-slate-800 rounded-xl px-3 py-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-xs text-slate-300 font-medium">講師：謝或翰 (Soros) | 高壓安全認證標準版</span>
+      </div>
+    </div>
+
+    <!-- 5 大階段導覽列 (Stepper Tabs) -->
+    <nav class="bg-[#141821] border-t border-slate-800/80 overflow-x-auto">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1.5 py-2 min-w-max">
+        <button onclick="switchStage(1)" id="tab-1" class="stage-tab px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all bg-[#3b82f6] text-white shadow-lg shadow-blue-950/50">
+          <span class="w-5 h-5 rounded-full bg-black/25 flex items-center justify-center font-mono-tech">1</span>
+          安全隔離與高壓斷電 SOP
+        </button>
+        <span class="text-slate-600">→</span>
+        <button onclick="switchStage(2)" id="tab-2" class="stage-tab px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all bg-slate-800/70 text-slate-400 hover:text-slate-200">
+          <span class="w-5 h-5 rounded-full bg-black/25 flex items-center justify-center font-mono-tech">2</span>
+          冷卻系統與冷凍油因果
+        </button>
+        <span class="text-slate-600">→</span>
+        <button onclick="switchStage(3)" id="tab-3" class="stage-tab px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all bg-slate-800/70 text-slate-400 hover:text-slate-200">
+          <span class="w-5 h-5 rounded-full bg-black/25 flex items-center justify-center font-mono-tech">3</span>
+          DiagBox 參數抓取 (檢查 1~3)
+        </button>
+        <span class="text-slate-600">→</span>
+        <button onclick="switchStage(4)" id="tab-4" class="stage-tab px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all bg-slate-800/70 text-slate-400 hover:text-slate-200">
+          <span class="w-5 h-5 rounded-full bg-black/25 flex items-center justify-center font-mono-tech">4</span>
+          兆歐表絕緣量測模擬
+        </button>
+        <span class="text-slate-600">→</span>
+        <button onclick="switchStage(5)" id="tab-5" class="stage-tab px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all bg-slate-800/70 text-slate-400 hover:text-slate-200">
+          <span class="w-5 h-5 rounded-full bg-black/25 flex items-center justify-center font-mono-tech">5</span>
+          TSB 保固補件工單生成
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- 主內容舞台 -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
+
+    <!-- ===================================================================== -->
+    <!-- 階段一：安全隔離與高壓斷電 SOP (TSB D1AK013RP0)                        -->
+    <!-- ===================================================================== -->
+    <section id="stage-1" class="stage-panel grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- 左側互動視覺動畫 (7 欄) -->
+      <div class="lg:col-span-7 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-bold text-[#ff6b00] uppercase tracking-wider">TSB D1AK013RP0 標準工藝</span>
+            <h2 class="text-lg font-bold text-white">高壓斷電與電氣隔離互動演練</h2>
+          </div>
+          <span id="s1-safety-badge" class="px-3 py-1 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40">
+            警告：高壓系統帶電中 (400V DC)
+          </span>
+        </div>
+
+        <!-- SVG 斷電互動場景 -->
+        <div class="bg-[#12151c] border border-slate-800 rounded-xl p-4 flex items-center justify-center">
+          <svg viewBox="0 0 680 310" class="w-full h-auto max-h-[310px] select-none">
+            <!-- 1. 車輛休眠計時器模組 -->
+            <g transform="translate(20, 20)">
+              <rect x="0" y="0" width="195" height="125" rx="12" fill="#1e2433" stroke="#334155" stroke-width="1.5" />
+              <text x="97" y="22" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold">步驟 1：ECU 網路休眠計時</text>
+              <text id="s1-timer-ecu" x="97" y="64" text-anchor="middle" fill="#38bdf8" font-family="'JetBrains Mono', monospace" font-size="28" font-weight="bold">05:00</text>
+              <text id="s1-ecu-status" x="97" y="86" text-anchor="middle" fill="#cbd5e1" font-size="10">車門/引擎蓋/尾門開啟，鑰匙遠離</text>
+              <rect id="s1-ecu-bar" x="20" y="100" width="155" height="8" rx="4" fill="#0f172a" />
+              <rect id="s1-ecu-fill" x="20" y="100" width="0" height="8" rx="4" fill="#10b981" />
+            </g>
+
+            <!-- 2. 引擎室藍色高壓斷路器與安全掛鎖 -->
+            <g transform="translate(235, 20)">
+              <rect x="0" y="0" width="210" height="125" rx="12" fill="#1e2433" stroke="#334155" stroke-width="1.5" />
+              <text x="105" y="22" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold">步驟 2：藍色高壓斷路器 + 掛鎖</text>
+              <!-- 底座 -->
+              <rect x="35" y="45" width="75" height="44" rx="6" fill="#475569" />
+              <!-- 藍色滑動插頭 (未拔出 x=45, 拔出一半 x=85) -->
+              <g id="s1-breaker-plug" transform="translate(45, 42)" class="probe-move">
+                <rect x="0" y="0" width="65" height="50" rx="6" fill="#2563eb" stroke="#60a5fa" stroke-width="2" />
+                <text x="32" y="29" text-anchor="middle" fill="#ffffff" font-size="9" font-weight="bold">HV 斷路器</text>
+              </g>
+              <!-- 安全掛鎖 (預設隱藏) -->
+              <g id="s1-padlock" transform="translate(62, 62)" opacity="0" class="probe-move">
+                <path d="M 6 0 V -8 A 7 7 0 0 1 20 -8 V 0" fill="none" stroke="#fbbf24" stroke-width="3.5" />
+                <rect x="2" y="0" width="22" height="20" rx="4" fill="#ef4444" stroke="#fca5a5" stroke-width="1.5" />
+                <text x="13" y="13" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">LOCK</text>
+              </g>
+              <text id="s1-breaker-label" x="105" y="112" text-anchor="middle" fill="#f87171" font-size="10" font-weight="bold">狀態：閉合通電中</text>
+            </g>
+
+            <!-- 3. 12V 輔助電瓶與電容放電 -->
+            <g transform="translate(465, 20)">
+              <rect x="0" y="0" width="195" height="125" rx="12" fill="#1e2433" stroke="#334155" stroke-width="1.5" />
+              <text x="97" y="22" text-anchor="middle" fill="#94a3b8" font-size="10" font-weight="bold">步驟 3：12V 斷電與電容放電</text>
+              <!-- 電瓶外框 -->
+              <rect x="35" y="40" width="75" height="48" rx="6" fill="#334155" stroke="#64748b" stroke-width="1.5" />
+              <text x="72" y="68" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="bold">12V 輔助</text>
+              <!-- 正極樁頭與線夾 -->
+              <circle cx="95" cy="40" r="6" fill="#ef4444" />
+              <g id="s1-12v-clamp" transform="translate(95, 40)" class="probe-move">
+                <rect x="-8" y="-12" width="38" height="10" rx="3" fill="#22c55e" />
+                <text x="26" y="-4" fill="#4ade80" font-size="8" font-weight="bold">+極</text>
+              </g>
+              <text id="s1-cap-timer" x="97" y="108" text-anchor="middle" fill="#fbbf24" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="bold">電容放電：待執行 (2:00)</text>
+            </g>
+
+            <!-- 4. 原廠特工 [VAT1 / EL-52229] 高壓缺失驗證器 -->
+            <g transform="translate(20, 165)">
+              <rect x="0" y="0" width="640" height="125" rx="12" fill="#1e2433" stroke="#334155" stroke-width="1.5" />
+              <text x="20" y="24" fill="#ff6b00" font-size="11" font-weight="bold">步驟 4：使用原廠電壓缺失驗證器 [VAT1 / EL-52229] 驗電（必須低於 60V 安全電壓）</text>
+
+              <!-- VAT1 儀器造型 -->
+              <rect x="25" y="38" width="130" height="72" rx="10" fill="#365314" stroke="#84cc16" stroke-width="2" />
+              <text x="90" y="56" text-anchor="middle" fill="#ecfccb" font-size="9" font-weight="bold">VAT1 / EL-52229</text>
+              <rect x="40" y="64" width="100" height="26" rx="4" fill="#1a2e05" />
+              <text id="s1-vat-voltage" x="90" y="82" text-anchor="middle" fill="#ef4444" font-family="'JetBrains Mono', monospace" font-size="15" font-weight="bold">402 V DC</text>
+
+              <!-- 待測高壓插頭節點 -->
+              <g transform="translate(230, 42)">
+                <rect x="0" y="0" width="165" height="65" rx="8" fill="#c2410c" stroke="#fb923c" stroke-width="1.5" />
+                <text x="82" y="22" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">電動壓縮機高壓接頭</text>
+                <circle cx="55" cy="44" r="7" fill="#18181b" stroke="#fbbf24" stroke-width="1.5" />
+                <circle cx="110" cy="44" r="7" fill="#18181b" stroke="#fbbf24" stroke-width="1.5" />
+                <text x="82" y="59" text-anchor="middle" fill="#fed7aa" font-size="8">探針深入中央端子測量</text>
+              </g>
+
+              <!-- 驗電探針連線 -->
+              <path id="s1-vat-wire1" d="M 155 65 C 190 65, 220 86, 285 86" fill="none" stroke="#84cc16" stroke-width="3" />
+              <path id="s1-vat-wire2" d="M 155 85 C 195 95, 250 105, 340 86" fill="none" stroke="#a3e635" stroke-width="3" />
+
+              <!-- 安全判定說明框 -->
+              <g transform="translate(420, 40)">
+                <rect x="0" y="0" width="200" height="68" rx="8" fill="#0f172a" stroke="#334155" />
+                <text id="s1-vat-status-title" x="100" y="25" text-anchor="middle" fill="#f87171" font-size="11" font-weight="bold">尚未完成斷電程序</text>
+                <text id="s1-vat-status-desc" x="100" y="44" text-anchor="middle" fill="#94a3b8" font-size="9">請依序執行左側 1→2→3→4 步驟</text>
+                <text x="100" y="59" text-anchor="middle" fill="#64748b" font-size="8">人體感電安全上限：&lt; 60V DC</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 底部導引按鈕 -->
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button onclick="resetStage1()" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+            重置斷電演練
+          </button>
+          <button onclick="switchStage(2)" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#3b82f6] hover:bg-blue-500 text-white flex items-center gap-2 shadow-lg shadow-blue-950/50">
+            下一步：進入冷卻系統與冷凍油因果分析 →
+          </button>
+        </div>
+      </div>
+
+      <!-- 右側操作步驟控制台 (5 欄) -->
+      <div class="lg:col-span-5 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="space-y-3">
+          <h3 class="text-base font-bold text-white border-b border-slate-800 pb-2.5">依序點擊執行高壓斷電 4 步驟：</h3>
+
+          <!-- 按鈕 1 -->
+          <button onclick="execS1Step1()" id="btn-s1-1" class="w-full p-3.5 rounded-xl border border-slate-700 bg-[#12151c] hover:border-sky-500 text-left transition-all flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-sky-500/20 text-sky-400 font-mono-tech font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">01</span>
+            <div>
+              <div class="text-xs font-bold text-white">開啟車門窗/引擎蓋/尾門，靜置 5 分鐘休眠</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">排入 P 檔、鑰匙拿離車輛，等待所有 ECU 進入休眠。</div>
+            </div>
+          </button>
+
+          <!-- 按鈕 2 -->
+          <button onclick="execS1Step2()" id="btn-s1-2" disabled class="w-full p-3.5 rounded-xl border border-slate-800 bg-[#12151c]/50 text-left transition-all flex items-start gap-3 opacity-50 cursor-not-allowed">
+            <span class="w-6 h-6 rounded-lg bg-[#ff6b00]/20 text-[#ff6b00] font-mono-tech font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">02</span>
+            <div>
+              <div class="text-xs font-bold text-white">拉開引擎室藍色高壓斷路器，並扣上安全掛鎖</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">拔至中間定位點並上鎖，掛鎖鑰匙隨身攜帶防誤插。</div>
+            </div>
+          </button>
+
+          <!-- 按鈕 3 -->
+          <button onclick="execS1Step3()" id="btn-s1-3" disabled class="w-full p-3.5 rounded-xl border border-slate-800 bg-[#12151c]/50 text-left transition-all flex items-start gap-3 opacity-50 cursor-not-allowed">
+            <span class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 font-mono-tech font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">03</span>
+            <div>
+              <div class="text-xs font-bold text-white">戴絕緣手套斷開 12V 電瓶正極，等待 2 分鐘放電</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">套上專用絕緣袋隔離，釋放全車網路電容器殘餘電荷。</div>
+            </div>
+          </button>
+
+          <!-- 按鈕 4 -->
+          <button onclick="execS1Step4()" id="btn-s1-4" disabled class="w-full p-3.5 rounded-xl border border-slate-800 bg-[#12151c]/50 text-left transition-all flex items-start gap-3 opacity-50 cursor-not-allowed">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono-tech font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">04</span>
+            <div>
+              <div class="text-xs font-bold text-white">使用原廠特工 [VAT1 / EL-52229] 驗證無殘壓</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">確認高壓接頭殘餘電壓降至 0V（&lt; 60V 安全門檻）。</div>
+            </div>
+          </button>
+        </div>
+
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-200/90 leading-relaxed">
+          <strong>講師提醒：</strong> 若未等待 5 分鐘 ECU 休眠就直接拔 12V 或高壓斷路器，容易產生電弧損傷繼電器觸點並寫入大量網路通訊錯誤碼。
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 階段二：冷卻系統與故障因果邏輯 (Chiller 與 POE/PAG 冷凍油)            -->
+    <!-- ===================================================================== -->
+    <section id="stage-2" class="stage-panel hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- 左側熱管理與油品微觀畫布 (7 欄) -->
+      <div class="lg:col-span-7 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">EV 熱管理與高壓絕緣原理</span>
+            <h2 class="text-lg font-bold text-white">為什麼冷氣不冷會跳「牽引系統異常」？</h2>
+          </div>
+          <!-- 切換油品模擬 -->
+          <div class="flex bg-[#12151c] p-1 rounded-xl border border-slate-700">
+            <button onclick="setOilMode('poe')" id="btn-oil-poe" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition-all">
+              POE 專用高絕緣油 (正常)
+            </button>
+            <button onclick="setOilMode('pag')" id="btn-oil-pag" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">
+              誤加 PAG 油 / 受潮擊穿
+            </button>
+          </div>
+        </div>
+
+        <!-- SVG 系統連動與微觀線圈動畫 -->
+        <div class="bg-[#12151c] border border-slate-800 rounded-xl p-4 flex items-center justify-center">
+          <svg viewBox="0 0 680 320" class="w-full h-auto max-h-[320px] select-none">
+            <!-- 上半部：水箱 vs Chiller 熱交換迴路 -->
+            <text x="20" y="22" fill="#94a3b8" font-size="11" font-weight="bold">【迴路 A】動力電池散熱架構：水箱只能降到接近外氣 (~40°C)，必須靠 Chiller 冷媒降至 20~35°C</text>
+
+            <!-- 車頭水箱 Radiator -->
+            <rect x="20" y="38" width="135" height="82" rx="10" fill="#1e293b" stroke="#64748b" stroke-width="1.5" />
+            <text x="87" y="58" text-anchor="middle" fill="#cbd5e1" font-size="10" font-weight="bold">車頭水箱 Radiator</text>
+            <text x="87" y="76" text-anchor="middle" fill="#fbbf24" font-size="9">被動撞風散熱</text>
+            <text x="87" y="94" text-anchor="middle" fill="#f87171" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="bold">極限: ~40°C (不夠冷)</text>
+
+            <!-- 連接管路 1 -->
+            <line x1="155" y1="79" x2="215" y2="79" stroke="#38bdf8" stroke-width="4" class="flow-active" />
+
+            <!-- 熱交換器 Chiller -->
+            <rect x="215" y="38" width="175" height="82" rx="10" fill="#0f2942" stroke="#3b82f6" stroke-width="2" />
+            <text x="302" y="58" text-anchor="middle" fill="#60a5fa" font-size="10" font-weight="bold">熱交換器 (Chiller)</text>
+            <text x="302" y="75" text-anchor="middle" fill="#93c5fd" font-size="9">冷媒吸熱 → 冷卻液主動降溫</text>
+            <text id="s2-chiller-temp" x="302" y="96" text-anchor="middle" fill="#34d399" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="bold">輸出水溫: 15°C ~ 25°C</text>
+
+            <!-- 連接管路 2 -->
+            <line x1="390" y1="79" x2="455" y2="79" stroke="#10b981" stroke-width="4" id="s2-batt-pipe" class="flow-active" />
+
+            <!-- 牽引動力電池 1778 -->
+            <rect x="455" y="38" width="205" height="82" rx="10" fill="#1e293b" stroke="#10b981" stroke-width="2" id="s2-batt-box" />
+            <text x="557" y="58" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="bold">牽引動力電池 (1778) / BMS</text>
+            <text x="557" y="76" text-anchor="middle" fill="#94a3b8" font-size="9">理想工作溫度：20°C ~ 35°C</text>
+            <text id="s2-bms-status" x="557" y="96" text-anchor="middle" fill="#34d399" font-size="10" font-weight="bold">BMS 狀態：溫度正常、允許行駛</text>
+
+            <!-- 下半部：電動壓縮機內部微觀剖面 -->
+            <text x="20" y="152" fill="#94a3b8" font-size="11" font-weight="bold">【迴路 B】電動壓縮機 (8020) 內部微觀結構：400V 高壓馬達線圈「直接浸泡」在冷凍油中</text>
+
+            <rect x="20" y="166" width="640" height="138" rx="14" fill="#1e2433" stroke="#475569" stroke-width="2" />
+            <!-- 鋁合金外殼標示 -->
+            <rect x="35" y="180" width="610" height="110" rx="10" fill="#0f172a" stroke="#94a3b8" stroke-width="3" />
+            <text x="635" y="196" text-anchor="end" fill="#94a3b8" font-size="9" font-weight="bold">鋁合金接地外殼 (搭鐵)</text>
+
+            <!-- 冷凍油浸泡液體背景 -->
+            <rect id="s2-oil-fluid" x="45" y="190" width="590" height="90" rx="6" fill="#10b981" fill-opacity="0.14" />
+
+            <!-- 400V 高壓銅線圈 -->
+            <g transform="translate(150, 235)">
+              <ellipse cx="0" cy="0" rx="65" ry="30" fill="none" stroke="#f59e0b" stroke-width="6" />
+              <ellipse cx="0" cy="0" rx="48" ry="20" fill="none" stroke="#fbbf24" stroke-width="3" />
+              <text x="0" y="4" text-anchor="middle" fill="#fef08a" font-size="10" font-weight="bold">400V 高壓馬達繞組</text>
+            </g>
+
+            <!-- 漏電擊穿路徑 (僅在 PAG 模式顯示) -->
+            <g id="s2-leak-group" opacity="0">
+              <path d="M 150 205 L 142 192 L 156 188 L 148 180" fill="none" stroke="#ef4444" stroke-width="3.5" />
+              <path d="M 150 265 L 158 278 L 144 282 L 152 290" fill="none" stroke="#ef4444" stroke-width="3.5" />
+              <text x="235" y="204" fill="#f87171" font-size="10" font-weight="bold">⚡ 高壓電透過導電 PAG 油/水氣直接漏電至鋁殼！</text>
+            </g>
+
+            <!-- 右側油品說明卡 -->
+            <g transform="translate(275, 212)">
+              <text id="s2-oil-title" x="0" y="12" fill="#34d399" font-size="12" font-weight="bold">目前油種：原廠指定 POE 高絕緣冷凍油</text>
+              <text id="s2-oil-desc1" x="0" y="32" fill="#cbd5e1" font-size="10">• 體積電阻率極高，完美阻隔 400V 高壓線圈與金屬外殼導通。</text>
+              <text id="s2-oil-desc2" x="0" y="50" fill="#cbd5e1" font-size="10">• 全車絕緣阻抗 > 200 MΩ，Chiller 正常製冷，電池維持最佳溫區。</text>
+            </g>
+          </svg>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button onclick="switchStage(1)" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+            ← 上一步：高壓斷電 SOP
+          </button>
+          <button onclick="switchStage(3)" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#3b82f6] hover:bg-blue-500 text-white flex items-center gap-2 shadow-lg shadow-blue-950/50">
+            下一步：進入 DiagBox 診斷電腦參數抓取 →
+          </button>
+        </div>
+      </div>
+
+      <!-- 右側知識重點拆解 (5 欄) -->
+      <div class="lg:col-span-5 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="space-y-4">
+          <h3 class="text-base font-bold text-white border-b border-slate-800 pb-2.5">電動車空調系統三大關鍵觀念</h3>
+
+          <div class="p-3.5 rounded-xl bg-[#12151c] border border-slate-800">
+            <div class="text-xs font-bold text-sky-400 mb-1">1. 沒有冷氣，電動車不能開！</div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              台灣夏季外氣動輒 35°C 以上，車頭水箱散熱極限約 40°C，無法將鋰電池冷卻至 <strong>20°C ~ 35°C</strong> 理想區間。一旦壓縮機失效，Chiller 無法降溫，BMS 會直接限制功率甚至鎖死高壓系統。
+            </p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-[#12151c] border border-slate-800">
+            <div class="text-xs font-bold text-amber-400 mb-1">2. 快充時車內冷氣變弱是正常策略</div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              直流快充時電池內阻發熱極大且車輛靜止無撞風，BMS 會將壓縮機製冷能量優先調撥給電池 Chiller，車廂冷氣暫時減弱屬正常保護邏輯。
+            </p>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-[#12151c] border border-rose-500/30">
+            <div class="text-xs font-bold text-rose-400 mb-1">3. 嚴禁共用傳統油車冷媒機</div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              若冷媒管路殘留幾滴傳統油車的 <strong>PAG 油</strong> 或受潮水氣，混入電動壓縮機後會瞬間拉低絕緣阻抗，導致絕緣擊穿報廢。
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 階段三：DiagBox 診斷電腦參數抓取 (TSB 1PP1-C5HW015PQ0 檢查 1~3)       -->
+    <!-- ===================================================================== -->
+    <section id="stage-3" class="stage-panel hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- 左側模擬 DiagBox 診斷畫面 (7 欄) -->
+      <div class="lg:col-span-7 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-bold text-[#ff6b00] uppercase tracking-wider">TSB 1PP1-C5HW015PQ0 核心檢核</span>
+            <h2 class="text-lg font-bold text-white">DiagBox 診斷儀 — 電動傳動系監視器 ECU (1775)</h2>
+          </div>
+          <!-- 切換正常車 vs 本案故障車數據 -->
+          <div class="flex bg-[#12151c] p-1 rounded-xl border border-slate-700">
+            <button onclick="setDiagMode('fault')" id="btn-diag-fault" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 text-white transition-all">
+              本案故障車數據 (卡死 0 rpm)
+            </button>
+            <button onclick="setDiagMode('normal')" id="btn-diag-normal" class="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all">
+              正常車輛對照 (3200 rpm)
+            </button>
+          </div>
+        </div>
+
+        <!-- 模擬 DiagBox 軟體視窗 -->
+        <div class="bg-[#0d1117] border-2 border-slate-700 rounded-xl overflow-hidden shadow-2xl">
+          <!-- DiagBox 視窗標題列 -->
+          <div class="bg-gradient-to-r from-blue-950 to-slate-900 px-4 py-2 border-b border-slate-700 flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2 font-mono-tech text-sky-300 font-bold">
+              <span>DiagBox v9.275</span>
+              <span class="text-slate-500">|</span>
+              <span>ECU: 1775 (電動傳動系監視器)</span>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[11px] font-mono-tech">A/C REQUEST: ON</span>
+          </div>
+
+          <!-- 檢查 1：外觀與接頭狀態 -->
+          <div class="p-4 border-b border-slate-800 flex items-center justify-between gap-4 bg-slate-900/40">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 font-bold text-xs">TSB 檢查 1</span>
+                <span class="text-sm font-bold text-white">壓縮機 (8020) 與 OBC (1708) 高壓接頭狀態</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">目視與插拔檢查高壓橘色接頭無腐蝕、無進水、無端子燒熔或油汙滲出。</p>
+            </div>
+            <span class="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs font-bold">
+              ✓ 無異常 (進入檢查 2)
+            </span>
+          </div>
+
+          <!-- 檢查 2：壓縮機供電電壓 -->
+          <div class="p-4 border-b border-slate-800 flex items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 font-bold text-xs">TSB 檢查 2</span>
+                <span class="text-sm font-bold text-white">空調壓縮機高壓匯流排供電電壓</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">標準判定：測得電壓值約為 <strong>400V</strong>（證明高壓保險絲與供電線路正常）。</p>
+            </div>
+            <div class="text-right shrink-0">
+              <div class="text-2xl font-bold font-mono-tech text-emerald-400">401.5 V</div>
+              <div class="text-[11px] text-emerald-300/80">供電正常 (進入檢查 3)</div>
+            </div>
+          </div>
+
+          <!-- 檢查 3：壓縮機轉速值 -->
+          <div id="diag-step3-row" class="p-4 flex items-center justify-between gap-4 bg-rose-950/30">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded bg-[#ff6b00]/20 text-[#ff6b00] font-bold text-xs">TSB 檢查 3</span>
+                <span class="text-sm font-bold text-white">空調壓縮機即時運轉轉速 (Compressor Speed)</span>
+              </div>
+              <p id="diag-step3-desc" class="text-xs text-rose-200/90 mt-1">
+                <strong>關鍵鐵證：</strong> 供電 400V 已送達且空調已開啟，但壓縮機轉速死死卡在 <strong>0 rpm</strong>！
+              </p>
+            </div>
+            <div class="text-right shrink-0">
+              <div id="diag-rpm-val" class="text-2xl font-bold font-mono-tech text-rose-400">0 rpm</div>
+              <div id="diag-rpm-badge" class="text-[11px] font-bold text-rose-300">卡死不轉 → 符合 TSB 更換</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button onclick="switchStage(2)" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+            ← 上一步：冷卻系統因果
+          </button>
+          <button onclick="switchStage(4)" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#3b82f6] hover:bg-blue-500 text-white flex items-center gap-2 shadow-lg shadow-blue-950/50">
+            下一步：執行兆歐表絕緣電阻實測 →
+          </button>
+        </div>
+      </div>
+
+      <!-- 右側保固邏輯說明 (5 欄) -->
+      <div class="lg:col-span-5 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="space-y-4">
+          <h3 class="text-base font-bold text-white border-b border-slate-800 pb-2.5">為什麼只寫「無法建立壓力」會被退件？</h3>
+
+          <div class="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-200 leading-relaxed">
+            <strong>原廠審核痛點：</strong> 如果工單只寫「冷氣不冷、無法建立壓力」，原廠技術支援無法排除「冷媒管路漏光」、「膨脹閥卡死」或「高壓保險絲熔斷」，因此必然要求補件。
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-200 leading-relaxed">
+            <strong>TSB 通關密碼：</strong> 只要在送審說明中明確列出：<strong>「檢查 2 電壓達 400V 正常，檢查 3 壓縮機轉速卡在 0 rpm 無法啟動」</strong>，即完全命中 TSB <code>1PP1-C5HW015PQ0</code> 定義的壓縮機本體失效條件。
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-[#12151c] border border-slate-800 text-xs text-slate-300 leading-relaxed">
+            <strong>實務補救提示：</strong> 若新壓縮機已經裝上車，無法重新讀取舊品在車上的轉速參數，請直接進入<strong>階段四</strong>，對卸下的舊壓縮機單體進行兆歐表絕緣量測並拍照存證！
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 階段四：兆歐表單品與實車絕緣量測互動模擬                              -->
+    <!-- ===================================================================== -->
+    <section id="stage-4" class="stage-panel hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- 左側互動工作臺 (7 欄) -->
+      <div class="lg:col-span-7 flex flex-col gap-4">
+        <!-- 情境選擇器 -->
+        <div class="bg-[#181c26] border border-slate-800 rounded-2xl p-3.5">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">選擇兆歐表實測情境（支援工作臺舊品單體量測）：</div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button onclick="setMegScenario('fault')" id="meg-scen-fault" class="meg-scen-btn p-2.5 rounded-xl border text-left transition-all bg-rose-500/15 border-rose-500 text-rose-200">
+              <div class="text-xs font-bold">● 本案故障品 (0.06 MΩ)</div>
+              <div class="text-[11px] opacity-80 mt-0.5">線圈絕緣擊穿短路 (不合格)</div>
+            </button>
+            <button onclick="setMegScenario('good')" id="meg-scen-good" class="meg-scen-btn p-2.5 rounded-xl border text-left transition-all bg-[#12151c] border-slate-700 text-slate-300 hover:border-slate-500">
+              <div class="text-xs font-bold">● 正常新品/良品 (1.)</div>
+              <div class="text-[11px] opacity-80 mt-0.5">阻抗 &gt; 200 MΩ (合格)</div>
+            </button>
+            <button onclick="setMegScenario('pitfall')" id="meg-scen-pitfall" class="meg-scen-btn p-2.5 rounded-xl border text-left transition-all bg-[#12151c] border-slate-700 text-slate-300 hover:border-slate-500">
+              <div class="text-xs font-bold">● 盲點：黑棒誤夾貼紙</div>
+              <div class="text-[11px] opacity-80 mt-0.5">不導電產生虛假 1. 誤判</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- SVG 工作臺畫布 -->
+        <div class="bg-[#181c26] border border-slate-800 rounded-2xl p-4 flex flex-col justify-between gap-3">
+          <div id="meg-banner" class="flex items-center justify-between px-3 py-2 rounded-xl bg-[#12151c] border border-slate-700 text-xs">
+            <div class="flex items-center gap-2">
+              <span id="meg-dot" class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+              <span id="meg-banner-text" class="text-slate-200 font-medium">請確認檔位 500V，黑棒夾「無漆裸金屬」、紅棒戳「高壓端子」，按住 TEST 鍵測試。</span>
+            </div>
+            <span id="meg-v-tag" class="font-mono-tech font-bold text-[#ff6b00] bg-[#ff6b00]/10 px-2 py-0.5 rounded border border-[#ff6b00]/30">500V DC</span>
+          </div>
+
+          <div class="bg-[#12151c] border border-slate-800 rounded-xl p-2 flex items-center justify-center">
+            <svg viewBox="0 0 740 335" class="w-full h-auto max-h-[335px] select-none">
+              <defs>
+                <linearGradient id="aluBody" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#64748b" />
+                  <stop offset="100%" stop-color="#334155" />
+                </linearGradient>
+                <linearGradient id="bareMetal" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#f8fafc" />
+                  <stop offset="100%" stop-color="#cbd5e1" />
+                </linearGradient>
+              </defs>
+
+              <!-- 兆歐表本體 -->
+              <g transform="translate(24, 15)">
+                <rect x="0" y="0" width="205" height="285" rx="16" fill="#1e2433" stroke="#475569" stroke-width="2" />
+                <text x="102" y="22" text-anchor="middle" fill="#f8fafc" font-size="11" font-weight="bold">DIGITAL INSULATION TESTER</text>
+                <text x="102" y="35" text-anchor="middle" fill="#94a3b8" font-size="9">高壓兆歐表 (絕緣電阻錶)</text>
+
+                <!-- LCD 螢幕 -->
+                <rect x="18" y="44" width="169" height="58" rx="8" fill="#7d9183" stroke="#334155" stroke-width="2.5" />
+                <text id="meg-lcd-val" x="148" y="86" text-anchor="end" fill="#18221b" font-family="'JetBrains Mono', monospace" font-size="28" font-weight="bold">---</text>
+                <text id="meg-lcd-unit" x="178" y="86" text-anchor="end" fill="#18221b" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="bold">MΩ</text>
+                <text id="meg-lcd-mode" x="26" y="59" fill="#1f2d24" font-family="'JetBrains Mono', monospace" font-size="9.5" font-weight="bold">OUTPUT: 500V DC</text>
+
+                <!-- 紅燈高壓指示燈 -->
+                <circle id="meg-hv-led" cx="170" cy="122" r="8" fill="#450a0a" stroke="#7f1d1d" stroke-width="1.5" />
+                <text x="156" y="120" text-anchor="end" fill="#f87171" font-size="8" font-weight="bold">HIGH VOLTAGE</text>
+                <text x="156" y="130" text-anchor="end" fill="#94a3b8" font-size="7.5">紅燈閃爍 = 輸出高壓</text>
+
+                <!-- 儀表上 TEST 鈕 -->
+                <g class="cursor-pointer" onmousedown="startMegTest()" onmouseup="stopMegTest()" onmouseleave="stopMegTest()" ontouchstart="startMegTest(event)" ontouchend="stopMegTest(event)">
+                  <circle cx="50" cy="128" r="19" fill="#0284c7" stroke="#38bdf8" stroke-width="2" />
+                  <text x="50" y="131" text-anchor="middle" fill="#fff" font-size="8" font-weight="bold">TEST</text>
+                </g>
+
+                <!-- 檔位旋鈕 -->
+                <g transform="translate(102, 195)">
+                  <circle cx="0" cy="0" r="33" fill="#0f172a" stroke="#475569" stroke-width="2" />
+                  <text x="-40" y="4" text-anchor="end" fill="#94a3b8" font-size="9" font-weight="bold" class="cursor-pointer" onclick="setMegVoltage('OFF')">OFF</text>
+                  <text x="-25" y="-31" text-anchor="end" fill="#94a3b8" font-size="9" font-weight="bold" class="cursor-pointer" onclick="setMegVoltage('250V')">250V</text>
+                  <text x="0" y="-39" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="bold" class="cursor-pointer" onclick="setMegVoltage('500V')">500V</text>
+                  <text x="29" y="-31" text-anchor="start" fill="#94a3b8" font-size="9" font-weight="bold" class="cursor-pointer" onclick="setMegVoltage('1000V')">1000V</text>
+                  <g id="meg-dial" transform="rotate(0)" class="transition-transform duration-300">
+                    <circle cx="0" cy="0" r="22" fill="#334155" stroke="#64748b" stroke-width="1.5" />
+                    <rect x="-2.5" y="-20" width="5" height="14" rx="2" fill="#fbbf24" />
+                  </g>
+                </g>
+
+                <!-- L端與 E端插孔 -->
+                <g transform="translate(52, 258)">
+                  <circle cx="0" cy="0" r="10" fill="#dc2626" stroke="#fca5a5" stroke-width="1.5" />
+                  <text x="0" y="20" text-anchor="middle" fill="#f87171" font-size="9" font-weight="bold">L 端 (紅/高壓)</text>
+                </g>
+                <g transform="translate(152, 258)">
+                  <circle cx="0" cy="0" r="10" fill="#0f172a" stroke="#94a3b8" stroke-width="1.5" />
+                  <text x="0" y="20" text-anchor="middle" fill="#cbd5e1" font-size="9" font-weight="bold">E 端 (黑/接地)</text>
+                </g>
+              </g>
+
+              <!-- 舊壓縮機單體 (工作臺上) -->
+              <g transform="translate(345, 35)">
+                <rect x="60" y="35" width="265" height="170" rx="22" fill="url(#aluBody)" stroke="#94a3b8" stroke-width="2" />
+                <rect x="112" y="68" width="108" height="102" rx="10" fill="#0f172a" fill-opacity="0.78" stroke="#475569" stroke-dasharray="4 3" />
+                <text x="166" y="88" text-anchor="middle" fill="#94a3b8" font-size="9" font-weight="bold">內部高壓馬達繞組</text>
+                <ellipse cx="166" cy="120" rx="30" ry="16" fill="none" stroke="#f59e0b" stroke-width="4" />
+                <text id="meg-coil-label" x="166" y="156" text-anchor="middle" fill="#fb7185" font-size="9" font-weight="bold">絕緣層擊穿 (0.06 MΩ)</text>
+
+                <!-- 內部漏電電弧 -->
+                <path id="meg-leak-arc" d="M 166 136 L 160 158 L 172 164 L 164 198" fill="none" stroke="#ef4444" stroke-width="3" opacity="0" />
+
+                <!-- 高壓橘色插座 -->
+                <g transform="translate(14, 72)">
+                  <rect x="0" y="0" width="50" height="82" rx="10" fill="#ff6b00" stroke="#fdba74" stroke-width="2" />
+                  <text x="25" y="-8" text-anchor="middle" fill="#ff6b00" font-size="9.5" font-weight="bold">高壓插座</text>
+                  <!-- Pin 1 (+) -->
+                  <g class="cursor-pointer" onclick="setMegRed('pin1')">
+                    <rect x="11" y="12" width="28" height="22" rx="4" fill="#1e293b" stroke="#fbbf24" stroke-width="1.5" />
+                    <circle cx="25" cy="23" r="4.5" fill="#f8fafc" />
+                    <text x="-8" y="27" text-anchor="end" fill="#fbbf24" font-size="9.5" font-weight="bold">Pin 1 (+)</text>
+                  </g>
+                  <!-- Pin 2 (-) -->
+                  <g class="cursor-pointer" onclick="setMegRed('pin2')">
+                    <rect x="11" y="46" width="28" height="22" rx="4" fill="#1e293b" stroke="#94a3b8" stroke-width="1.5" />
+                    <circle cx="25" cy="57" r="4.5" fill="#f8fafc" />
+                    <text x="-8" y="61" text-anchor="end" fill="#cbd5e1" font-size="9.5" font-weight="bold">Pin 2 (-)</text>
+                  </g>
+                </g>
+
+                <!-- 紙質貼紙 (錯誤位置) -->
+                <g transform="translate(240, 62)" class="cursor-pointer" onclick="setMegBlack('sticker')">
+                  <rect x="0" y="0" width="70" height="50" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" />
+                  <text x="35" y="16" text-anchor="middle" fill="#92400e" font-size="8" font-weight="bold">WARNING 400V</text>
+                  <text x="35" y="42" text-anchor="middle" fill="#dc2626" font-size="7.5" font-weight="bold">紙質貼紙(不導電)</text>
+                </g>
+
+                <!-- 無漆裸金屬搭鐵耳 (正確位置) -->
+                <g transform="translate(225, 188)" class="cursor-pointer" onclick="setMegBlack('bare')">
+                  <rect x="0" y="0" width="84" height="34" rx="8" fill="url(#bareMetal)" stroke="#10b981" stroke-width="2.5" />
+                  <text x="42" y="14" text-anchor="middle" fill="#0f172a" font-size="8.5" font-weight="bold">無漆裸金屬</text>
+                  <text x="42" y="25" text-anchor="middle" fill="#065f46" font-size="8" font-weight="bold">(正確搭鐵點)</text>
+                </g>
+              </g>
+
+              <!-- 紅黑測試線與探棒 -->
+              <path id="meg-red-wire" d="M 76 273 C 76 320, 290 310, 380 130" fill="none" stroke="#ef4444" stroke-width="3.5" />
+              <path id="meg-red-flow" d="M 76 273 C 76 320, 290 310, 380 130" fill="none" stroke="#fef08a" stroke-width="2.5" opacity="0" />
+              <g id="meg-red-probe" transform="translate(384, 130)" class="probe-move">
+                <line x1="0" y1="0" x2="-16" y2="0" stroke="#f8fafc" stroke-width="3" />
+                <rect x="-72" y="-5" width="56" height="10" rx="3" fill="#dc2626" />
+                <text x="-44" y="-9" text-anchor="middle" fill="#fca5a5" font-size="8.5" font-weight="bold">紅棒 (L)</text>
+              </g>
+
+              <path id="meg-black-wire" d="M 176 273 C 220 325, 465 325, 595 242" fill="none" stroke="#64748b" stroke-width="3.5" />
+              <path id="meg-black-flow" d="M 176 273 C 220 325, 465 325, 595 242" fill="none" stroke="#38bdf8" stroke-width="2.5" opacity="0" />
+              <g id="meg-black-probe" transform="translate(595, 242)" class="probe-move">
+                <polygon points="0,0 13,-7 13,7" fill="#cbd5e1" />
+                <rect x="13" y="-6" width="44" height="12" rx="3" fill="#1e293b" stroke="#94a3b8" />
+                <text x="35" y="19" text-anchor="middle" fill="#cbd5e1" font-size="8.5" font-weight="bold">黑夾 (E)</text>
+              </g>
+            </svg>
+          </div>
+
+          <!-- 即時判定橫幅 -->
+          <div id="meg-verdict-box" class="rounded-xl p-3 border bg-[#12151c] border-slate-700 flex items-center justify-between gap-2">
+            <div>
+              <span class="text-xs font-bold text-slate-400">判讀結果：</span>
+              <span id="meg-verdict-title" class="text-xs sm:text-sm font-bold text-white">請按住右側「按住測試 (TEST)」按鈕開始量測</span>
+              <p id="meg-verdict-desc" class="text-[11px] text-slate-400 mt-0.5">原廠絕緣合格門檻：&gt; 2.5 MΩ (2500 kΩ)。</p>
+            </div>
+            <span id="meg-verdict-tag" class="shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-300">待量測</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button onclick="switchStage(3)" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+            ← 上一步：DiagBox 參數
+          </button>
+          <button onclick="switchStage(5)" class="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 shadow-lg shadow-emerald-950/50">
+            下一步：生成 TSB 保固補件工單 →
+          </button>
+        </div>
+      </div>
+
+      <!-- 右側兆歐表操作面板與判讀對照表 (5 欄) -->
+      <div class="lg:col-span-5 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="space-y-3.5">
+          <h3 class="text-base font-bold text-white border-b border-slate-800 pb-2">兆歐表單品與實車操作控制</h3>
+
+          <!-- 檔位 -->
+          <div>
+            <div class="text-xs font-bold text-slate-300 mb-1.5">1. 選擇測試電壓（400V 級系統用 500V）</div>
+            <div class="grid grid-cols-4 gap-1.5">
+              <button onclick="setMegVoltage('OFF')" id="mv-OFF" class="mv-btn py-1.5 rounded-lg text-xs font-mono-tech font-bold border bg-[#12151c] border-slate-700 text-slate-400">OFF</button>
+              <button onclick="setMegVoltage('250V')" id="mv-250V" class="mv-btn py-1.5 rounded-lg text-xs font-mono-tech font-bold border bg-[#12151c] border-slate-700 text-slate-400">250V</button>
+              <button onclick="setMegVoltage('500V')" id="mv-500V" class="mv-btn py-1.5 rounded-lg text-xs font-mono-tech font-bold border bg-[#ff6b00]/20 border-[#ff6b00] text-[#ff6b00]">500V ★</button>
+              <button onclick="setMegVoltage('1000V')" id="mv-1000V" class="mv-btn py-1.5 rounded-lg text-xs font-mono-tech font-bold border bg-[#12151c] border-slate-700 text-slate-400">1000V</button>
+            </div>
+          </div>
+
+          <!-- 黑棒位置 -->
+          <div>
+            <div class="text-xs font-bold text-slate-300 mb-1.5">2. 黑棒（E 端）搭鐵夾持位置</div>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="setMegBlack('bare')" id="mb-bare" class="p-2 rounded-xl text-xs font-bold border text-left bg-emerald-500/15 border-emerald-500 text-emerald-200">
+                ✓ 無漆裸金屬外殼
+              </button>
+              <button onclick="setMegBlack('sticker')" id="mb-sticker" class="p-2 rounded-xl text-xs font-bold border text-left bg-[#12151c] border-slate-700 text-slate-400">
+                ✕ 紙質貼紙/烤漆面
+              </button>
+            </div>
+          </div>
+
+          <!-- 紅棒位置 -->
+          <div>
+            <div class="text-xs font-bold text-slate-300 mb-1.5">3. 紅棒（L 端）戳刺端子（正負極各測一次）</div>
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="setMegRed('pin1')" id="mr-pin1" class="p-2 rounded-xl text-xs font-bold border text-left bg-sky-500/15 border-sky-500 text-sky-200">
+                高壓插頭 Pin 1 (+)
+              </button>
+              <button onclick="setMegRed('pin2')" id="mr-pin2" class="p-2 rounded-xl text-xs font-bold border text-left bg-[#12151c] border-slate-700 text-slate-400">
+                高壓插頭 Pin 2 (-)
+              </button>
+            </div>
+          </div>
+
+          <!-- 按住 TEST 鍵 -->
+          <div>
+            <div class="flex items-center justify-between text-xs mb-1.5">
+              <span class="font-bold text-slate-300">4. 按住 TEST 輸出 500V（放開自動放電）</span>
+              <span id="meg-discharge-tag" class="font-mono-tech text-emerald-400">殘壓: 0V</span>
+            </div>
+            <button id="meg-hold-btn"
+              onmousedown="startMegTest()" onmouseup="stopMegTest()" onmouseleave="stopMegTest()"
+              ontouchstart="startMegTest(event)" ontouchend="stopMegTest(event)"
+              class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white font-bold text-xs sm:text-sm shadow-lg border border-sky-400/30 cursor-pointer select-none">
+              按住不放開始測試 (PRESS TO TEST)
+            </button>
+          </div>
+        </div>
+
+        <!-- 數值判讀對照表 -->
+        <div class="bg-[#12151c] border border-slate-800 rounded-xl p-3">
+          <div class="text-xs font-bold text-amber-400 mb-2">兆歐表讀值判讀標準對照表</div>
+          <table class="w-full text-[11px] text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400">
+                <th class="py-1">儀表讀值</th>
+                <th class="py-1">物理意義</th>
+                <th class="py-1">原廠判定</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60">
+              <tr>
+                <td class="py-1.5 font-mono-tech font-bold text-emerald-400">1. (&gt;200 MΩ)</td>
+                <td class="py-1.5 text-slate-300">阻抗無限大、無漏電</td>
+                <td class="py-1.5 font-bold text-emerald-400">合格 (正常)</td>
+              </tr>
+              <tr>
+                <td class="py-1.5 font-mono-tech font-bold text-sky-400">&gt; 2.5 MΩ</td>
+                <td class="py-1.5 text-slate-300">Stellantis 最低安全門檻</td>
+                <td class="py-1.5 font-bold text-sky-400">合格底線</td>
+              </tr>
+              <tr>
+                <td class="py-1.5 font-mono-tech font-bold text-rose-400">0.06 MΩ (60 kΩ)</td>
+                <td class="py-1.5 text-slate-300">線圈泡油短路擊穿漏電</td>
+                <td class="py-1.5 font-bold text-rose-400">不合格 (更換)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- 階段五：原廠 TSB 保固申訴與工單補件生成器                             -->
+    <!-- ===================================================================== -->
+    <section id="stage-5" class="stage-panel hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- 左側工單三段敘述與補件生成器 (7 欄) -->
+      <div class="lg:col-span-7 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">保固審核通關文件</span>
+            <h2 class="text-lg font-bold text-white">原廠 TSB 補件與工單三段敘述生成器</h2>
+          </div>
+          <button onclick="copyClaimText()" id="btn-copy-claim" class="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            一鍵複製補件說明文案
+          </button>
+        </div>
+
+        <!-- 複製成功提示訊息框 (取代 alert) -->
+        <div id="copy-toast" class="hidden px-4 py-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500 text-emerald-200 text-xs font-bold">
+          ✓ 已成功將標準保固補件說明複製到剪貼簿！可直接貼上至 DMS 派工單或技術支援通報系統。
+        </div>
+
+        <!-- 可編輯工單文案區 -->
+        <div class="flex-1 flex flex-col gap-2">
+          <label class="text-xs font-bold text-slate-400">可依實車情況微調以下內容（已對齊 TSB 1PP1-C5HW015PQ0 與兆歐表實測數據）：</label>
+          <textarea id="claim-textarea" rows="11"
+            class="w-full flex-1 bg-[#12151c] border border-slate-700 focus:border-sky-500 rounded-xl p-4 text-xs sm:text-sm text-slate-100 leading-relaxed focus:outline-none">【客戶抱怨 / 進廠症狀】
+車輛（Peugeot e-2008 / VIN: VR3UKZKXZPJ694548）空調不冷，且行進間儀表顯示電動牽引系統異常。
+
+【原因診斷 / TSB 1PP1-C5HW015PQ0 檢核過程】
+1. 依循原廠高壓斷電 SOP（D1AK013RP0）執行安全隔離與 VAT1 無電壓驗證。
+2. 依循 TSB 1PP1-C5HW015PQ0 執行檢查：
+   • 檢查 1：電動壓縮機（8020）與車載充電器（1708）高壓接頭外觀正常，無腐蝕或燒損。
+   • 檢查 2：經 DiagBox 進入電動傳動系監視器 ECU（1775）讀取參數，確認壓縮機高壓供電電壓正常達 400V。
+   • 檢查 3：開啟空調系統時，壓縮機即時轉速死死卡在 0 rpm 無法運轉。
+3. 使用兆歐表（500V 直流檔位）量測卸下之舊壓縮機線圈對鋁合金外殼絕緣阻抗，實測讀值僅剩 0.06 MΩ（60 kΩ），遠低於原廠規範之 2.5 MΩ 絕緣安全門檻，證實為電動壓縮機內部馬達線圈絕緣擊穿短路並導致機械卡死（隨件檢附兆歐表實測數據照片）。
+
+【維修處置 / 完工確認】
+更換電動空調壓縮機總成（料號：9855610380 / 6507385380）、過濾乾燥盒及 4 條專用密封環，使用電動車專用冷媒機抽真空並定量充填原廠指定 POE 高絕緣冷凍油與冷媒。復電後使用 DiagBox 清除所有 ECU 絕緣與牽引系統故障碼，路試空調製冷與電池熱管理運作完全恢復正常。</textarea>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button onclick="switchStage(4)" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+            ← 上一步：兆歐表絕緣模擬
+          </button>
+          <button onclick="switchStage(1)" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-sky-400 border border-slate-700">
+            回到階段一重新演練
+          </button>
+        </div>
+      </div>
+
+      <!-- 右側料號清單與施工注意事項 (5 欄) -->
+      <div class="lg:col-span-5 bg-[#181c26] border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+        <div class="space-y-4">
+          <h3 class="text-base font-bold text-white border-b border-slate-800 pb-2.5">TSB 1PP1-C5HW015PQ0 必換零件與工時清單</h3>
+
+          <div class="bg-[#12151c] border border-slate-800 rounded-xl overflow-hidden">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th class="px-3 py-2">項目 / 零件名稱</th>
+                  <th class="px-3 py-2 font-mono-tech">原廠料號 / 代碼</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-800/80 text-slate-200">
+                <tr>
+                  <td class="px-3 py-2.5 font-medium">TSB 檢查 + 維修工時</td>
+                  <td class="px-3 py-2.5 font-mono-tech text-sky-400">99EDQA (2.20H)</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2.5 font-medium">電動空調壓縮機 (標準交換)</td>
+                  <td class="px-3 py-2.5 font-mono-tech text-amber-400">6507385380</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2.5 font-medium">電動空調壓縮機 (新品替代)</td>
+                  <td class="px-3 py-2.5 font-mono-tech text-amber-400">9855610380</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2.5 font-medium">過濾與吸濕乾燥盒</td>
+                  <td class="px-3 py-2.5 font-mono-tech text-slate-400">依車身號規格選配</td>
+                </tr>
+                <tr>
+                  <td class="px-3 py-2.5 font-medium">空調管路專用 O 型密封環</td>
+                  <td class="px-3 py-2.5 font-mono-tech text-emerald-400">必換 4 條 (6460V0/V1)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-xs text-sky-200 leading-relaxed space-y-1.5">
+            <div class="font-bold text-sky-300">完工交車前三大必檢項目：</div>
+            <p>1. <strong>補油等量原則：</strong> 排空舊壓縮機冷凍油量，加入等量且開封即用之原廠指定 POE 高絕緣油。</p>
+            <p>2. <strong>故障碼重置：</strong> 使用 DiagBox 針對牽引電池 BMS 與全車 ECU 執行電氣絕緣故障重置與清除。</p>
+            <p>3. <strong>附件附件上傳：</strong> 將舊品兆歐表低於 2.5 MΩ（如 0.06 MΩ）實測照片隨工單上傳。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ==================== 全局分頁切換邏輯 ====================
+    function switchStage(stageNum) {
+      // 隱藏所有面板
+      document.querySelectorAll('.stage-panel').forEach(panel => panel.classList.add('hidden'));
+      // 顯示指定面板
+      document.getElementById(`stage-${stageNum}`).classList.remove('hidden');
+
+      // 更新導覽列按鈕樣式
+      document.querySelectorAll('.stage-tab').forEach((tab, idx) => {
+        if (idx + 1 === stageNum) {
+          tab.className = 'stage-tab px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all bg-[#3b82f6] text-white shadow-lg shadow-blue-950/50';
+        } else {
+          tab.className = 'stage-tab px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all bg-slate-800/70 text-slate-400 hover:text-slate-200';
+        }
+      });
+    }
+
+    // ==================== 階段一：高壓斷電 SOP 演練 ====================
+    let s1Step = 0;
+    let s1Timer = null;
+
+    function execS1Step1() {
+      if (s1Step >= 1) return;
+      s1Step = 1;
+      const btn1 = document.getElementById('btn-s1-1');
+      btn1.classList.add('border-emerald-500', 'bg-emerald-500/10');
+
+      // 模擬 5 分鐘快速倒數動畫
+      let sec = 300;
+      const timerTxt = document.getElementById('s1-timer-ecu');
+      const fillBar = document.getElementById('s1-ecu-fill');
+      document.getElementById('s1-ecu-status').textContent = 'ECU 正在進入休眠狀態...';
+
+      clearInterval(s1Timer);
+      s1Timer = setInterval(() => {
+        sec -= 30;
+        if (sec <= 0) {
+          sec = 0;
+          clearInterval(s1Timer);
+          timerTxt.textContent = '00:00';
+          timerTxt.setAttribute('fill', '#10b981');
+          fillBar.setAttribute('width', '155');
+          document.getElementById('s1-ecu-status').textContent = '✓ 全車 ECU 已完全休眠';
+          enableBtn('btn-s1-2');
+        } else {
+          const m = String(Math.floor(sec / 60)).padStart(2, '0');
+          const s = String(sec % 60).padStart(2, '0');
+          timerTxt.textContent = `${m}:${s}`;
+          fillBar.setAttribute('width', String(((300 - sec) / 300) * 155));
+        }
+      }, 150);
+    }
+
+    function execS1Step2() {
+      if (s1Step !== 1) return;
+      s1Step = 2;
+      document.getElementById('btn-s1-2').classList.add('border-emerald-500', 'bg-emerald-500/10');
+      // 拔開高壓斷路器至一半並顯示安全掛鎖
+      document.getElementById('s1-breaker-plug').setAttribute('transform', 'translate(88, 42)');
+      document.getElementById('s1-padlock').setAttribute('opacity', '1');
+      const lbl = document.getElementById('s1-breaker-label');
+      lbl.textContent = '✓ 已拔開並以安全掛鎖鎖定';
+      lbl.setAttribute('fill', '#10b981');
+      enableBtn('btn-s1-3');
+    }
+
+    function execS1Step3() {
+      if (s1Step !== 2) return;
+      s1Step = 3;
+      document.getElementById('btn-s1-3').classList.add('border-emerald-500', 'bg-emerald-500/10');
+      // 移開 12V 正極線夾
+      document.getElementById('s1-12v-clamp').setAttribute('transform', 'translate(122, 22) rotate(-25)');
+
+      let capSec = 120;
+      const capTxt = document.getElementById('s1-cap-timer');
+      clearInterval(s1Timer);
+      s1Timer = setInterval(() => {
+        capSec -= 20;
+        if (capSec <= 0) {
+          clearInterval(s1Timer);
+          capTxt.textContent = '✓ 網路電容殘電釋放完畢 (00:00)';
+          capTxt.setAttribute('fill', '#10b981');
+          enableBtn('btn-s1-4');
+        } else {
+          capTxt.textContent = `電容放電中: 0${Math.floor(capSec/60)}:${String(capSec%60).padStart(2,'0')}`;
+        }
+      }, 150);
+    }
+
+    function execS1Step4() {
+      if (s1Step !== 3) return;
+      s1Step = 4;
+      document.getElementById('btn-s1-4').classList.add('border-emerald-500', 'bg-emerald-500/10');
+
+      const vatVolt = document.getElementById('s1-vat-voltage');
+      vatVolt.textContent = '000 V DC';
+      vatVolt.setAttribute('fill', '#10b981');
+
+      const title = document.getElementById('s1-vat-status-title');
+      title.textContent = '✓ 驗電合格：殘壓 0V (< 60V)';
+      title.setAttribute('fill', '#10b981');
+      document.getElementById('s1-vat-status-desc').textContent = '全車處於絕對電氣安全，可進行高壓量測';
+
+      const badge = document.getElementById('s1-safety-badge');
+      badge.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+      badge.textContent = '安全狀態：已確認無高壓殘電 (0V)';
+    }
+
+    function enableBtn(id) {
+      const b = document.getElementById(id);
+      b.disabled = false;
+      b.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-[#12151c]/50');
+      b.classList.add('bg-[#12151c]', 'hover:border-sky-500', 'cursor-pointer');
+    }
+
+    function resetStage1() {
+      clearInterval(s1Timer);
+      s1Step = 0;
+      document.getElementById('s1-timer-ecu').textContent = '05:00';
+      document.getElementById('s1-timer-ecu').setAttribute('fill', '#38bdf8');
+      document.getElementById('s1-ecu-fill').setAttribute('width', '0');
+      document.getElementById('s1-ecu-status').textContent = '車門/引擎蓋/尾門開啟，鑰匙遠離';
+
+      document.getElementById('s1-breaker-plug').setAttribute('transform', 'translate(45, 42)');
+      document.getElementById('s1-padlock').setAttribute('opacity', '0');
+      document.getElementById('s1-breaker-label').textContent = '狀態：閉合通電中';
+      document.getElementById('s1-breaker-label').setAttribute('fill', '#f87171');
+
+      document.getElementById('s1-12v-clamp').setAttribute('transform', 'translate(95, 40)');
+      document.getElementById('s1-cap-timer').textContent = '電容放電：待執行 (2:00)';
+      document.getElementById('s1-cap-timer').setAttribute('fill', '#fbbf24');
+
+      document.getElementById('s1-vat-voltage').textContent = '402 V DC';
+      document.getElementById('s1-vat-voltage').setAttribute('fill', '#ef4444');
+      document.getElementById('s1-vat-status-title').textContent = '尚未完成斷電程序';
+      document.getElementById('s1-vat-status-title').setAttribute('fill', '#f87171');
+      document.getElementById('s1-vat-status-desc').textContent = '請依序執行左側 1→2→3→4 步驟';
+
+      const badge = document.getElementById('s1-safety-badge');
+      badge.className = 'px-3 py-1 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40';
+      badge.textContent = '警告：高壓系統帶電中 (400V DC)';
+
+      ['btn-s1-1', 'btn-s1-2', 'btn-s1-3', 'btn-s1-4'].forEach((id, idx) => {
+        const b = document.getElementById(id);
+        b.classList.remove('border-emerald-500', 'bg-emerald-500/10');
+        if (idx > 0) {
+          b.disabled = true;
+          b.classList.add('opacity-50', 'cursor-not-allowed', 'bg-[#12151c]/50');
+        }
+      });
+    }
+
+    // ==================== 階段二：POE vs PAG 油品模式 ====================
+    function setOilMode(mode) {
+      const btnPoe = document.getElementById('btn-oil-poe');
+      const btnPag = document.getElementById('btn-oil-pag');
+      const oilFluid = document.getElementById('s2-oil-fluid');
+      const leakGroup = document.getElementById('s2-leak-group');
+      const title = document.getElementById('s2-oil-title');
+      const d1 = document.getElementById('s2-oil-desc1');
+      const d2 = document.getElementById('s2-oil-desc2');
+      const chillerTemp = document.getElementById('s2-chiller-temp');
+      const bmsStatus = document.getElementById('s2-bms-status');
+      const battBox = document.getElementById('s2-batt-box');
+
+      if (mode === 'poe') {
+        btnPoe.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition-all';
+        btnPag.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
+        oilFluid.setAttribute('fill', '#10b981');
+        leakGroup.setAttribute('opacity', '0');
+
+        title.textContent = '目前油種：原廠指定 POE 高絕緣冷凍油';
+        title.setAttribute('fill', '#34d399');
+        d1.textContent = '• 體積電阻率極高，完美阻隔 400V 高壓線圈與金屬外殼導通。';
+        d2.textContent = '• 全車絕緣阻抗 > 200 MΩ，Chiller 正常製冷，電池維持最佳溫區。';
+
+        chillerTemp.textContent = '輸出水溫: 15°C ~ 25°C';
+        chillerTemp.setAttribute('fill', '#34d399');
+        bmsStatus.textContent = 'BMS 狀態：溫度正常、允許行駛';
+        bmsStatus.setAttribute('fill', '#34d399');
+        battBox.setAttribute('stroke', '#10b981');
+      } else {
+        btnPag.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 text-white transition-all';
+        btnPoe.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
+        oilFluid.setAttribute('fill', '#ef4444');
+        leakGroup.setAttribute('opacity', '1');
+
+        title.textContent = '異常狀態：誤加傳統 PAG 油或受潮含水！';
+        title.setAttribute('fill', '#f87171');
+        d1.textContent = '• 油品具備導電性，高壓線圈對外殼絕緣崩跌至 0.06 MΩ (< 2.5 MΩ)。';
+        d2.textContent = '• BMS 偵測全車高壓漏電且電池失去冷卻，強制鎖死高壓無法啟動！';
+
+        chillerTemp.textContent = 'Chiller 失效 (水溫 > 42°C)';
+        chillerTemp.setAttribute('fill', '#f87171');
+        bmsStatus.textContent = 'BMS 鎖死：牽引系統異常 / 無法啟動';
+        bmsStatus.setAttribute('fill', '#f87171');
+        battBox.setAttribute('stroke', '#ef4444');
+      }
+    }
+
+    // ==================== 階段三：DiagBox 參數對比 ====================
+    function setDiagMode(mode) {
+      const btnFault = document.getElementById('btn-diag-fault');
+      const btnNorm = document.getElementById('btn-diag-normal');
+      const row = document.getElementById('diag-step3-row');
+      const desc = document.getElementById('diag-step3-desc');
+      const val = document.getElementById('diag-rpm-val');
+      const badge = document.getElementById('diag-rpm-badge');
+
+      if (mode === 'fault') {
+        btnFault.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 text-white transition-all';
+        btnNorm.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
+        row.className = 'p-4 flex items-center justify-between gap-4 bg-rose-950/30';
+        desc.innerHTML = '<strong>關鍵鐵證：</strong> 供電 400V 已送達且空調已開啟，但壓縮機轉速死死卡在 <strong>0 rpm</strong>！';
+        desc.className = 'text-xs text-rose-200/90 mt-1';
+        val.textContent = '0 rpm';
+        val.className = 'text-2xl font-bold font-mono-tech text-rose-400';
+        badge.textContent = '卡死不轉 → 符合 TSB 更換';
+        badge.className = 'text-[11px] font-bold text-rose-300';
+      } else {
+        btnNorm.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition-all';
+        btnFault.className = 'px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all';
+        row.className = 'p-4 flex items-center justify-between gap-4 bg-emerald-950/20';
+        desc.innerHTML = '<strong>正常狀態：</strong> 接收 400V 供電與空調指令後，壓縮機依冷卻負載正常高速運轉。';
+        desc.className = 'text-xs text-emerald-200/90 mt-1';
+        val.textContent = '3200 rpm';
+        val.className = 'text-2xl font-bold font-mono-tech text-emerald-400';
+        badge.textContent = '運轉正常 (不適用此 TSB)';
+        badge.className = 'text-[11px] font-bold text-emerald-300';
+      }
+    }
+
+    // ==================== 階段四：兆歐表互動模擬 ====================
+    const megState = {
+      scenario: 'fault',
+      voltage: '500V',
+      black: 'bare',
+      red: 'pin1',
+      testing: false,
+      discharging: false,
+      timer: null
+    };
+
+    function setMegScenario(scen) {
+      if (megState.testing) stopMegTest();
+      megState.scenario = scen;
+
+      document.querySelectorAll('.meg-scen-btn').forEach(b => {
+        b.className = 'meg-scen-btn p-2.5 rounded-xl border text-left transition-all bg-[#12151c] border-slate-700 text-slate-300 hover:border-slate-500';
+      });
+      const active = document.getElementById(`meg-scen-${scen}`);
+      const coilLbl = document.getElementById('meg-coil-label');
+
+      if (scen === 'fault') {
+        active.className = 'meg-scen-btn p-2.5 rounded-xl border text-left transition-all bg-rose-500/15 border-rose-500 text-rose-200';
+        coilLbl.textContent = '絕緣層擊穿 (0.06 MΩ)';
+        coilLbl.setAttribute('fill', '#fb7185');
+        setMegBlack('bare');
+      } else if (scen === 'good') {
+        active.className = 'meg-scen-btn p-2.5 rounded-xl border text-left transition-all bg-emerald-500/15 border-emerald-500 text-emerald-200';
+        coilLbl.textContent = 'POE 絕緣完好 (>200 MΩ)';
+        coilLbl.setAttribute('fill', '#34d399');
+        setMegBlack('bare');
+      } else {
+        active.className = 'meg-scen-btn p-2.5 rounded-xl border text-left transition-all bg-amber-500/15 border-amber-500 text-amber-200';
+        coilLbl.textContent = '內部已擊穿 (但夾錯貼紙)';
+        coilLbl.setAttribute('fill', '#fbbf24');
+        setMegBlack('sticker');
+      }
+      resetMegLcd();
+    }
+
+    function setMegVoltage(v) {
+      if (megState.testing) stopMegTest();
+      megState.voltage = v;
+      const deg = { 'OFF': -90, '250V': -42, '500V': 0, '1000V': 42 };
+      document.getElementById('meg-dial').setAttribute('transform', `rotate(${deg[v]})`);
+
+      document.querySelectorAll('.mv-btn').forEach(b => {
+        b.className = 'mv-btn py-1.5 rounded-lg text-xs font-mono-tech font-bold border bg-[#12151c] border-slate-700 text-slate-400';
+      });
+      const act = document.getElementById(`mv-${v}`);
+      act.className = v === '500V'
+        ? 'mv-btn py-1.5 rounded-lg text-xs font-mono-tech font-bold border bg-[#ff6b00]/20 border-[#ff6b00] text-[#ff6b00]'
+        : 'mv-btn py-1.5 rounded-lg text-xs font-mono-tech font-bold border bg-sky-500/20 border-sky-500 text-sky-300';
+
+      document.getElementById('meg-v-tag').textContent = v === 'OFF' ? 'OFF' : `${v} DC`;
+      document.getElementById('meg-lcd-mode').textContent = v === 'OFF' ? 'POWER OFF' : `OUTPUT: ${v} DC`;
+      resetMegLcd();
+    }
+
+    function setMegBlack(pos) {
+      if (megState.testing) stopMegTest();
+      megState.black = pos;
+      const bBare = document.getElementById('mb-bare');
+      const bStick = document.getElementById('mb-sticker');
+      const probe = document.getElementById('meg-black-probe');
+      const wire = document.getElementById('meg-black-wire');
+      const flow = document.getElementById('meg-black-flow');
+
+      if (pos === 'bare') {
+        bBare.className = 'p-2 rounded-xl text-xs font-bold border text-left bg-emerald-500/15 border-emerald-500 text-emerald-200';
+        bStick.className = 'p-2 rounded-xl text-xs font-bold border text-left bg-[#12151c] border-slate-700 text-slate-400';
+        probe.setAttribute('transform', 'translate(595, 242)');
+        const d = 'M 176 273 C 220 325, 465 325, 595 242';
+        wire.setAttribute('d', d);
+        flow.setAttribute('d', d);
+      } else {
+        bStick.className = 'p-2 rounded-xl text-xs font-bold border text-left bg-amber-500/15 border-amber-500 text-amber-200';
+        bBare.className = 'p-2 rounded-xl text-xs font-bold border text-left bg-[#12151c] border-slate-700 text-slate-400';
+        probe.setAttribute('transform', 'translate(615, 122)');
+        const d = 'M 176 273 C 250 315, 500 245, 615 122';
+        wire.setAttribute('d', d);
+        flow.setAttribute('d', d);
+      }
+      resetMegLcd();
+    }
+
+    function setMegRed(pin) {
+      if (megState.testing) stopMegTest();
+      megState.red = pin;
+      const p1 = document.getElementById('mr-pin1');
+      const p2 = document.getElementById('mr-pin2');
+      const probe = document.getElementById('meg-red-probe');
+      const wire = document.getElementById('meg-red-wire');
+      const flow = document.getElementById('meg-red-flow');
+
+      if (pin === 'pin1') {
+        p1.className = 'p-2 rounded-xl text-xs font-bold border text-left bg-sky-500/15 border-sky-500 text-sky-200';
+        p2.className = 'p-2 rounded-xl text-xs font-bold border text-left bg-[#12151c] border-slate-700 text-slate-400';
+        probe.setAttribute('transform', 'translate(384, 130)');
+        const d = 'M 76 273 C 76 320, 290 310, 380 130';
+        wire.setAttribute('d', d);
+        flow.setAttribute('d', d);
+      } else {
+        p2.className = 'p-2 rounded-xl text-xs font-bold border text-left bg-sky-500/15 border-sky-500 text-sky-200';
+        p1.className = 'p-2 rounded-xl text-xs font-bold border text-left bg-[#12151c] border-slate-700 text-slate-400';
+        probe.setAttribute('transform', 'translate(384, 164)');
+        const d = 'M 76 273 C 76 320, 290 320, 380 164';
+        wire.setAttribute('d', d);
+        flow.setAttribute('d', d);
+      }
+      resetMegLcd();
+    }
+
+    function resetMegLcd() {
+      document.getElementById('meg-lcd-val').textContent = megState.voltage === 'OFF' ? '' : '---';
+      document.getElementById('meg-lcd-unit').textContent = megState.voltage === 'OFF' ? '' : 'MΩ';
+    }
+
+    function startMegTest(e) {
+      if (e) e.preventDefault();
+      if (megState.discharging) return;
+      if (megState.voltage === 'OFF') {
+        document.getElementById('meg-banner-text').textContent = '請先將檔位旋鈕切至 500V 再進行測試！';
+        return;
+      }
+
+      megState.testing = true;
+      document.getElementById('meg-hv-led').classList.add('hv-led-active');
+      document.getElementById('meg-hold-btn').textContent = `高壓輸出中 (${megState.voltage} DC) — 雙手嚴禁碰觸探棒！`;
+
+      const rFlow = document.getElementById('meg-red-flow');
+      rFlow.setAttribute('opacity', '1');
+      rFlow.classList.add('flow-active');
+
+      const isFaultLoop = (megState.scenario === 'fault' || megState.scenario === 'pitfall') && megState.black === 'bare';
+      const lcd = document.getElementById('meg-lcd-val');
+      const vBox = document.getElementById('meg-verdict-box');
+      const vTitle = document.getElementById('meg-verdict-title');
+      const vDesc = document.getElementById('meg-verdict-desc');
+      const vTag = document.getElementById('meg-verdict-tag');
+
+      if (isFaultLoop) {
+        document.getElementById('meg-leak-arc').setAttribute('opacity', '1');
+        const bFlow = document.getElementById('meg-black-flow');
+        bFlow.setAttribute('opacity', '1');
+        bFlow.classList.add('flow-active');
+
+        lcd.textContent = '0.06';
+        document.getElementById('meg-dot').className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+        document.getElementById('meg-banner-text').textContent = `警告：紅燈閃爍正在輸出 ${megState.voltage} 高壓！偵測到嚴重漏電！`;
+
+        vBox.className = 'rounded-xl p-3 border bg-rose-950/50 border-rose-500/60 flex items-center justify-between gap-2';
+        vTitle.textContent = '實測絕緣阻抗：0.06 MΩ (60 kΩ) — 遠低於原廠 2.5 MΩ 門檻！';
+        vTitle.className = 'text-xs sm:text-sm font-bold text-rose-300';
+        vDesc.textContent = '證實壓縮機內部線圈絕緣擊穿短路，請拍照存證作為 TSB 保固補件鐵證。';
+        vTag.className = 'shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-600 text-white';
+        vTag.textContent = '絕緣擊穿 / 更換';
+      } else if (megState.black === 'sticker') {
+        document.getElementById('meg-leak-arc').setAttribute('opacity', '0');
+        document.getElementById('meg-black-flow').setAttribute('opacity', '0');
+
+        lcd.textContent = '1.';
+        document.getElementById('meg-dot').className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+        document.getElementById('meg-banner-text').textContent = '量測失效：黑棒誤夾在紙質貼紙上不導電，產生虛假無限大讀值！';
+
+        vBox.className = 'rounded-xl p-3 border bg-amber-950/40 border-amber-500/60 flex items-center justify-between gap-2';
+        vTitle.textContent = '螢幕顯示「1.」(>200 MΩ) — 警告：誤夾貼紙導致嚴重誤判！';
+        vTitle.className = 'text-xs sm:text-sm font-bold text-amber-300';
+        vDesc.textContent = '貼紙與烤漆不導電，迴路未接通。請改夾「無漆裸金屬」重新量測！';
+        vTag.className = 'shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-black';
+        vTag.textContent = '量測無效';
+      } else {
+        document.getElementById('meg-leak-arc').setAttribute('opacity', '0');
+        document.getElementById('meg-black-flow').setAttribute('opacity', '0');
+
+        lcd.textContent = '1.';
+        document.getElementById('meg-dot').className = 'w-2.5 h-2.5 rounded-full bg-emerald-400';
+        document.getElementById('meg-banner-text').textContent = `測試中：施加 ${megState.voltage} 高壓無漏電流，絕緣狀態良好。`;
+
+        vBox.className = 'rounded-xl p-3 border bg-emerald-950/40 border-emerald-500/60 flex items-center justify-between gap-2';
+        vTitle.textContent = '螢幕顯示「1.」(阻抗 > 200 MΩ 無限大) — 絕緣極佳合格！';
+        vTitle.className = 'text-xs sm:text-sm font-bold text-emerald-300';
+        vDesc.textContent = '阻抗遠大於原廠 2.5 MΩ 標準，馬達繞組與 POE 冷凍油絕緣狀態健康。';
+        vTag.className = 'shrink-0 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white';
+        vTag.textContent = '合格 / 良品';
+      }
+
+      document.getElementById('meg-discharge-tag').textContent = `輸出: ${megState.voltage}`;
+      document.getElementById('meg-discharge-tag').className = 'font-mono-tech text-rose-400 font-bold';
+    }
+
+    function stopMegTest(e) {
+      if (e) e.preventDefault();
+      if (!megState.testing) return;
+      megState.testing = false;
+      megState.discharging = true;
+
+      document.getElementById('meg-hv-led').classList.remove('hv-led-active');
+      document.getElementById('meg-leak-arc').setAttribute('opacity', '0');
+      document.getElementById('meg-black-flow').setAttribute('opacity', '0');
+
+      const rFlow = document.getElementById('meg-red-flow');
+      rFlow.classList.remove('flow-active');
+      rFlow.classList.add('discharge-active');
+
+      let rem = parseInt(megState.voltage) || 500;
+      const dTag = document.getElementById('meg-discharge-tag');
+      document.getElementById('meg-hold-btn').textContent = '正在自動釋放殘電中，請勿拔除探棒...';
+
+      clearInterval(megState.timer);
+      megState.timer = setInterval(() => {
+        rem = Math.max(0, rem - 125);
+        dTag.textContent = `放電中: ${rem}V`;
+        dTag.className = 'font-mono-tech text-amber-400 font-bold';
+        if (rem === 0) {
+          clearInterval(megState.timer);
+          megState.discharging = false;
+          rFlow.setAttribute('opacity', '0');
+          rFlow.classList.remove('discharge-active');
+          dTag.textContent = '殘壓: 0V (安全)';
+          dTag.className = 'font-mono-tech text-emerald-400 font-bold';
+          document.getElementById('meg-hold-btn').textContent = '按住不放開始測試 (PRESS TO TEST)';
+        }
+      }, 200);
+    }
+
+    // ==================== 階段五：複製工單文案 ====================
+    function copyClaimText() {
+      const textarea = document.getElementById('claim-textarea');
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+      document.execCommand('copy');
+
+      const toast = document.getElementById('copy-toast');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 4000);
+    }
+  </script>
+</body>
+</html>
