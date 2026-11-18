@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>兆歐表（絕緣電阻錶）單品量測互動模擬器 - Peugeot e-2008 技術教案</title>
+  <!-- 載入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Google Fonts (Inter & Noto Sans TC & JetBrains Mono) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: #121215;
+      color: #f4f4f5;
+      overflow-x: hidden;
+    }
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* LCD 液晶螢幕質感 */
+    .lcd-screen {
+      background: linear-gradient(145deg, #8fa395 0%, #7d9183 100%);
+      box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.15);
+      color: #18221b;
+      text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.25);
+    }
+    /* 紅燈高壓警告閃爍動畫 */
+    @keyframes hvBlink {
+      0%, 100% {
+        background-color: #ef4444;
+        box-shadow: 0 0 16px #ef4444, 0 0 32px #dc2626;
+      }
+      50% {
+        background-color: #7f1d1d;
+        box-shadow: 0 0 2px #7f1d1d;
+      }
+    }
+    .hv-led-active {
+      animation: hvBlink 0.55s infinite ease-in-out;
+    }
+    /* 電流流動虛線動畫 */
+    @keyframes dashFlow {
+      to {
+        stroke-dashoffset: -36;
+      }
+    }
+    .current-flow-active {
+      stroke-dasharray: 8 10;
+      animation: dashFlow 0.6s linear infinite;
+    }
+    /* 放電脈衝動畫 */
+    @keyframes dischargeFlow {
+      to {
+        stroke-dashoffset: 36;
+      }
+    }
+    .discharge-flow-active {
+      stroke-dasharray: 6 12;
+      animation: dischargeFlow 0.4s linear infinite;
+    }
+    /* 探棒平滑移動過渡 */
+    .probe-transition {
+      transition: all 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* 按鈕壓下效果 */
+    .btn-test-pressed {
+      transform: scale(0.95);
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.6);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-amber-500 selection:text-black">
+
+  <!-- 頂部標題列 -->
+  <header class="bg-zinc-900 border-b border-zinc-800 px-4 py-3 sm:px-6 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+        <!-- 高壓閃電圖示 -->
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold tracking-wider uppercase px-2 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30">EV 高壓查修教案</span>
+          <span class="text-xs text-zinc-400 font-mono-tech">Peugeot e-2008 / TSB 1PP1-C5HW015PQ0</span>
+        </div>
+        <h1 class="text-lg sm:text-xl font-bold text-zinc-100 mt-0.5">電動冷氣壓縮機 — 兆歐表（絕緣電阻錶）單品量測模擬器</h1>
+      </div>
+    </div>
+
+    <!-- 原廠合格標準徽章 -->
+    <div class="flex items-center gap-3 bg-zinc-800/80 border border-zinc-700 rounded-xl px-3.5 py-2">
+      <div class="text-right">
+        <div class="text-[11px] text-zinc-400">Stellantis 原廠絕緣合格門檻</div>
+        <div class="text-sm font-bold text-emerald-400 font-mono-tech">&gt; 2.5 MΩ (2500 kΩ) @ 500V DC</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主工作區 -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- 左側/中央：互動工作臺畫布 (佔 7 欄) -->
+    <section class="lg:col-span-7 flex flex-col gap-4">
+      
+      <!-- 情境選擇器 -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-3.5">
+        <label class="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+          1. 選擇模擬測試情境（切換不同故障或誤判盲點）：
+        </label>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2" id="scenario-buttons">
+          <button onclick="setScenario('fault')" id="scen-fault"
+            class="scenario-btn text-left p-2.5 rounded-xl border transition-all bg-rose-500/15 border-rose-500 text-rose-200">
+            <div class="text-xs font-bold flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span> 故障品：絕緣擊穿
+            </div>
+            <div class="text-[11px] text-rose-300/80 mt-0.5">油品污染/線圈短路 (0.06 MΩ)</div>
+          </button>
+
+          <button onclick="setScenario('good')" id="scen-good"
+            class="scenario-btn text-left p-2.5 rounded-xl border transition-all bg-zinc-800/60 border-zinc-700 text-zinc-300 hover:border-zinc-500">
+            <div class="text-xs font-bold flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> 正常良品測試
+            </div>
+            <div class="text-[11px] text-zinc-400 mt-0.5">絕緣層完整 (&gt;200 MΩ / 顯示 1.)</div>
+          </button>
+
+          <button onclick="setScenario('pitfall')" id="scen-pitfall"
+            class="scenario-btn text-left p-2.5 rounded-xl border transition-all bg-zinc-800/60 border-zinc-700 text-zinc-300 hover:border-zinc-500">
+            <div class="text-xs font-bold flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span> 常見盲點：誤夾貼紙
+            </div>
+            <div class="text-[11px] text-zinc-400 mt-0.5">故障品卻誤判為 1. (量測失效)</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- 工作臺 SVG 視覺畫布 -->
+      <div class="relative bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex-1 flex flex-col justify-between overflow-hidden min-h-[430px]">
+        <!-- 背景網格裝飾 -->
+        <div class="absolute inset-0 opacity-10 pointer-events-none"
+             style="background-image: radial-gradient(#a1a1aa 1px, transparent 1px); background-size: 20px 20px;"></div>
+
+        <!-- 頂部即時狀態提示橫幅 -->
+        <div id="status-banner" class="relative z-10 flex items-center justify-between px-3.5 py-2 rounded-xl bg-zinc-800/90 border border-zinc-700 text-xs">
+          <div class="flex items-center gap-2">
+            <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-sky-400"></span>
+            <span id="status-text" class="font-medium text-zinc-200">工作臺就緒：請確認檔位切至 500V，並將黑棒夾在「無漆裸金屬」、紅棒戳入「高壓端子」。</span>
+          </div>
+          <span id="voltage-badge" class="font-mono-tech font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">檔位: 500V</span>
+        </div>
+
+        <!-- SVG 互動工作臺 -->
+        <div class="relative z-10 w-full flex-1 flex items-center justify-center my-2">
+          <svg id="workbench-svg" viewBox="0 0 760 360" class="w-full h-auto max-h-[370px] select-none">
+            <defs>
+              <!-- 金屬漸層 -->
+              <linearGradient id="aluminumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#71717a" />
+                <stop offset="50%" stop-color="#52525b" />
+                <stop offset="100%" stop-color="#3f3f46" />
+              </linearGradient>
+              <linearGradient id="bareMetalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f4f4f5" />
+                <stop offset="50%" stop-color="#d4d4d8" />
+                <stop offset="100%" stop-color="#a1a1aa" />
+              </linearGradient>
+              <linearGradient id="hvOrangeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#f97316" />
+                <stop offset="100%" stop-color="#c2410c" />
+              </linearGradient>
+              <linearGradient id="meterBodyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#27272a" />
+                <stop offset="100%" stop-color="#18181b" />
+              </linearGradient>
+            </defs>
+
+            <!-- 工作臺桌面底線 -->
+            <rect x="15" y="325" width="730" height="12" rx="6" fill="#27272a" />
+            <text x="380" y="352" text-anchor="middle" fill="#71717a" font-size="11">絕緣橡膠維修工作臺面（已卸下之舊品單體檢測）</text>
+
+            <!-- ==================== 左側：兆歐表 (Megohmmeter) ==================== -->
+            <g id="megohmmeter-unit" transform="translate(30, 20)">
+              <!-- 儀表外殼 -->
+              <rect x="0" y="0" width="210" height="295" rx="18" fill="url(#meterBodyGrad)" stroke="#52525b" stroke-width="2.5" />
+              <!-- 品牌標示 -->
+              <text x="105" y="24" text-anchor="middle" fill="#e4e4e7" font-size="12" font-weight="bold" letter-spacing="1">INSULATION TESTER</text>
+              <text x="105" y="38" text-anchor="middle" fill="#a1a1aa" font-size="9">高壓絕緣電阻測試儀 (兆歐表)</text>
+
+              <!-- 數位 LCD 螢幕框 -->
+              <rect x="20" y="48" width="170" height="62" rx="8" fill="#7d9183" stroke="#3f3f46" stroke-width="3" />
+              <!-- LCD 顯示數值 -->
+              <text id="lcd-display" x="152" y="92" text-anchor="end" fill="#18221b" font-family="'JetBrains Mono', monospace" font-size="30" font-weight="bold">---</text>
+              <text id="lcd-unit" x="182" y="92" text-anchor="end" fill="#18221b" font-family="'JetBrains Mono', monospace" font-size="13" font-weight="bold">MΩ</text>
+              <text id="lcd-sub" x="28" y="64" fill="#1f2d24" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="bold">TEST: 500V DC</text>
+
+              <!-- 紅色高壓警告 LED 燈 -->
+              <circle id="hv-warning-led" cx="175" cy="128" r="8" fill="#451a1a" stroke="#7f1d1d" stroke-width="1.5" />
+              <text x="160" y="126" text-anchor="end" fill="#f87171" font-size="8" font-weight="bold">HIGH VOLTAGE</text>
+              <text x="160" y="135" text-anchor="end" fill="#a1a1aa" font-size="7">紅燈閃爍=高壓輸出中</text>
+
+              <!-- 測試按鈕 (PRESS TO TEST) -->
+              <g id="svg-test-btn" class="cursor-pointer" onmousedown="startTest()" onmouseup="stopTest()" onmouseleave="stopTest()" ontouchstart="startTest(event)" ontouchend="stopTest(event)">
+                <circle cx="52" cy="134" r="20" fill="#0284c7" stroke="#38bdf8" stroke-width="2" />
+                <circle cx="52" cy="134" r="14" fill="#0369a1" />
+                <text x="52" y="137" text-anchor="middle" fill="#ffffff" font-size="8" font-weight="bold">TEST</text>
+              </g>
+
+              <!-- 電壓檔位旋鈕區 -->
+              <g transform="translate(105, 205)">
+                <circle cx="0" cy="0" r="36" fill="#18181b" stroke="#3f3f46" stroke-width="2" />
+                <!-- 檔位刻度標籤 -->
+                <text x="-44" y="4" text-anchor="end" fill="#a1a1aa" font-size="9" font-weight="bold" class="cursor-pointer" onclick="setVoltage('OFF')">OFF</text>
+                <text x="-28" y="-34" text-anchor="end" fill="#a1a1aa" font-size="9" font-weight="bold" class="cursor-pointer" onclick="setVoltage('250V')">250V</text>
+                <text x="0" y="-42" text-anchor="middle" fill="#fbbf24" font-size="10" font-weight="bold" class="cursor-pointer" onclick="setVoltage('500V')">500V</text>
+                <text x="32" y="-34" text-anchor="start" fill="#a1a1aa" font-size="9" font-weight="bold" class="cursor-pointer" onclick="setVoltage('1000V')">1000V</text>
+
+                <!-- 旋鈕本體 (預設指向 500V: 0度) -->
+                <g id="dial-knob" transform="rotate(0)" class="transition-transform duration-300">
+                  <circle cx="0" cy="0" r="24" fill="#3f3f46" stroke="#71717a" stroke-width="1.5" />
+                  <rect x="-3" y="-22" width="6" height="16" rx="2" fill="#fbbf24" />
+                </g>
+              </g>
+
+              <!-- 底部插孔：L端 (紅) 與 E端 (黑) -->
+              <g transform="translate(55, 268)">
+                <circle cx="0" cy="0" r="11" fill="#dc2626" stroke="#fca5a5" stroke-width="1.5" />
+                <circle cx="0" cy="0" r="5" fill="#18181b" />
+                <text x="0" y="21" text-anchor="middle" fill="#f87171" font-size="9" font-weight="bold">L 端 (紅/高壓)</text>
+              </g>
+              <g transform="translate(155, 268)">
+                <circle cx="0" cy="0" r="11" fill="#18181b" stroke="#a1a1aa" stroke-width="1.5" />
+                <circle cx="0" cy="0" r="5" fill="#09090b" />
+                <text x="0" y="21" text-anchor="middle" fill="#d4d4d8" font-size="9" font-weight="bold">E 端 (黑/接地)</text>
+              </g>
+            </g>
+
+            <!-- ==================== 右側：電動冷氣壓縮機 (8020) ==================== -->
+            <g id="ac-compressor-unit" transform="translate(360, 45)">
+              <!-- 壓縮機鋁合金本體圓筒 -->
+              <rect x="60" y="40" width="270" height="175" rx="24" fill="url(#aluminumGrad)" stroke="#a1a1aa" stroke-width="2" />
+              <!-- 散熱肋條細節 -->
+              <line x1="120" y1="42" x2="120" y2="213" stroke="#3f3f46" stroke-width="3" />
+              <line x1="150" y1="42" x2="150" y2="213" stroke="#3f3f46" stroke-width="3" />
+              <line x1="180" y1="42" x2="180" y2="213" stroke="#3f3f46" stroke-width="3" />
+              <line x1="210" y1="42" x2="210" y2="213" stroke="#3f3f46" stroke-width="3" />
+
+              <!-- 壓縮機內部高壓馬達繞組示意透視框 -->
+              <rect x="115" y="75" width="110" height="105" rx="12" fill="#18181b" fill-opacity="0.72" stroke="#52525b" stroke-dasharray="4 3" />
+              <text x="170" y="95" text-anchor="middle" fill="#a1a1aa" font-size="9" font-weight="bold">內部高壓三相馬達線圈</text>
+              <!-- 銅線圈圖示 -->
+              <ellipse cx="170" cy="128" rx="32" ry="18" fill="none" stroke="#d97706" stroke-width="4" />
+              <ellipse cx="170" cy="128" rx="22" ry="11" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+              <text id="internal-oil-label" x="170" y="166" text-anchor="middle" fill="#fb7185" font-size="9" font-weight="bold">絕緣層/冷凍油擊穿漏電</text>
+
+              <!-- 故障時的內部漏電閃電路徑 (線圈 -> 外殼) -->
+              <path id="leakage-arc" d="M 170 146 L 164 168 L 176 174 L 168 205" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" opacity="0" />
+
+              <!-- 高壓橘色插座 (左側突出) -->
+              <g id="hv-connector" transform="translate(15, 78)">
+                <rect x="0" y="0" width="52" height="84" rx="10" fill="url(#hvOrangeGrad)" stroke="#fdba74" stroke-width="2" />
+                <text x="26" y="-8" text-anchor="middle" fill="#fb923c" font-size="10" font-weight="bold">高壓橘色插座</text>
+                
+                <!-- Pin 1 (+) 熱點 -->
+                <g id="pin1-hotspot" class="cursor-pointer" onclick="setRedTarget('pin1')">
+                  <rect x="12" y="14" width="28" height="22" rx="4" fill="#27272a" stroke="#fbbf24" stroke-width="1.5" />
+                  <circle cx="26" cy="25" r="4.5" fill="#e4e4e7" />
+                  <text x="-8" y="29" text-anchor="end" fill="#fbbf24" font-size="10" font-weight="bold">Pin 1 (+)</text>
+                </g>
+
+                <!-- Pin 2 (-) 熱點 -->
+                <g id="pin2-hotspot" class="cursor-pointer" onclick="setRedTarget('pin2')">
+                  <rect x="12" y="48" width="28" height="22" rx="4" fill="#27272a" stroke="#a1a1aa" stroke-width="1.5" />
+                  <circle cx="26" cy="59" r="4.5" fill="#e4e4e7" />
+                  <text x="-8" y="63" text-anchor="end" fill="#d4d4d8" font-size="10" font-weight="bold">Pin 2 (-)</text>
+                </g>
+              </g>
+
+              <!-- 錯誤點位：原廠紙質規格貼紙 / 烤漆層 -->
+              <g id="sticker-hotspot" transform="translate(245, 68)" class="cursor-pointer" onclick="setBlackTarget('sticker')">
+                <rect x="0" y="0" width="72" height="52" rx="4" fill="#fef3c7" stroke="#d97706" stroke-width="1.5" />
+                <text x="36" y="16" text-anchor="middle" fill="#92400e" font-size="8" font-weight="bold">WARNING 400V</text>
+                <line x1="10" y1="24" x2="62" y2="24" stroke="#b45309" stroke-width="1.5" />
+                <line x1="10" y1="32" x2="54" y2="32" stroke="#b45309" stroke-width="1.5" />
+                <text x="36" y="45" text-anchor="middle" fill="#dc2626" font-size="7.5" font-weight="bold">紙質貼紙(不導電)</text>
+              </g>
+
+              <!-- 正確點位：刮除油汙之無漆裸金屬搭鐵耳 -->
+              <g id="bare-metal-hotspot" transform="translate(230, 195)" class="cursor-pointer" onclick="setBlackTarget('bare')">
+                <rect x="0" y="0" width="84" height="36" rx="8" fill="url(#bareMetalGrad)" stroke="#10b981" stroke-width="2.5" />
+                <circle cx="22" cy="18" r="7" fill="#3f3f46" />
+                <text x="56" y="15" text-anchor="middle" fill="#09090b" font-size="8.5" font-weight="bold">無漆裸金屬</text>
+                <text x="56" y="26" text-anchor="middle" fill="#065f46" font-size="8" font-weight="bold">(正確搭鐵點)</text>
+              </g>
+            </g>
+
+            <!-- ==================== 動態測試線與探棒 ==================== -->
+            <!-- 紅線 (L端 -> 紅探棒尖端) -->
+            <path id="red-wire" d="M 85 288 C 85 335, 300 325, 395 148" fill="none" stroke="#ef4444" stroke-width="4" stroke-linecap="round" />
+            <!-- 紅線高壓流動動畫覆蓋層 -->
+            <path id="red-wire-flow" d="M 85 288 C 85 335, 300 325, 395 148" fill="none" stroke="#fef08a" stroke-width="3" stroke-linecap="round" opacity="0" />
+
+            <!-- 紅探棒本體 (預設對準 Pin 1: x=401, y=148) -->
+            <g id="red-probe" transform="translate(401, 148)" class="probe-transition">
+              <!-- 金屬針尖 -->
+              <line x1="0" y1="0" x2="-18" y2="0" stroke="#e4e4e7" stroke-width="3" stroke-linecap="round" />
+              <!-- 紅色絕緣握柄 -->
+              <rect x="-78" y="-6" width="60" height="12" rx="4" fill="#dc2626" stroke="#fca5a5" stroke-width="1" />
+              <text x="-48" y="-10" text-anchor="middle" fill="#fca5a5" font-size="9" font-weight="bold">紅棒 (L)</text>
+            </g>
+
+            <!-- 黑線 (E端 -> 黑夾子) -->
+            <path id="black-wire" d="M 185 288 C 230 340, 480 340, 610 265" fill="none" stroke="#52525b" stroke-width="4" stroke-linecap="round" />
+            <!-- 黑線迴路流動動畫覆蓋層 -->
+            <path id="black-wire-flow" d="M 185 288 C 230 340, 480 340, 610 265" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" opacity="0" />
+
+            <!-- 黑鱷魚夾本體 (預設夾在無漆裸金屬: x=615, y=260) -->
+            <g id="black-probe" transform="translate(615, 260)" class="probe-transition">
+              <!-- 鱷魚夾金屬齒 -->
+              <polygon points="0,0 14,-8 14,8" fill="#d4d4d8" stroke="#18181b" stroke-width="1" />
+              <!-- 黑色絕緣護套 -->
+              <rect x="14" y="-7" width="46" height="14" rx="4" fill="#27272a" stroke="#a1a1aa" stroke-width="1.5" />
+              <text x="37" y="22" text-anchor="middle" fill="#d4d4d8" font-size="9" font-weight="bold">黑夾 (E 接地)</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 底部診斷結果判定卡 -->
+        <div id="verdict-box" class="relative z-10 rounded-xl p-3 border bg-zinc-800/70 border-zinc-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">即時判讀結果：</span>
+            <span id="verdict-title" class="text-sm font-bold text-zinc-200 ml-1">尚未開始測試 — 請按住右側「按住測試 (TEST)」按鈕</span>
+            <p id="verdict-desc" class="text-xs text-zinc-400 mt-0.5">兆歐表將輸出 500V 直流高壓，測量線圈與金屬外殼間的微安培 (μA) 漏電流。</p>
+          </div>
+          <div id="verdict-badge" class="shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-700 text-zinc-300 text-center">
+            待量測
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 右側：操作控制台與標準 SOP 指南 (佔 5 欄) -->
+    <aside class="lg:col-span-5 flex flex-col gap-4">
+
+      <!-- 互動操作面板 -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 flex flex-col gap-4">
+        <h2 class="text-base font-bold text-zinc-100 flex items-center gap-2 border-b border-zinc-800 pb-2.5">
+          <span class="w-6 h-6 rounded-lg bg-amber-500 text-zinc-950 font-bold text-xs flex items-center justify-center">SOP</span>
+          單品量測操作控制台
+        </h2>
+
+        <!-- 步驟 1：檔位選擇 -->
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="font-bold text-zinc-200">步驟 1：選擇測試電壓檔位</span>
+            <span class="text-amber-400">400V 電動車系統選 500V</span>
+          </div>
+          <div class="grid grid-cols-4 gap-2">
+            <button onclick="setVoltage('OFF')" id="btn-v-OFF" class="v-btn py-2 rounded-xl text-xs font-mono-tech font-bold border bg-zinc-800 border-zinc-700 text-zinc-400">OFF</button>
+            <button onclick="setVoltage('250V')" id="btn-v-250V" class="v-btn py-2 rounded-xl text-xs font-mono-tech font-bold border bg-zinc-800 border-zinc-700 text-zinc-400">250V</button>
+            <button onclick="setVoltage('500V')" id="btn-v-500V" class="v-btn py-2 rounded-xl text-xs font-mono-tech font-bold border bg-amber-500/20 border-amber-500 text-amber-300">500V ★</button>
+            <button onclick="setVoltage('1000V')" id="btn-v-1000V" class="v-btn py-2 rounded-xl text-xs font-mono-tech font-bold border bg-zinc-800 border-zinc-700 text-zinc-400">1000V</button>
+          </div>
+        </div>
+
+        <!-- 步驟 2：黑棒接地位置 -->
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="font-bold text-zinc-200">步驟 2：連接黑棒（E 端 / 搭鐵基準）</span>
+            <span class="text-zinc-400">也可直接點擊左圖位置</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="setBlackTarget('bare')" id="btn-black-bare"
+              class="p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-emerald-500/15 border-emerald-500 text-emerald-200">
+              <div class="font-bold">✓ 無漆裸金屬外殼</div>
+              <div class="text-[11px] opacity-80 mt-0.5">刮除油汙、確保導電良好</div>
+            </button>
+            <button onclick="setBlackTarget('sticker')" id="btn-black-sticker"
+              class="p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500">
+              <div class="font-bold">✕ 原廠貼紙 / 烤漆面</div>
+              <div class="text-[11px] opacity-80 mt-0.5">絕緣不導電（錯誤示範）</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 步驟 3：紅棒高壓端子 -->
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1.5">
+            <span class="font-bold text-zinc-200">步驟 3：連接紅棒（L 端 / 高壓針腳）</span>
+            <span class="text-zinc-400">正負極各測一次</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="setRedTarget('pin1')" id="btn-red-pin1"
+              class="p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-sky-500/15 border-sky-500 text-sky-200">
+              <div class="font-bold">高壓插座 Pin 1 (+)</div>
+              <div class="text-[11px] opacity-80 mt-0.5">量測正極對外殼絕緣</div>
+            </button>
+            <button onclick="setRedTarget('pin2')" id="btn-red-pin2"
+              class="p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500">
+              <div class="font-bold">高壓插座 Pin 2 (-)</div>
+              <div class="text-[11px] opacity-80 mt-0.5">量測負極對外殼絕緣</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 步驟 4 & 5：按住測試與自動放電 -->
+        <div class="pt-1">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-bold text-zinc-200">步驟 4 & 5：施加高壓測試與自動放電</span>
+            <span id="discharge-indicator" class="text-zinc-400 font-mono-tech">殘留電壓: 0V (安全)</span>
+          </div>
+          <button id="hold-test-btn"
+            onmousedown="startTest()" onmouseup="stopTest()" onmouseleave="stopTest()"
+            ontouchstart="startTest(event)" ontouchend="stopTest(event)"
+            class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-sky-950/50 border border-sky-400/30 flex items-center justify-center gap-2 transition-all select-none cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span id="hold-btn-label">按住不放開始測試 (PRESS TO TEST)</span>
+          </button>
+          <p class="text-[11px] text-zinc-400 text-center mt-2">
+            提示：滑鼠按住或手機長按按鈕輸出 500V；放開後將自動執行電容放電至 0V。
+          </p>
+        </div>
+      </div>
+
+      <!-- 實務安全與判讀重點卡 -->
+      <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-5 flex-1 flex flex-col justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-bold text-amber-400 flex items-center gap-1.5 mb-2.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            現場保命與保固審查三大鐵律
+          </h3>
+          <ul class="space-y-2 text-xs text-zinc-300 leading-relaxed">
+            <li class="flex items-start gap-2">
+              <span class="text-rose-400 font-bold">01.</span>
+              <span><strong>紅燈閃爍嚴禁觸碰：</strong>測試中兆歐表會發出 500V 致命直流高壓，雙手絕不可碰觸探棒金屬端與壓縮機鋁殼；放開按鍵後須待自動放電歸零（0V）才可拆線。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold">02.</span>
+              <span><strong>避開貼紙與烤漆盲點：</strong>黑棒若誤夾在紙質貼紙或烤漆上，因完全不導電，螢幕會顯示虛假的 <code class="bg-zinc-800 px-1 py-0.5 rounded text-emerald-400">1.</code>（&gt;200 MΩ），導致把壞掉的壓縮機誤判為良品。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-sky-400 font-bold">03.</span>
+              <span><strong>原廠門檻 2.5 MΩ：</strong>健康元件顯示 <code class="bg-zinc-800 px-1 py-0.5 rounded text-emerald-400">1.</code>（無限大）；若像本案實測掉到 <code class="bg-zinc-800 px-1 py-0.5 rounded text-rose-400">0.06 MΩ</code>（60 kΩ），即代表線圈泡油短路擊穿，拍照存證即可作為 TSB 補件鐵證。</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <script>
+    // 模擬器核心狀態
+    const state = {
+      scenario: 'fault',     // 'fault' | 'good' | 'pitfall'
+      voltage: '500V',       // 'OFF' | '250V' | '500V' | '1000V'
+      blackTarget: 'bare',   // 'bare' | 'sticker'
+      redTarget: 'pin1',     // 'pin1' | 'pin2'
+      isTesting: false,
+      isDischarging: false,
+      dischargeTimer: null
+    };
+
+    // 切換測試情境
+    function setScenario(scen) {
+      if (state.isTesting) stopTest();
+      state.scenario = scen;
+
+      // 更新按鈕樣式
+      document.querySelectorAll('.scenario-btn').forEach(btn => {
+        btn.className = 'scenario-btn text-left p-2.5 rounded-xl border transition-all bg-zinc-800/60 border-zinc-700 text-zinc-300 hover:border-zinc-500';
+      });
+
+      const activeBtn = document.getElementById(`scen-${scen}`);
+      if (scen === 'fault') {
+        activeBtn.className = 'scenario-btn text-left p-2.5 rounded-xl border transition-all bg-rose-500/15 border-rose-500 text-rose-200';
+        document.getElementById('internal-oil-label').textContent = '絕緣層/冷凍油擊穿漏電';
+        document.getElementById('internal-oil-label').setAttribute('fill', '#fb7185');
+        setBlackTarget('bare');
+      } else if (scen === 'good') {
+        activeBtn.className = 'scenario-btn text-left p-2.5 rounded-xl border transition-all bg-emerald-500/15 border-emerald-500 text-emerald-200';
+        document.getElementById('internal-oil-label').textContent = 'POE 高絕緣油 / 線圈完好';
+        document.getElementById('internal-oil-label').setAttribute('fill', '#34d399');
+        setBlackTarget('bare');
+      } else if (scen === 'pitfall') {
+        activeBtn.className = 'scenario-btn text-left p-2.5 rounded-xl border transition-all bg-amber-500/15 border-amber-500 text-amber-200';
+        document.getElementById('internal-oil-label').textContent = '內部已擊穿 (但黑棒夾錯位置)';
+        document.getElementById('internal-oil-label').setAttribute('fill', '#fbbf24');
+        setBlackTarget('sticker');
+      }
+
+      resetMeterDisplay();
+    }
+
+    // 切換電壓檔位
+    function setVoltage(v) {
+      if (state.isTesting) stopTest();
+      state.voltage = v;
+
+      // 更新旋鈕角度
+      const angles = { 'OFF': -90, '250V': -42, '500V': 0, '1000V': 42 };
+      document.getElementById('dial-knob').setAttribute('transform', `rotate(${angles[v]})`);
+
+      // 更新按鈕樣式
+      document.querySelectorAll('.v-btn').forEach(btn => {
+        btn.className = 'v-btn py-2 rounded-xl text-xs font-mono-tech font-bold border bg-zinc-800 border-zinc-700 text-zinc-400';
+      });
+      const activeVBtn = document.getElementById(`btn-v-${v}`);
+      if (v === '500V') {
+        activeVBtn.className = 'v-btn py-2 rounded-xl text-xs font-mono-tech font-bold border bg-amber-500/20 border-amber-500 text-amber-300';
+      } else {
+        activeVBtn.className = 'v-btn py-2 rounded-xl text-xs font-mono-tech font-bold border bg-sky-500/20 border-sky-500 text-sky-300';
+      }
+
+      document.getElementById('voltage-badge').textContent = `檔位: ${v}`;
+      document.getElementById('lcd-sub').textContent = v === 'OFF' ? 'POWER OFF' : `TEST: ${v} DC`;
+      resetMeterDisplay();
+    }
+
+    // 設定黑棒夾持位置
+    function setBlackTarget(target) {
+      if (state.isTesting) stopTest();
+      state.blackTarget = target;
+
+      const btnBare = document.getElementById('btn-black-bare');
+      const btnSticker = document.getElementById('btn-black-sticker');
+      const blackProbe = document.getElementById('black-probe');
+      const blackWire = document.getElementById('black-wire');
+      const blackFlow = document.getElementById('black-wire-flow');
+
+      if (target === 'bare') {
+        btnBare.className = 'p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-emerald-500/15 border-emerald-500 text-emerald-200';
+        btnSticker.className = 'p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500';
+        // 移動黑夾至無漆裸金屬 (615, 260)
+        blackProbe.setAttribute('transform', 'translate(615, 260)');
+        const pathD = 'M 185 288 C 230 340, 480 340, 615 260';
+        blackWire.setAttribute('d', pathD);
+        blackFlow.setAttribute('d', pathD);
+      } else {
+        btnSticker.className = 'p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-amber-500/15 border-amber-500 text-amber-200';
+        btnBare.className = 'p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500';
+        // 移動黑夾至紙質貼紙 (635, 138)
+        blackProbe.setAttribute('transform', 'translate(635, 138)');
+        const pathD = 'M 185 288 C 260 330, 520 260, 635 138';
+        blackWire.setAttribute('d', pathD);
+        blackFlow.setAttribute('d', pathD);
+      }
+      resetMeterDisplay();
+    }
+
+    // 設定紅棒戳刺位置
+    function setRedTarget(pin) {
+      if (state.isTesting) stopTest();
+      state.redTarget = pin;
+
+      const btnPin1 = document.getElementById('btn-red-pin1');
+      const btnPin2 = document.getElementById('btn-red-pin2');
+      const redProbe = document.getElementById('red-probe');
+      const redWire = document.getElementById('red-wire');
+      const redFlow = document.getElementById('red-wire-flow');
+
+      if (pin === 'pin1') {
+        btnPin1.className = 'p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-sky-500/15 border-sky-500 text-sky-200';
+        btnPin2.className = 'p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500';
+        // 移動紅棒至 Pin 1 (401, 148)
+        redProbe.setAttribute('transform', 'translate(401, 148)');
+        const pathD = 'M 85 288 C 85 335, 300 325, 395 148';
+        redWire.setAttribute('d', pathD);
+        redFlow.setAttribute('d', pathD);
+      } else {
+        btnPin2.className = 'p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-sky-500/15 border-sky-500 text-sky-200';
+        btnPin1.className = 'p-2.5 rounded-xl text-xs font-medium border text-left transition-all bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500';
+        // 移動紅棒至 Pin 2 (401, 182)
+        redProbe.setAttribute('transform', 'translate(401, 182)');
+        const pathD = 'M 85 288 C 85 335, 300 335, 395 182';
+        redWire.setAttribute('d', pathD);
+        redFlow.setAttribute('d', pathD);
+      }
+      resetMeterDisplay();
+    }
+
+    // 重置儀表顯示
+    function resetMeterDisplay() {
+      const lcd = document.getElementById('lcd-display');
+      const unit = document.getElementById('lcd-unit');
+      lcd.textContent = state.voltage === 'OFF' ? '' : '---';
+      unit.textContent = state.voltage === 'OFF' ? '' : 'MΩ';
+    }
+
+    // 開始高壓測試 (按住 TEST)
+    function startTest(e) {
+      if (e) e.preventDefault();
+      if (state.isDischarging) return;
+
+      if (state.voltage === 'OFF') {
+        updateBanner('bg-amber-400', '請先將兆歐表旋鈕切至 500V 檔位再進行測試！');
+        return;
+      }
+
+      state.isTesting = true;
+      const holdBtn = document.getElementById('hold-test-btn');
+      holdBtn.classList.add('btn-test-pressed', 'from-rose-600', 'to-red-600');
+      document.getElementById('hold-btn-label').textContent = `高壓輸出中 (${state.voltage} DC) — 嚴禁觸碰探棒！`;
+
+      // 點亮閃爍紅燈
+      document.getElementById('hv-warning-led').classList.add('hv-led-active');
+
+      // 啟動紅線高壓動畫
+      const redFlow = document.getElementById('red-wire-flow');
+      redFlow.setAttribute('opacity', '1');
+      redFlow.classList.add('current-flow-active');
+
+      // 判斷是否形成漏電迴路
+      const isFaultLoop = (state.scenario === 'fault' || state.scenario === 'pitfall') && state.blackTarget === 'bare';
+
+      const lcd = document.getElementById('lcd-display');
+      const verdictBox = document.getElementById('verdict-box');
+      const verdictTitle = document.getElementById('verdict-title');
+      const verdictDesc = document.getElementById('verdict-desc');
+      const verdictBadge = document.getElementById('verdict-badge');
+
+      if (isFaultLoop) {
+        // 絕緣擊穿：顯示漏電電弧與黑線迴路電流
+        document.getElementById('leakage-arc').setAttribute('opacity', '1');
+        const blackFlow = document.getElementById('black-wire-flow');
+        blackFlow.setAttribute('opacity', '1');
+        blackFlow.classList.add('current-flow-active');
+
+        lcd.textContent = '0.06';
+        updateBanner('bg-rose-500', `警告：紅燈閃爍正在輸出 ${state.voltage} 高壓！偵測到明顯漏電流！`);
+
+        verdictBox.className = 'relative z-10 rounded-xl p-3 border bg-rose-950/50 border-rose-500/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2';
+        verdictTitle.className = 'text-sm font-bold text-rose-300 ml-1';
+        verdictTitle.textContent = `實測阻抗 0.06 MΩ (60 kΩ) — 遠低於原廠 2.5 MΩ 標準！`;
+        verdictDesc.textContent = `高壓電直接穿過受損的線圈絕緣層漏至外殼，證實壓縮機內部絕緣擊穿短路（符合 TSB 更換條件）。`;
+        verdictBadge.className = 'shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-600 text-white text-center';
+        verdictBadge.textContent = '不合格 / 絕緣擊穿';
+
+      } else if (state.blackTarget === 'sticker') {
+        // 錯誤示範：黑棒夾在貼紙上，斷路無迴路
+        document.getElementById('leakage-arc').setAttribute('opacity', '0');
+        document.getElementById('black-wire-flow').setAttribute('opacity', '0');
+
+        lcd.textContent = '1.';
+        updateBanner('bg-amber-400', `注意：黑棒夾在「紙質貼紙/烤漆」上不導電，產生虛假無限大讀值！`);
+
+        verdictBox.className = 'relative z-10 rounded-xl p-3 border bg-amber-950/40 border-amber-500/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2';
+        verdictTitle.className = 'text-sm font-bold text-amber-300 ml-1';
+        verdictTitle.textContent = `螢幕顯示「1.」(>200 MΩ) — 警告：此為無效量測（嚴重誤判）！`;
+        verdictDesc.textContent = `因為黑棒夾在紙質貼紙上未接觸裸金屬，高壓迴路根本沒導通，導致把故障壓縮機誤判為良品。請改夾無漆裸金屬！`;
+        verdictBadge.className = 'shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 text-zinc-950 text-center';
+        verdictBadge.textContent = '量測失效 / 誤判';
+
+      } else {
+        // 正常良品測試：絕緣良好，無漏電迴路
+        document.getElementById('leakage-arc').setAttribute('opacity', '0');
+        document.getElementById('black-wire-flow').setAttribute('opacity', '0');
+
+        lcd.textContent = '1.';
+        updateBanner('bg-emerald-400', `測試中：紅燈閃爍正在輸出 ${state.voltage} 高壓，絕緣層阻擋良好無漏電。`);
+
+        verdictBox.className = 'relative z-10 rounded-xl p-3 border bg-emerald-950/40 border-emerald-500/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2';
+        verdictTitle.className = 'text-sm font-bold text-emerald-300 ml-1';
+        verdictTitle.textContent = `螢幕顯示「1.」(阻抗 > 200 MΩ 無限大) — 絕緣極佳合格！`;
+        verdictDesc.textContent = `施加 ${state.voltage} 直流高壓下無漏電流產生，阻抗遠大於原廠 2.5 MΩ 門檻，代表馬達線圈與 POE 冷凍油絕緣狀態健康。`;
+        verdictBadge.className = 'shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white text-center';
+        verdictBadge.textContent = '合格 / 絕緣良好';
+      }
+
+      document.getElementById('discharge-indicator').textContent = `輸出電壓: ${state.voltage} (帶電危險)`;
+      document.getElementById('discharge-indicator').className = 'text-rose-400 font-mono-tech font-bold';
+    }
+
+    // 放開 TEST 按鈕：執行自動電容放電
+    function stopTest(e) {
+      if (e) e.preventDefault();
+      if (!state.isTesting) return;
+
+      state.isTesting = false;
+      state.isDischarging = true;
+
+      const holdBtn = document.getElementById('hold-test-btn');
+      holdBtn.classList.remove('btn-test-pressed', 'from-rose-600', 'to-red-600');
+      document.getElementById('hv-warning-led').classList.remove('hv-led-active');
+      document.getElementById('leakage-arc').setAttribute('opacity', '0');
+
+      // 切換為放電動畫
+      const redFlow = document.getElementById('red-wire-flow');
+      redFlow.classList.remove('current-flow-active');
+      redFlow.classList.add('discharge-flow-active');
+      document.getElementById('black-wire-flow').setAttribute('opacity', '0');
+
+      let vRemain = parseInt(state.voltage) || 500;
+      const indicator = document.getElementById('discharge-indicator');
+      document.getElementById('hold-btn-label').textContent = '正在自動釋放殘電中，請勿拔除探棒...';
+      updateBanner('bg-amber-400', '已放開測試鍵：儀表內部放電電路啟動中，請等待電壓降至 0V 再拆線！');
+
+      clearInterval(state.dischargeTimer);
+      state.dischargeTimer = setInterval(() => {
+        vRemain = Math.max(0, vRemain - 125);
+        indicator.textContent = `自動放電中: ${vRemain}V...`;
+        indicator.className = 'text-amber-400 font-mono-tech font-bold';
+
+        if (vRemain === 0) {
+          clearInterval(state.dischargeTimer);
+          state.isDischarging = false;
+          redFlow.setAttribute('opacity', '0');
+          redFlow.classList.remove('discharge-flow-active');
+          indicator.textContent = '殘留電壓: 0V (可安全拆線)';
+          indicator.className = 'text-emerald-400 font-mono-tech font-bold';
+          document.getElementById('hold-btn-label').textContent = '按住不放開始測試 (PRESS TO TEST)';
+          updateBanner('bg-emerald-400', '放電完成（0V 安全狀態）：可安全移開探棒或切換至另一支針腳量測。');
+        }
+      }, 220);
+    }
+
+    function updateBanner(dotColorClass, msg) {
+      document.getElementById('status-dot').className = `w-2.5 h-2.5 rounded-full ${dotColorClass}`;
+      document.getElementById('status-text').textContent = msg;
+    }
+
+    // 初始化預設狀態
+    setScenario('fault');
+    setVoltage('500V');
+  </script>
+</body>
+</html>
