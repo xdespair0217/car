@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellantis 集團 12V 電瓶保固與 E-XTEQ 檢測實戰教案</title>
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --bg-card: #131b2e;
+            --border-color: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-indigo: #6366f1;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1.5rem 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .badge-factory {
+            display: inline-block;
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        /* 導覽列 */
+        .stepper-nav {
+            display: flex;
+            justify-content: center;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            gap: 0.5rem;
+            overflow-x: auto;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .step-btn {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .step-btn span {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #334155;
+            color: #fff;
+            font-size: 0.75rem;
+        }
+
+        .step-btn.active {
+            background: rgba(56, 189, 248, 0.15);
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .step-btn.active span {
+            background: var(--accent-blue);
+            color: var(--bg-dark);
+        }
+
+        /* 主內容容器 */
+        main {
+            flex: 1;
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .step-panel {
+            display: none;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .step-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            margin-bottom: 1.5rem;
+        }
+
+        h2.panel-title {
+            font-size: 1.35rem;
+            color: #f8fafc;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        p.panel-desc {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        /* 控制按鈕列 */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #334155;
+            color: var(--text-main);
+        }
+
+        /* 動畫 1：雲端數據流視覺化 */
+        .flow-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: center;
+            margin: 2rem 0;
+        }
+
+        .flow-nodes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .flow-node {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .flow-node.highlight {
+            border-color: var(--accent-blue);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        .flow-node h4 {
+            color: var(--accent-blue);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .flow-node p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .packet-animation-box {
+            width: 100%;
+            height: 60px;
+            background: #0f172a;
+            border-radius: 8px;
+            border: 1px dashed var(--border-color);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            padding: 0 1rem;
+        }
+
+        .packet {
+            position: absolute;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-indigo));
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+            animation: movePacket 4s linear infinite;
+        }
+
+        @keyframes movePacket {
+            0% { left: 5%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { left: 80%; opacity: 0; }
+        }
+
+        /* 內湖廠代碼卡片網格 */
+        .code-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .code-card {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+
+        .code-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-blue);
+        }
+
+        .code-card h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .code-card .code-val {
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: var(--accent-yellow);
+            background: rgba(245, 158, 11, 0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        /* 互動診斷模擬器 */
+        .case-simulator {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .case-tag {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .case-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media(max-width: 768px) {
+            .case-body { grid-template-columns: 1fr; }
+        }
+
+        .case-box {
+            background: #1e293b;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .case-box h4 {
+            color: var(--accent-blue);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .reveal-box {
+            margin-top: 1rem;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .reveal-box.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* 30 秒自檢翻轉卡 */
+        .flip-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .flip-card {
+            background-color: transparent;
+            height: 220px;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 12px;
+        }
+
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .flip-card-front {
+            background: #1e293b;
+            color: var(--text-main);
+        }
+
+        .flip-card-front h3 {
+            color: var(--accent-red);
+            margin-bottom: 0.5rem;
+        }
+
+        .flip-card-back {
+            background: #0f172a;
+            color: var(--text-main);
+            transform: rotateY(180deg);
+            border-color: var(--accent-green);
+        }
+
+        .flip-card-back h3 {
+            color: var(--accent-green);
+            margin-bottom: 0.5rem;
+        }
+
+        .tip-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+
+        /* 測驗區塊 */
+        .quiz-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .quiz-item {
+            background: #1e293b;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+
+        .quiz-question {
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .quiz-option {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .quiz-option.correct {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: var(--accent-green);
+            color: #86efac;
+        }
+
+        .quiz-option.incorrect {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--accent-red);
+            color: #fca5a5;
+        }
+
+        .quiz-feedback {
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: none;
+        }
+
+        /* 頁尾 */
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-card);
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Stellantis 集團 12V 電瓶保固與 E-XTEQ 檢測實戰教案</h1>
+        <p>互動式逐步教學系統・掌握原廠審核防呆與代碼對照標準</p>
+        <div class="badge-factory">內湖服務廠 專用教育訓練</div>
+    </header>
+
+    <!-- 步驟導覽列 -->
+    <nav class="stepper-nav">
+        <button class="step-btn active" onclick="switchStep(1)"><span>1</span> E-XTEQ 認知與雲端</button>
+        <button class="step-btn" onclick="switchStep(2)"><span>2</span> 內湖廠代碼速查卡</button>
+        <button class="step-btn" onclick="switchStep(3)"><span>3</span> 實戰診斷：案例 1 & 2</button>
+        <button class="step-btn" onclick="switchStep(4)"><span>4</span> 實戰診斷：案例 3 & 4</button>
+        <button class="step-btn" onclick="switchStep(5)"><span>5</span> 30秒自檢翻轉卡</button>
+        <button class="step-btn" onclick="switchStep(6)"><span>6</span> 隨堂互動測驗</button>
+    </nav>
+
+    <main>
+        <!-- 步驟 1：工具與雲端機制 -->
+        <div class="step-panel active" id="panel-1">
+            <div class="card">
+                <h2 class="panel-title">🛠️ 什麼是 E-XTEQ (DS ONE)？</h2>
+                <p class="panel-desc">
+                    E-XTEQ 是 Stellantis 集團官方指定的 12V 電瓶檢測工具，也是保固索賠唯一認可的量測與舉證來源。測試時會自動綁定車輛 VIN、電瓶 BK-Code 與經銷商 RRDI 代碼，透過 WiFi 即時上傳至 ARGOS 雲端。
+                </p>
+
+                <div class="flow-container">
+                    <div class="flow-nodes">
+                        <div class="flow-node highlight">
+                            <h4>1. 現場檢測</h4>
+                            <p>E-XTEQ DS ONE 讀取 VIN & BK-Code</p>
+                        </div>
+                        <div class="flow-node highlight">
+                            <h4>2. 雲端同步</h4>
+                            <p>透過 WiFi 自動上傳至 ARGOS 雲端資料庫</p>
+                        </div>
+                        <div class="flow-node highlight">
+                            <h4>3. 原廠審核</h4>
+                            <p>Stellantis 後端比對校正期與時間序</p>
+                        </div>
+                    </div>
+
+                    <div class="packet-animation-box">
+                        <div class="packet">⚡ 封包傳輸中：VIN + BK-Code + RRDI → ARGOS Cloud</div>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <div></div>
+                    <button class="btn" onclick="switchStep(2)">下一步：內湖廠代碼速查 ➔</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步驟 2：內湖廠專屬代碼卡 -->
+        <div class="step-panel" id="panel-2">
+            <div class="card">
+                <h2 class="panel-title">🏢 內湖廠四品牌 RRDI 經銷商/電瓶代碼</h2>
+                <p class="panel-desc">
+                    各品牌車輛與測試代碼嚴禁錯掛。送出報告前，務必於儀器設定中核對以下內湖廠專屬代碼：
+                </p>
+
+                <div class="code-grid">
+                    <div class="code-card">
+                        <h3>🦁 Peugeot (寶獅)</h3>
+                        <div class="code-val">PTW018U</div>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">標準經銷商碼結尾帶 U</p>
+                    </div>
+                    <div class="code-card">
+                        <h3>⚡ Citroën (雪鐵龍)</h3>
+                        <div class="code-val">CTW014T</div>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">標準經銷商碼結尾帶 T</p>
+                    </div>
+                    <div class="code-card">
+                        <h3>🍀 Alfa Romeo (愛快)</h3>
+                        <div class="code-val">ATW00RO</div>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">專用經銷商/電瓶代碼</p>
+                    </div>
+                    <div class="code-card">
+                        <h3>🚙 Jeep (吉普)</h3>
+                        <div class="code-val">JTW00QO</div>
+                        <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">專用經銷商/電瓶代碼</p>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn btn-secondary" onclick="switchStep(1)">⬅️ 上一步</button>
+                    <button class="btn" onclick="switchStep(3)">下一步：實戰診斷 (1 & 2) ➔</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步驟 3：實戰診斷 1 & 2 -->
+        <div class="step-panel" id="panel-3">
+            <div class="card">
+                <h2 class="panel-title">🔍 實戰診斷器：案例 1 與 2 (RRDI 填錯車系)</h2>
+                <p class="panel-desc">點擊下方按鈕揭曉現場常見的「跨品牌代碼錯掛」退件樣態：</p>
+
+                <!-- 案例 1 -->
+                <div class="case-simulator" style="margin-bottom: 1.5rem;">
+                    <div class="case-header">
+                        <span><strong>案例 1：Jeep Wrangler PDI 報告</strong></span>
+                        <span class="case-tag">被退件</span>
+                    </div>
+                    <div class="case-body">
+                        <div class="case-box">
+                            <h4>現場狀況</h4>
+                            <p>新車 PDI 測試完成，電瓶健康度 Good，但保固部門在系統中完全查不到對應記錄。</p>
+                        </div>
+                        <div class="case-box">
+                            <h4>雲端檢視</h4>
+                            <p>Dealer code 欄位竟然顯示 <strong>PTW018U</strong>（Peugeot 內湖代碼），而不是 Jeep 的 <strong>JTW00QO</strong>！</p>
+                        </div>
+                    </div>
+                    <button class="btn" style="margin-top:1rem; width:100%;" onclick="toggleReveal('reveal-1')">💡 揭曉原廠退件根因</button>
+                    <div class="reveal-box" id="reveal-1">
+                        <p><strong>根因解析：</strong>測試前未確認儀器內的經銷商代碼，將 Jeep 車型誤掛 Peugeot 碼，導致原廠保固審核系統無法歸屬認列。</p>
+                    </div>
+                </div>
+
+                <!-- 案例 2 -->
+                <div class="case-simulator">
+                    <div class="case-header">
+                        <span><strong>案例 2：Peugeot 3008 測試</strong></span>
+                        <span class="case-tag">被退件</span>
+                    </div>
+                    <div class="case-body">
+                        <div class="case-box">
+                            <h4>現場狀況</h4>
+                            <p>測試結果顯示 Test PASS、Good，但提交索賠時遭到原廠拒絕。</p>
+                        </div>
+                        <div class="case-box">
+                            <h4>雲端檢視</h4>
+                            <p>Peugeot 的車型，Dealer code 卻填成了 Citroën 的 <strong>CTW014T</strong>。</p>
+                        </div>
+                    </div>
+                    <button class="btn" style="margin-top:1rem; width:100%;" onclick="toggleReveal('reveal-2')">💡 揭曉原廠退件根因</button>
+                    <div class="reveal-box" id="reveal-2">
+                        <p><strong>根因解析：</strong>方向相反的同類錯誤！各車系必須對應專屬代碼（Peugeot 應為 `PTW018U`），跨品牌錯掛一律判定無效。</p>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn btn-secondary" onclick="switchStep(2)">⬅️ 上一步</button>
+                    <button class="btn" onclick="switchStep(4)">下一步：實戰診斷 (3 & 4) ➔</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步驟 4：實戰診斷 3 & 4 -->
+        <div class="step-panel" id="panel-4">
+            <div class="card">
+                <h2 class="panel-title">🔍 實戰診斷器：案例 3 與 4 (欄位空白與時間序爭議)</h2>
+                
+                <!-- 案例 3 -->
+                <div class="case-simulator" style="margin-bottom: 1.5rem;">
+                    <div class="case-header">
+                        <span><strong>案例 3：RRDI 欄位空白</strong></span>
+                        <span class="case-tag">被退件</span>
+                    </div>
+                    <div class="case-body">
+                        <div class="case-box">
+                            <h4>現場狀況</h4>
+                            <p>電瓶已更換、報告也送出，卻收到原廠回覆：「請提供更換前的 PDF」。</p>
+                        </div>
+                        <div class="case-box">
+                            <h4>報告檢視</h4>
+                            <p>Dealer code 欄位顯示空白（<code>—</code>），且更換前後兩份 PDF 竟然都顯示 Good。</p>
+                        </div>
+                    </div>
+                    <button class="btn" style="margin-top:1rem; width:100%;" onclick="toggleReveal('reveal-3')">💡 揭曉原廠退件根因</button>
+                    <div class="reveal-box" id="reveal-3">
+                        <p><strong>根因解析：</strong>RRDI 欄位空白等於這筆測試「沒有人認領」；且更換前必須為 Bad（Test FAIL）才能證明具備更換必要性。</p>
+                    </div>
+                </div>
+
+                <!-- 案例 4 -->
+                <div class="case-simulator">
+                    <div class="case-header">
+                        <span><strong>案例 4：時間序對不上 (重複測試)</strong></span>
+                        <span class="case-tag">被退件</span>
+                    </div>
+                    <div class="case-body">
+                        <div class="case-box">
+                            <h4>現場狀況</h4>
+                            <p>交車報告顯示 Good Battery (SOC 87%)，原廠卻指出當天晚上有另一筆 Bad 紀錄。</p>
+                        </div>
+                        <div class="case-box">
+                            <h4>雲端日誌</h4>
+                            <p>同一天下午連續測了兩次：14:27 顯示 Good，14:29 卻刷出 Bad battery。</p>
+                        </div>
+                    </div>
+                    <button class="btn" style="margin-top:1rem; width:100%;" onclick="toggleReveal('reveal-4')">💡 揭曉原廠退件根因</button>
+                    <div class="reveal-box" id="reveal-4">
+                        <p><strong>根因解析：</strong>儀器每一筆操作都會自動上傳雲端，不會只保留最後一筆。中間夾雜的 Bad 紀錄若無原廠充電/更換備忘說明，保固必會索退。</p>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn btn-secondary" onclick="switchStep(3)">⬅️ 上一步</button>
+                    <button class="btn" onclick="switchStep(5)">下一步：30秒自檢翻轉卡 ➔</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步驟 5：30秒自檢翻轉卡 -->
+        <div class="step-panel" id="panel-5">
+            <div class="card">
+                <h2 class="panel-title">🃏 30 秒防呆自檢翻轉卡</h2>
+                <p class="panel-desc">點擊卡片即可翻轉，對照「常見錯誤」與「正確防呆對策」：</p>
+
+                <div class="flip-grid">
+                    <!-- 卡片 1 -->
+                    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <h3>❌ 證書過期陷阱</h3>
+                                <p>儀器跳出校正倒數警告，覺得還能開機就繼續測。</p>
+                                <span class="tip-hint">👆 點擊看正確做法</span>
+                            </div>
+                            <div class="flip-card-back">
+                                <h3>✅ 正確防呆對策</h3>
+                                <p>見倒數警告立即安排校正！證書過期後所測得的任何報告，保固一律不受理。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 卡片 2 -->
+                    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <h3>❌ 代碼車系錯掛</h3>
+                                <p> Peugeot 掛成 Citroën 碼，或欄位直接留空。</p>
+                                <span class="tip-hint">👆 點擊看正確做法</span>
+                            </div>
+                            <div class="flip-card-back">
+                                <h3>✅ 正確防呆對策</h3>
+                                <p>測試前核對內湖代碼：Peugeot (`PTW018U`)、Citroën (`CTW014T`)、Alfa (`ATW00RO`)、Jeep (`JTW00QO`)。</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 卡片 3 -->
+                    <div class="flip-card" onclick="this.classList.toggle('flipped')">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <h3>❌ 重複測試時間序</h3>
+                                <p>一直重測到出現 Good 為止，忽略中間的 Bad 記錄。</p>
+                                <span class="tip-hint">👆 點擊看正確做法</span>
+                            </div>
+                            <div class="flip-card-back">
+                                <h3>✅ 正確防呆對策</h3>
+                                <p>雲端會保留所有刷測足跡。異常 Bad 紀錄必須留存充電或故障排除佐證，避免遭原廠質疑。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button class="btn btn-secondary" onclick="switchStep(4)">⬅️ 上一步</button>
+                    <button class="btn" onclick="switchStep(6)">下一步：隨堂互動測驗 ➔</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 步驟 6：隨堂互動測驗 -->
+        <div class="step-panel" id="panel-6">
+            <div class="card">
+                <h2 class="panel-title">📝 結業隨堂互動測驗</h2>
+                <p class="panel-desc">請依據內湖廠標準規範，選出最適當的處理方式：</p>
+
+                <div class="quiz-container">
+                    <!-- 題目 1 -->
+                    <div class="quiz-item" id="q1">
+                        <div class="quiz-question">Q1：E-XTEQ 檢測工具的校正證書到期後，所進行的電瓶測試結果會怎樣？</div>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkAnswer(1, false, '錯！證書過期後做的量測，保固一律不受理。')">A. 只要數值正常，原廠依然會通融採納</div>
+                            <div class="quiz-option" onclick="checkAnswer(1, true, '答對了！校正證書過期後的測試報告，保固一律不受理。')">B. 保固一律不受理，必須先完成儀器校正</div>
+                            <div class="quiz-option" onclick="checkAnswer(1, false, '錯！系統不會自動忽略。')">C. 系統會自動忽略過期警示並核准</div>
+                        </div>
+                        <div class="quiz-feedback" id="feedback-1"></div>
+                    </div>
+
+                    <!-- 題目 2 -->
+                    <div class="quiz-item" id="q2">
+                        <div class="quiz-question">Q2：內湖廠針對 Peugeot 車型進行檢測時，正確的經銷商代碼應為何？</div>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkAnswer(2, false, '錯！CTW014T 是 Citroën 的代碼。')">A. CTW014T</div>
+                            <div class="quiz-option" onclick="checkAnswer(2, true, '答對了！Peugeot 內湖廠標準代碼為 PTW018U。')">B. PTW018U</div>
+                            <div class="quiz-option" onclick="checkAnswer(2, false, '錯！JTW00QO 是 Jeep 的代碼。')">C. JTW00QO</div>
+                        </div>
+                        <div class="quiz-feedback" id="feedback-2"></div>
+                    </div>
+
+                    <!-- 題目 3 -->
+                    <div class="quiz-item" id="q3">
+                        <div class="quiz-question">Q3：關於 E-XTEQ 雲端上傳機制，下列敘述何者正確？</div>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkAnswer(3, false, '錯！每一筆測試都會自動上傳。')">A. 只有最後一次測出的 Good 記錄才會上傳雲端</div>
+                            <div class="quiz-option" onclick="checkAnswer(3, true, '答對了！同一天內的所有刷測記錄（包含中途的 Bad）都會完整留在 ARGOS 雲端。')">B. 每一筆測試紀錄（包含中間重測的 Bad）都會自動同步進 ARGOS 雲端</div>
+                            <div class="quiz-option" onclick="checkAnswer(3, false, '錯！儀器透過 WiFi 自動上傳。')">C. 必須透過 USB 手動匯出，雲端不會自動同步</div>
+                        </div>
+                        <div class="quiz-feedback" id="feedback-3"></div>
+                    </div>
+
+                    <!-- 題目 4 -->
+                    <div class="quiz-item" id="q4">
+                        <div class="quiz-question">Q4：申請電瓶保固更換時，送出的「更換前 PDF 檢測報告」必須符合什麼狀態？</div>
+                        <div class="quiz-options">
+                            <div class="quiz-option" onclick="checkAnswer(4, false, '錯！更換前必須證明不良。')">A. 顯示 Good Battery 即可</div>
+                            <div class="quiz-option" onclick="checkAnswer(4, true, '答對了！更換前報告必須顯示 Bad battery (Test FAIL)，方能證明具備更換必要性。')">B. 必須顯示 Bad battery (Test FAIL)，證明確實故障</div>
+                            <div class="quiz-option" onclick="checkAnswer(4, false, '錯！前後都 Good 會被原廠質疑。')">C. 只要有上傳 PDF 即可，不限結果</div>
+                        </div>
+                        <div class="quiz-feedback" id="feedback-4"></div>
+                    </div>
+                </div>
+
+                <div class="action-bar" style="margin-top:2rem;">
+                    <button class="btn btn-secondary" onclick="switchStep(5)">⬅️ 上一步</button>
+                    <button class="btn" onclick="switchStep(1)">🔄 重新開始本教案</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        Stellantis Group Battery Warranty Training System・Designed for Soros & Neihu Team
+    </footer>
+
+    <script>
+        // 步驟切換邏輯
+        function switchStep(stepNumber) {
+            // 隱藏所有面板
+            const panels = document.querySelectorAll('.step-panel');
+            panels.forEach(panel => panel.classList.remove('active'));
+
+            // 移除所有導覽按鈕 active 狀態
+            const buttons = document.querySelectorAll('.step-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+
+            // 顯示目標面板與按鈕
+            document.getElementById(`panel-${stepNumber}`).classList.add('active');
+            buttons[stepNumber - 1].classList.add('active');
+
+            // 滾動至頂部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // 案例診斷揭曉開關
+        function toggleReveal(revealId) {
+            const revealBox = document.getElementById(revealId);
+            revealBox.classList.toggle('show');
+        }
+
+        // 測驗批改邏輯
+        function checkAnswer(questionNum, isCorrect, message) {
+            const qItem = document.getElementById(`q${questionNum}`);
+            const options = qItem.querySelectorAll('.quiz-option');
+            const feedback = document.getElementById(`feedback-${questionNum}`);
+
+            // 鎖定選項點擊
+            options.forEach(opt => {
+                opt.style.pointerEvents = 'none';
+                if(opt.getAttribute('onclick').includes('true')) {
+                    opt.classList.add('correct');
+                }
+            });
+
+            if(!isCorrect) {
+                event.target.classList.add('incorrect');
+            }
+
+            feedback.style.display = 'block';
+            feedback.style.color = isCorrect ? 'var(--accent-green)' : 'var(--accent-red)';
+            feedback.innerHTML = message;
+        }
+    </script>
+</body>
+</html>
