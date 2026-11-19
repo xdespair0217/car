@@ -131,7 +131,7 @@
                     <i class="fa-solid fa-calculator text-emerald-400"></i> 3. 計算機與逐步教學
                 </button>
                 <button onclick="switchModule(4)" id="nav-btn-4" class="nav-btn text-slate-400 hover:text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-warehouse text-orange-400"></i> 4. 庫存與廠長管理
+                    <i class="fa-solid fa-warehouse text-orange-400"></i> 4. 庫存與作業規範
                 </button>
             </nav>
         </div>
@@ -153,7 +153,7 @@
                             台灣市場 Stellantis 集團主流車型電瓶規格對照表
                         </h2>
                         <p class="text-sm text-slate-400 mt-1">
-                            涵蓋歐規 DIN 尺寸代號（LN2~LN5）、額定容量（Ah）、冷啟動電流（EN CCA）及原廠標配與升級建議。
+                            彙整歐規 DIN 尺寸代號（LN2~LN5）、額定容量（Ah）、冷啟動電流（EN CCA）、原廠配置類型及診斷系統設定備註（實際規格請以實車 VIN 與原廠零件手冊為準）。
                         </p>
                     </div>
                     <!-- Brand Filter Buttons -->
@@ -174,8 +174,8 @@
                                 <th class="p-3">歐規尺寸 (長×寬×高 mm)</th>
                                 <th class="p-3">容量 (Ah)</th>
                                 <th class="p-3">冷啟動 (CCA EN)</th>
-                                <th class="p-3">原廠技術</th>
-                                <th class="p-3 rounded-tr-lg">廠長升級與實務建議</th>
+                                <th class="p-3">原廠配置類型</th>
+                                <th class="p-3 rounded-tr-lg">診斷系統設定與安裝備註</th>
                             </tr>
                         </thead>
                         <tbody id="spec-table-body" class="divide-y divide-slate-800 text-sm">
@@ -185,26 +185,26 @@
                 </div>
             </div>
 
-            <!-- Workshop Chief Practical Commentary (廠長實務點評) -->
+            <!-- Technical Notes: EFB/AGM Architecture & IBS Diagnostics -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Card 1: EFB vs AGM in Taiwan Climate -->
+                <!-- Card 1: EFB vs AGM Technical Characteristics -->
                 <div class="diag-panel rounded-2xl p-5 sm:p-6 border-l-4 border-l-amber-500">
                     <div class="flex items-start gap-3">
                         <div class="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                            <i class="fa-solid fa-temperature-high text-xl"></i>
+                            <i class="fa-solid fa-car-battery text-xl"></i>
                         </div>
                         <div>
-                            <span class="text-xs font-mono text-amber-400 font-bold">CHIEF INSIGHT #01 · 台灣用車環境解析</span>
-                            <h3 class="text-lg font-bold text-white mt-0.5">為何台灣高溫＋短途塞車，建議 EFB 升級 AGM？</h3>
+                            <span class="text-xs font-mono text-amber-400 font-bold">TECHNICAL NOTE #01 · 電瓶技術規格差異</span>
+                            <h3 class="text-lg font-bold text-white mt-0.5">EFB 與 AGM 技術結構與安裝位置規範</h3>
                             <div class="mt-3 space-y-2.5 text-sm text-slate-300 leading-relaxed">
                                 <p>
-                                    <strong class="text-white">1. 引擎室高溫加速失水：</strong>Peugeot/Citroën 渦輪引擎（1.2 PureTech / 1.6 THP / 1.5 BlueHDi）引擎室熱負荷高。傳統 EFB 仍為液態電解液，長期高溫易產生微蒸發與極板硫化；<span class="text-cyan-400 font-semibold">AGM 採用全密封閥控設計與玻璃纖維棉吸附</span>，高溫抗失水與抗震動能力提升 2 倍以上。
+                                    <strong class="text-white">1. 結構與電解液差異：</strong>EFB（Enhanced Flooded Battery）為增強型液態電瓶，正極板表面附有聚酯纖維網以固定活性物質；<span class="text-cyan-400 font-semibold">AGM（Absorbent Glass Mat）採用全密封閥控設計與超細玻璃纖維棉吸附電解液</span>，內部無游離液體且內阻較低，具備較高的充放電循環耐受度。
                                 </p>
                                 <p>
-                                    <strong class="text-white">2. 都會短途充電不足：</strong>台灣車主平均單趟行駛常低於 20 分鐘，加上 Start-Stop 怠速熄火頻繁作動。AGM 的內阻極低，<span class="text-emerald-400 font-semibold">接受大電流回充的速度比 EFB 快 30%~40%</span>，能有效在短時間內補回啟動消耗的電量。
+                                    <strong class="text-white">2. 原廠配置與不可降級原則：</strong>Start-Stop 怠速熄火系統與 BMS 智慧充電車型，更換時必須選用<span class="text-emerald-400 font-semibold">與原廠同等級或符合車廠規範之規格</span>（原廠標配 AGM 之車款嚴禁改用 EFB 或傳統鉛酸電瓶）。
                                 </p>
                                 <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-700/80 text-xs text-amber-300">
-                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> <strong>安裝位置注意：</strong>若電瓶位於引擎室內（多數 Peugeot/Citroën 車款），務必確認原廠隔熱護套完整裝回；Alfa Romeo Giulia/Stelvio 電瓶位於後行李廂，無引擎高溫問題，原廠即標配 LN4/LN5 AGM，更換時<strong>嚴禁降級使用 EFB</strong>。
+                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> <strong>安裝位置規範：</strong>電瓶位於引擎室內之車款（多數 Peugeot / Citroën 車型），安裝時須確認原廠隔熱護套完整裝回；電瓶位於後行李廂之車款（如 Alfa Romeo Giulia / Stelvio），必須確認排氣導管已正確連接至電瓶排氣孔。
                                 </div>
                             </div>
                         </div>
@@ -218,19 +218,19 @@
                             <i class="fa-solid fa-laptop-medical text-xl"></i>
                         </div>
                         <div>
-                            <span class="text-xs font-mono text-cyan-400 font-bold">CHIEF INSIGHT #02 · 電腦診斷與 IBS 邏輯</span>
+                            <span class="text-xs font-mono text-cyan-400 font-bold">TECHNICAL NOTE #02 · 電腦診斷與 IBS 邏輯</span>
                             <h3 class="text-lg font-bold text-white mt-0.5">IBS 智慧電瓶感知器與 DiagBox / wiTECH 2.0 歸零</h3>
                             <div class="mt-3 space-y-2.5 text-sm text-slate-300 leading-relaxed">
                                 <p>
-                                    <strong class="text-white">1. IBS 負極感知器運作原理：</strong>Stellantis 全車系電瓶負極樁頭均配有 <span class="text-cyan-400 font-semibold">IBS (Intelligent Battery Sensor)</span>，即時監控電瓶溫度、電流進出量與內阻，並向 BSI（車身控制電腦）回報 SOH（健康度）與 SOC（荷電狀態）。
+                                    <strong class="text-white">1. IBS 負極感知器運作原理：</strong>Stellantis 車系電瓶負極樁頭配有 <span class="text-cyan-400 font-semibold">IBS (Intelligent Battery Sensor)</span>，即時監控電瓶溫度、充放電電流與內阻，並向 BSI（車身控制電腦）回報 SOH（健康度）與 SOC（荷電狀態）。
                                 </p>
                                 <p>
-                                    <strong class="text-white">2. 不做 BMS Reset 的後果：</strong>電腦內存仍記憶「舊電瓶的老化內阻曲線」，導致對新電瓶採取<strong>錯誤的充電電壓策略（過充導致新電瓶提早鼓包失水，或限流導致充不飽）</strong>，且 Start-Stop 系統可能持續顯示「ECO 模式不可用」。
+                                    <strong class="text-white">2. 執行 BMS Reset 的必要性：</strong>若未重置電瓶管理參數，控制模組仍沿用舊電瓶的老化內阻記憶，可能導致充電電壓策略異常或 Start-Stop 功能持續顯示無法啟用。
                                 </p>
                                 <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-700/80 text-xs space-y-1">
-                                    <div class="text-cyan-300 font-bold"><i class="fa-solid fa-wrench mr-1"></i> 交車前標準 SOP：</div>
-                                    <p class="text-slate-300">• <strong>Peugeot / Citroën：</strong>連接 <span class="text-white font-mono">DiagBox</span> 進入 BSI 系統執行「更換電瓶登錄」，並確認電瓶類型（EFB / AGM）與容量設定正確。</p>
-                                    <p class="text-slate-300">• <strong>Alfa Romeo：</strong>連接 <span class="text-white font-mono">wiTECH 2.0</span> 執行 IBS 模組重置，並鎖車靜置休眠 4 小時讓 IBS 重新校準 OCV（開路電壓）。</p>
+                                    <div class="text-cyan-300 font-bold"><i class="fa-solid fa-wrench mr-1"></i> 診斷電腦設定項目：</div>
+                                    <p class="text-slate-300">• <strong>Peugeot / Citroën：</strong>連接 <span class="text-white font-mono">DiagBox</span> 進入 BSI 系統執行「更換電瓶登錄」，並確認電瓶技術類型（EFB / AGM）與額定容量（Ah）設定與實車相符。</p>
+                                    <p class="text-slate-300">• <strong>Alfa Romeo：</strong>連接 <span class="text-white font-mono">wiTECH 2.0</span> 執行 IBS 模組重置，並依原廠規範鎖車靜置休眠讓 IBS 重新校準開路電壓（OCV）。</p>
                                 </div>
                             </div>
                         </div>
@@ -243,6 +243,12 @@
         <!-- MODULE 2: DYNAMIC ANIMATION (EFB vs AGM & BMS CHARGE/DISCHARGE)       -->
         <!-- ===================================================================== -->
         <section id="module-2" class="module-section hidden space-y-6">
+            <!-- Objective Simulation Disclaimer Banner -->
+            <div class="bg-slate-900/90 border border-cyan-500/30 rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs text-slate-300">
+                <i class="fa-solid fa-circle-info text-cyan-400 text-sm shrink-0"></i>
+                <span><strong class="text-cyan-300">原理示意動畫說明：</strong>以下微觀粒子運動、極板結晶與能量流向均為依據電學與化學原理製作的「視覺化教學示意動畫」，非實車感測器即時影像，實際數值請以實車量測為準。</span>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 <!-- Left Panel: Internal Structure Animation (7 cols) -->
@@ -250,8 +256,8 @@
                     <div>
                         <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
                             <div>
-                                <span class="text-xs font-mono text-cyan-400 font-bold">MICROSCOPIC SIMULATION · 極板與電解質結構</span>
-                                <h3 class="text-lg font-bold text-white">電瓶內部構造與抗硫化動態演示</h3>
+                                <span class="text-xs font-mono text-cyan-400 font-bold">PRINCIPLE ILLUSTRATION · 原理示意動畫</span>
+                                <h3 class="text-lg font-bold text-white">電瓶內部構造與抗硫化原理示意</h3>
                             </div>
                             <!-- Battery Type Selector -->
                             <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
@@ -264,11 +270,11 @@
                         <!-- Stress Test Toggle (Simulate Deep Discharge / High Temp) -->
                         <div class="mt-3 flex flex-wrap items-center justify-between gap-3 bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800">
                             <span class="text-xs text-slate-300 font-medium">
-                                <i class="fa-solid fa-flask text-amber-400 mr-1"></i> 模擬工況測試：
+                                <i class="fa-solid fa-flask text-amber-400 mr-1"></i> 工況條件切換（示意）：
                             </span>
                             <div class="flex gap-2">
                                 <button onclick="setStressLevel(0)" id="stress-btn-0" class="stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">正常循環狀態</button>
-                                <button onclick="setStressLevel(1)" id="stress-btn-1" class="stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 hover:text-white">模擬高溫＋頻繁深放電</button>
+                                <button onclick="setStressLevel(1)" id="stress-btn-1" class="stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 hover:text-white">高溫＋深放電劣化示意</button>
                             </div>
                         </div>
 
@@ -282,7 +288,7 @@
                                     <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span> 負極板 (Pb)</span>
                                     <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-white inline-block"></span> 硫酸鉛結晶 (硫化)</span>
                                 </div>
-                                <span id="struct-health-badge" class="font-mono font-bold text-cyan-400">內阻極低 · 循環壽命 3X</span>
+                                <span id="struct-health-badge" class="font-mono font-bold text-cyan-400">低內阻 · 高循環耐受</span>
                             </div>
                         </div>
                     </div>
@@ -297,8 +303,8 @@
                 <div class="lg:col-span-5 diag-panel rounded-2xl p-5 flex flex-col justify-between">
                     <div>
                         <div class="pb-3 border-b border-slate-800">
-                            <span class="text-xs font-mono text-amber-400 font-bold">STELLANTIS IBS & BMS · 能量流向模擬</span>
-                            <h3 class="text-lg font-bold text-white">車輛靜置暗電流 vs IBS 智慧回充</h3>
+                            <span class="text-xs font-mono text-amber-400 font-bold">SYSTEM FLOW ILLUSTRATION · 系統能量流向示意</span>
+                            <h3 class="text-lg font-bold text-white">車輛靜置暗電流 vs IBS 智慧充放電</h3>
                         </div>
 
                         <!-- Scenario Switcher -->
@@ -307,7 +313,7 @@
                                 <i class="fa-solid fa-moon block mb-1 text-sm"></i> 熄火靜置鎖車
                             </button>
                             <button onclick="setBmsMode('CRUISE')" id="bms-btn-CRUISE" class="bms-btn py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-center">
-                                <i class="fa-solid fa-gauge-high block mb-1 text-sm"></i> 定速巡航 (85% SOC)
+                                <i class="fa-solid fa-gauge-high block mb-1 text-sm"></i> 定速巡航 (減載)
                             </button>
                             <button onclick="setBmsMode('REGEN')" id="bms-btn-REGEN" class="bms-btn py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-center">
                                 <i class="fa-solid fa-bolt block mb-1 text-sm"></i> 滑行減速動能回充
@@ -320,11 +326,11 @@
                             <!-- Live Telemetry Overlay -->
                             <div class="absolute top-3 left-3 right-3 flex justify-between pointer-events-none">
                                 <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-700">
-                                    <div class="text-[10px] text-slate-400 font-mono">系統電壓 (V)</div>
+                                    <div class="text-[10px] text-slate-400 font-mono">預設示意電壓 (V)</div>
                                     <div id="bms-volt-readout" class="text-base font-mono font-bold text-amber-400">12.55 V</div>
                                 </div>
                                 <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-700 text-right">
-                                    <div class="text-[10px] text-slate-400 font-mono">IBS 電流方向 (A)</div>
+                                    <div class="text-[10px] text-slate-400 font-mono">預設示意電流 (A)</div>
                                     <div id="bms-amp-readout" class="text-base font-mono font-bold text-rose-400">-0.04 A (放電)</div>
                                 </div>
                             </div>
@@ -344,34 +350,40 @@
         <!-- MODULE 3: BATTERY CALCULATOR & STEP-BY-STEP DERIVATION                -->
         <!-- ===================================================================== -->
         <section id="module-3" class="module-section hidden space-y-6">
+            <!-- Objective Simulation Disclaimer Banner -->
+            <div class="bg-slate-900/90 border border-emerald-500/30 rounded-xl px-4 py-2.5 flex items-center gap-2.5 text-xs text-slate-300">
+                <i class="fa-solid fa-circle-info text-emerald-400 text-sm shrink-0"></i>
+                <span><strong class="text-emerald-300">預設模擬參數說明：</strong>計算公式遵循標準電學單位換算，下方快捷按鈕與滑桿為「預設模擬參數」，實際數值請以實車電瓶測試儀與勾表量測結果為準。</span>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 <!-- Left Column: Interactive Sliders & Presets (5 cols) -->
                 <div class="lg:col-span-5 diag-panel rounded-2xl p-5 sm:p-6 space-y-5">
                     <div class="border-b border-slate-800 pb-3">
-                        <span class="text-xs font-mono text-emerald-400 font-bold">INTERACTIVE SIMULATOR · 參數調整</span>
+                        <span class="text-xs font-mono text-emerald-400 font-bold">PRESET SIMULATION PARAMETERS · 預設模擬參數</span>
                         <h3 class="text-lg font-bold text-white">電瓶容量與靜置天數計算機</h3>
-                        <p class="text-xs text-slate-400 mt-1">拖動下方滑桿或點選車型預設值，右側將即時逐步拆解計算公式。</p>
+                        <p class="text-xs text-slate-400 mt-1">調整滑桿或載入預設模擬案例，右側將即時逐步拆解數學公式。</p>
                     </div>
 
-                    <!-- Quick Vehicle Presets -->
+                    <!-- Quick Simulation Cases -->
                     <div>
-                        <label class="text-xs font-bold text-slate-400 block mb-2">快速套用實車參數：</label>
+                        <label class="text-xs font-bold text-slate-400 block mb-2">載入預設模擬參數範例：</label>
                         <div class="grid grid-cols-2 gap-2">
                             <button onclick="applyPreset(70, 95, 35, 760)" class="text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 transition">
-                                <div class="text-xs font-bold text-cyan-400">Peugeot 3008 (新車)</div>
+                                <div class="text-xs font-bold text-cyan-400">範例 A：70Ah 標準休眠</div>
                                 <div class="text-[11px] font-mono text-slate-400">70Ah · SOH 95% · 35mA</div>
                             </button>
                             <button onclick="applyPreset(70, 68, 120, 760)" class="text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 transition">
-                                <div class="text-xs font-bold text-amber-400">3008 + 24H 停車監控</div>
+                                <div class="text-xs font-bold text-amber-400">範例 B：外加電裝高暗電流</div>
                                 <div class="text-[11px] font-mono text-slate-400">70Ah · SOH 68% · 120mA</div>
                             </button>
                             <button onclick="applyPreset(80, 90, 40, 800)" class="text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 transition">
-                                <div class="text-xs font-bold text-cyan-400">Alfa Giulia 2.0T</div>
+                                <div class="text-xs font-bold text-cyan-400">範例 C：80Ah 標準休眠</div>
                                 <div class="text-[11px] font-mono text-slate-400">80Ah · SOH 90% · 40mA</div>
                             </button>
                             <button onclick="applyPreset(60, 60, 45, 640)" class="text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 transition">
-                                <div class="text-xs font-bold text-rose-400">2008 老化電瓶警戒</div>
+                                <div class="text-xs font-bold text-rose-400">範例 D：60Ah 老化電瓶</div>
                                 <div class="text-[11px] font-mono text-slate-400">60Ah · SOH 60% · 45mA</div>
                             </button>
                         </div>
@@ -399,9 +411,9 @@
                         </div>
                         <input type="range" id="input-soh" min="40" max="100" step="1" value="85" class="w-full" oninput="recalculateBattery()">
                         <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
-                            <span class="text-rose-400">40% (報廢)</span>
-                            <span class="text-amber-400">70% (建議更換)</span>
-                            <span class="text-emerald-400">100% (全新)</span>
+                            <span class="text-rose-400">40% (極低)</span>
+                            <span class="text-amber-400">70% (警戒門檻)</span>
+                            <span class="text-emerald-400">100% (滿額)</span>
                         </div>
                     </div>
 
@@ -413,9 +425,9 @@
                         </div>
                         <input type="range" id="input-ma" min="20" max="300" step="5" value="40" class="w-full amber-slider" oninput="recalculateBattery()">
                         <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
-                            <span>30mA (原廠休眠)</span>
-                            <span>120mA (+行車記錄器)</span>
-                            <span>300mA (漏電異常)</span>
+                            <span>30mA (休眠基準)</span>
+                            <span>120mA (外加負載)</span>
+                            <span>300mA (異常漏電)</span>
                         </div>
                     </div>
 
@@ -436,11 +448,11 @@
                     <div class="diag-panel rounded-2xl p-5 sm:p-6 space-y-4">
                         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                             <div>
-                                <span class="text-xs font-mono text-cyan-400 font-bold">STEP-BY-STEP DERIVATION · 技師教學算式</span>
-                                <h3 class="text-lg font-bold text-white">逐步公式推導與判定標準</h3>
+                                <span class="text-xs font-mono text-cyan-400 font-bold">STEP-BY-STEP DERIVATION · 逐步公式推導</span>
+                                <h3 class="text-lg font-bold text-white">電學公式拆解與判定基準</h3>
                             </div>
                             <div class="text-right">
-                                <span class="text-xs text-slate-400 block">安全可靜置天數</span>
+                                <span class="text-xs text-slate-400 block">理論安全可靜置天數</span>
                                 <span id="summary-days-badge" class="text-2xl font-mono font-black text-emerald-400 glow-text">31.0 天</span>
                             </div>
                         </div>
@@ -452,7 +464,7 @@
                                 <span id="step1-result" class="font-mono font-bold text-white text-base">29.75 Ah</span>
                             </div>
                             <p class="text-xs text-slate-400 mb-2">
-                                鉛酸/AGM 電瓶放電深度（DoD）不可超過 <strong class="text-white">50%</strong>（低於 12.0V 易造成不可逆硫化且無法發動），再乘上當前健康度 SOH：
+                                鉛酸/AGM 電瓶安全放電深度（DoD）一般設定上限為 <strong class="text-white">50%</strong>（避免電壓低於 12.0V 造成硫化與啟動困難），再乘上當前健康度 SOH：
                             </p>
                             <div id="step1-formula" class="font-mono text-xs sm:text-sm bg-slate-950 p-2.5 rounded-lg text-cyan-300 border border-slate-800">
                                 70 Ah × 85% (SOH) × 50% (安全放電深度) = 29.75 Ah
@@ -466,7 +478,7 @@
                                 <span id="step2-result" class="font-mono font-bold text-white text-base">0.040 A</span>
                             </div>
                             <p class="text-xs text-slate-400 mb-2">
-                                Stellantis 車系鎖車進入深度休眠（約 15~30 分鐘後）正常暗電流為 <strong class="text-white">30~50 mA</strong>。1 安培 (A) = 1,000 毫安培 (mA)：
+                                車輛鎖車進入深度休眠後，正常靜置暗電流參考範圍約為 <strong class="text-white">30~50 mA</strong>。1 安培 (A) = 1,000 毫安培 (mA)：
                             </p>
                             <div id="step2-formula" class="font-mono text-xs sm:text-sm bg-slate-950 p-2.5 rounded-lg text-amber-300 border border-slate-800">
                                 40 mA ÷ 1000 = 0.040 A (每小時消耗 0.040 Ah)
@@ -490,19 +502,19 @@
                         <!-- Step 4: RC & CCA Standards -->
                         <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
                             <div class="flex items-center justify-between mb-1">
-                                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-950 text-purple-300">STEP 4 · 儲備容量 (RC) 與 CCA 換電判定</span>
+                                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-950 text-purple-300">STEP 4 · 儲備容量 (RC) 與 CCA 判定基準</span>
                                 <span id="step4-status" class="font-mono font-bold text-emerald-400 text-xs px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">狀態良好</span>
                             </div>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 text-xs">
                                 <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
                                     <div class="text-slate-400">估算有效儲備容量 (RC, 25A放電)：</div>
                                     <div id="step4-rc" class="font-mono text-sm font-bold text-white mt-0.5">約 119 分鐘</div>
-                                    <div class="text-[11px] text-slate-500 mt-0.5">公式：實際 Ah × 2 × 0.85 (發電機故障可撐時間)</div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">公式：實際 Ah × 2 × 0.85 (發電機異常可支撐時間)</div>
                                 </div>
                                 <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                                    <div class="text-slate-400">推估實測 CCA / 70% 更換警戒線：</div>
+                                    <div class="text-slate-400">推估實測 CCA / 70% 警戒基準：</div>
                                     <div id="step4-cca" class="font-mono text-sm font-bold text-cyan-400 mt-0.5">646 A / 警戒線 532 A</div>
-                                    <div class="text-[11px] text-slate-500 mt-0.5">低於額定 CCA 70% 建議預防性更換</div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">低於額定 CCA 70% 列入更換評估</div>
                                 </div>
                             </div>
                         </div>
@@ -512,8 +524,8 @@
                     <div class="diag-panel rounded-2xl p-5 sm:p-6">
                         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <div>
-                                <h4 class="text-base font-bold text-white">靜置天數 vs 開路電壓 (OCV) 衰減預測曲線</h4>
-                                <p class="text-xs text-slate-400">觀察電瓶從 12.65V 滿電降至 12.0V 警戒線的過程</p>
+                                <h4 class="text-base font-bold text-white">靜置天數 vs 開路電壓 (OCV) 衰減趨勢圖（模擬示意）</h4>
+                                <p class="text-xs text-slate-400">依據上述預設參數推算開路電壓隨靜置天數下降之趨勢</p>
                             </div>
                             <!-- Status Traffic Lights -->
                             <div class="flex items-center gap-2 text-[11px] font-mono">
@@ -541,17 +553,17 @@
             <div class="diag-panel rounded-2xl p-5 sm:p-6">
                 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                     <div>
-                        <span class="text-xs font-mono text-orange-400 font-bold">INVENTORY MANAGEMENT · 庫存自放電與補電規範</span>
-                        <h3 class="text-xl font-bold text-white mt-0.5">新品電瓶在倉庫能放多久？自放電曲線模擬</h3>
+                        <span class="text-xs font-mono text-orange-400 font-bold">INVENTORY MANAGEMENT · 庫存自放電趨勢示意（預設模擬參數）</span>
+                        <h3 class="text-xl font-bold text-white mt-0.5">庫存電瓶靜置存放時間與自放電曲線模擬</h3>
                         <p class="text-sm text-slate-400 mt-1">
-                            鉛酸電瓶即使未接車，內部仍會進行化學自放電。環境溫度越高（如台灣夏季鐵皮倉庫），自放電速度越快！
+                            鉛酸電瓶未接車時內部仍會進行化學自放電，環境溫度越高，自放電速率越快（此為模擬趨勢模型，實際請以電瓶分析儀量測為準）。
                         </p>
                     </div>
                     <!-- Temperature Toggle -->
                     <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-                        <span class="text-xs text-slate-400 px-2">倉庫室溫：</span>
+                        <span class="text-xs text-slate-400 px-2">模擬室溫：</span>
                         <button onclick="setWarehouseTemp(25)" id="temp-btn-25" class="temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 text-slate-950 transition">25°C 標準室溫</button>
-                        <button onclick="setWarehouseTemp(35)" id="temp-btn-35" class="temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:text-white transition">35°C 夏季高溫</button>
+                        <button onclick="setWarehouseTemp(35)" id="temp-btn-35" class="temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:text-white transition">35°C 高溫環境</button>
                     </div>
                 </div>
 
@@ -566,29 +578,29 @@
                         <div class="bg-slate-900/90 p-4 rounded-xl border border-cyan-500/30">
                             <div class="flex items-center justify-between">
                                 <span class="font-bold text-cyan-400 text-sm"><i class="fa-solid fa-shield-halved mr-1.5"></i>AGM 吸附式電瓶</span>
-                                <span id="agm-shelf-life" class="font-mono text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">安全存放：約 8~10 個月</span>
+                                <span id="agm-shelf-life" class="font-mono text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">模擬存放期：約 8~10 個月</span>
                             </div>
                             <p class="text-xs text-slate-300 mt-2 leading-relaxed">
-                                採用高純度鉛鈣合金極板，每月自放電率僅約 <strong class="text-white">1% ~ 3%</strong>。但若倉庫高溫達 35°C，自放電率會翻倍，建議每 6 個月巡檢電壓一次。
+                                採用高純度鉛鈣合金極板，25°C 下每月自放電率約 <strong class="text-white">1% ~ 3%</strong>。高溫環境會加速自放電，需定期巡檢開路電壓。
                             </p>
                         </div>
 
                         <div class="bg-slate-900/90 p-4 rounded-xl border border-amber-500/30">
                             <div class="flex items-center justify-between">
                                 <span class="font-bold text-amber-400 text-sm"><i class="fa-solid fa-battery-three-quarters mr-1.5"></i>EFB / 傳統液態電瓶</span>
-                                <span id="efb-shelf-life" class="font-mono text-xs px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/30">安全存放：約 4~5 個月</span>
+                                <span id="efb-shelf-life" class="font-mono text-xs px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/30">模擬存放期：約 4~5 個月</span>
                             </div>
                             <p class="text-xs text-slate-300 mt-2 leading-relaxed">
-                                每月自放電率約 <strong class="text-white">3% ~ 5%</strong>，且長期靜置容易發生「電解液分層（酸液沉底）」，加速極板下部硫化。務必嚴格執行先進先出（FIFO）。
+                                25°C 下每月自放電率約 <strong class="text-white">3% ~ 5%</strong>，長期靜置易產生電解液分層現象，庫存管理應落實先進先出（FIFO）。
                             </p>
                         </div>
 
                         <div class="bg-rose-950/30 p-4 rounded-xl border border-rose-500/40">
                             <div class="font-bold text-rose-400 text-sm flex items-center gap-1.5">
-                                <i class="fa-solid fa-bolt-lightning"></i> 強制補電紅線：12.40 V
+                                <i class="fa-solid fa-bolt-lightning"></i> 庫存補電電壓基準：12.40 V
                             </div>
                             <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
-                                庫存電瓶靜置開路電壓（OCV）一旦低於 <strong class="text-white font-mono">12.40V</strong>（約剩 75% 電量），極板便開始產生硫酸鉛結晶！必須立即使用具有 <strong class="text-amber-300">AGM / EFB 專用模式</strong> 的智慧充電器進行維護充電，嚴禁直接裝車交給客戶。
+                                庫存電瓶靜置開路電壓（OCV）低於 <strong class="text-white font-mono">12.40V</strong>（約 75% 電量）時，極板易開始產生硫酸鉛結晶，應使用具備 <strong class="text-amber-300">AGM / EFB 對應模式</strong> 之充電器進行補電維護。
                             </p>
                         </div>
                     </div>
@@ -607,9 +619,9 @@
                         <div class="text-xs font-mono text-cyan-400 font-bold mb-1">STAGE 01 · 倉庫入庫與月檢</div>
                         <h4 class="font-bold text-white text-base mb-2">先進先出與電壓登錄</h4>
                         <ul class="space-y-2 text-xs text-slate-300">
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>到貨時核對電瓶製造週期碼，貼上入庫日期標籤，採先進先出（FIFO）發料。</span></li>
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>每月 1 號使用電瓶分析儀抽測庫存電壓，低於 <strong class="text-amber-300">12.4V</strong> 立即上架補電至 12.7V 以上。</span></li>
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>電瓶存放於陰涼通風貨架，避免陽光直射與潮濕地面。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>到貨時核對電瓶製造週期碼，標註入庫日期，採先進先出（FIFO）發料。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>每月定期使用電瓶測試儀抽測庫存電壓，低於 <strong class="text-amber-300">12.40V</strong> 進行補電維護。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>電瓶存放於陰涼通風貨架，避免陽光直射與高溫熱源。</span></li>
                         </ul>
                     </div>
 
@@ -618,20 +630,20 @@
                         <div class="text-xs font-mono text-amber-400 font-bold mb-1">STAGE 02 · 實車拆裝施工</div>
                         <h4 class="font-bold text-white text-base mb-2">斷電保護與 IBS 拆裝順序</h4>
                         <ul class="space-y-2 text-xs text-slate-300">
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>熄火拔鑰匙後，<strong>等待 5 分鐘讓 BSI 電腦進入休眠</strong>再進行斷電作業（避免防盜鎖死或音響密碼異常）。</span></li>
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>先拆負極（注意保護 IBS 感知器排線，勿用蠻力敲擊樁頭），再拆正極。</span></li>
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>裝回時先接正極、後接負極，並確保<strong>排氣孔塞（後車廂電瓶如 Alfa）</strong>已正確連接排氣管。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>熄火拔鑰匙後，<strong>等待約 5 分鐘讓 BSI 電腦進入休眠</strong>再進行斷電作業。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>先拆負極（注意保護 IBS 感知器接頭與排線，避免敲擊樁頭），再拆正極。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>裝回時先接正極、後接負極，並確認隔熱護套及<strong>排氣導管（如後車廂電瓶車型）</strong>已正確復位。</span></li>
                         </ul>
                     </div>
 
                     <!-- Step C -->
                     <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
                         <div class="text-xs font-mono text-emerald-400 font-bold mb-1">STAGE 03 · 電腦歸零與交車</div>
-                        <h4 class="font-bold text-white text-base mb-2">BMS Reset 與暗電流確認</h4>
+                        <h4 class="font-bold text-white text-base mb-2">BMS Reset 與發電量測</h4>
                         <ul class="space-y-2 text-xs text-slate-300">
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>接上 <strong class="text-cyan-300">DiagBox / wiTECH 2.0</strong> 執行電瓶更換歸零，並清除因低電壓產生的歷史故障碼。</span></li>
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>發動測試發電機回充電壓（怠速開大燈/冷氣應穩定於 <strong class="text-white">13.8V ~ 14.8V</strong> 之間）。</span></li>
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>主動向車主說明新電瓶參數與行車記錄器停車監控對電瓶壽命的影響，建立專業信任。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>連接 <strong class="text-cyan-300">DiagBox / wiTECH 2.0</strong> 執行電瓶更換歸零，核對電瓶類型與容量參數，並清除低電壓歷史故障碼。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>發動量測發電機回充電壓與智慧充電系統運作是否正常。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>記錄交車前電瓶實測 CCA 與電壓數據於工單。</span></li>
                         </ul>
                     </div>
                 </div>
@@ -644,7 +656,7 @@
     <!-- Footer -->
     <footer class="border-t border-slate-800/80 bg-slate-950 py-4 px-4 text-center text-xs text-slate-500">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
-            <span>Stellantis 集團車用電瓶技術教學系統 · 專為台灣歐系專業保養廠設計</span>
+            <span>Stellantis 集團車用電瓶技術與計算教學面板 · 實際規格與量測數值請以實車與原廠手冊為準</span>
             <span class="font-mono text-slate-600">PEUGEOT · CITROËN · ALFA ROMEO · DIN / EN STANDARD</span>
         </div>
     </footer>
@@ -652,7 +664,7 @@
     <!-- JavaScript Application Logic -->
     <script>
         // =========================================================================
-        // 1. DATA: STELLANTIS TAIWAN VEHICLE BATTERY SPECIFICATIONS
+        // 1. DATA: STELLANTIS TAIWAN VEHICLE BATTERY SPECIFICATIONS (OBJECTIVE)
         // =========================================================================
         const vehicleData = [
             {
@@ -663,7 +675,7 @@
                 ah: '60 Ah',
                 cca: '640 A (EN)',
                 oemType: 'EFB',
-                tip: '引擎室緊湊熱度高，強烈建議直上 LN2 AGM (60Ah/680A)，可大幅延長 Start-Stop 壽命。'
+                tip: '位於引擎室內，拆裝需復位原廠隔熱護套；更換後需進 DiagBox 執行 BSI 電瓶登錄歸零。'
             },
             {
                 brand: 'PEUGEOT',
@@ -673,7 +685,7 @@
                 ah: '70 Ah',
                 cca: '720~760 A',
                 oemType: 'EFB / AGM',
-                tip: '台灣主力車型！原廠多配 70Ah EFB，升級 LN3 AGM (70Ah/760A) 後需進 DiagBox 更改電瓶技術設定。'
+                tip: '依年式與配備差異配置 EFB 或 AGM；更換後需連接 DiagBox 核對技術類型與容量設定並歸零。'
             },
             {
                 brand: 'PEUGEOT',
@@ -683,17 +695,17 @@
                 ah: '70~80 Ah',
                 cca: '760~800 A',
                 oemType: 'AGM',
-                tip: '柴油高壓縮比啟動電流大，且配備尿素加熱系統，必須使用 AGM 規格，不可降級。'
+                tip: '柴油動力原廠配置 AGM 規格（不可降級使用 EFB）；更換後需執行 DiagBox 電瓶註冊歸零。'
             },
             {
                 brand: 'CITROEN',
                 brandColor: 'text-rose-400 bg-rose-950/70 border-rose-500/30',
-                model: 'Berlingo 布丁狗 (1.5 BlueHDi 柴油 / 1.2T)',
+                model: 'Berlingo (1.5 BlueHDi 柴油 / 1.2T)',
                 din: 'LN3 / L3 (278×175×190)',
                 ah: '70 Ah',
                 cca: '720~760 A',
                 oemType: 'EFB / AGM',
-                tip: 'Berlingo 車主常加裝露營電裝或 24H 監控，建議換裝 LN3 AGM 並提醒加裝低電壓斷電保護器。'
+                tip: '依動力編成配置 EFB 或 AGM；斷電前需等待 BSI 進入休眠，完畢後執行診斷歸零。'
             },
             {
                 brand: 'CITROEN',
@@ -703,7 +715,7 @@
                 ah: '70 Ah',
                 cca: '760 A',
                 oemType: 'EFB / AGM',
-                tip: '液壓懸吊與電子系統耗電較高，更換時務必先休眠斷電，完畢後執行 BSI 歸零。'
+                tip: '負極配有 IBS 智慧電瓶感知器，拆裝時避免敲擊樁頭，更換後需執行 BSI 歸零。'
             },
             {
                 brand: 'ALFA',
@@ -713,7 +725,7 @@
                 ah: '80 Ah',
                 cca: '800 A',
                 oemType: 'AGM (後車廂)',
-                tip: '電瓶位於後行李廂右側飾板內，務必插回「排氣導管」，更換後需用 wiTECH 2.0 重置 IBS。'
+                tip: '電瓶位於後行李廂右側飾板內，安裝時須插回「排氣導管」，更換後需使用 wiTECH 2.0 重置 IBS。'
             },
             {
                 brand: 'ALFA',
@@ -723,7 +735,7 @@
                 ah: '95 Ah',
                 cca: '850~900 A',
                 oemType: 'AGM (後車廂)',
-                tip: '高階性能車款對電壓波動極敏感，電瓶老化常引發多種電子輔助系統亮燈誤報，建議 2.5 年預防性更換。'
+                tip: '後行李廂配置 LN5 AGM，更換後需執行 wiTECH 2.0 IBS 重置並依原廠規範靜置休眠校準 OCV。'
             }
         ];
 
@@ -839,17 +851,17 @@
             const badgeEl = document.getElementById('struct-health-badge');
             
             if (batAnimMode === 'FLOODED') {
-                badgeEl.textContent = stressLevel ? '⚠️ 嚴重硫化 · 活性物質脫落' : '循環壽命 1X · 不可用於 Start-Stop';
+                badgeEl.textContent = stressLevel ? '劣化示意：硫化結晶堆積' : '基礎結構 · 非 Start-Stop 規格';
                 badgeEl.className = stressLevel ? 'font-mono font-bold text-rose-400' : 'font-mono font-bold text-slate-400';
-                descEl.innerHTML = `<strong class="text-white">傳統液態鉛酸電瓶：</strong>電解液在電瓶內自由流動。在頻繁啟停或高溫深放電下，極板表面會快速堆積白色<strong class="text-rose-400">硫酸鉛結晶（硫化）</strong>，且底部易產生酸液分層，裝在 Stellantis 車上通常半年內即損壞。`;
+                descEl.innerHTML = `<strong class="text-white">傳統液態鉛酸電瓶（原理示意）：</strong>電解液在電瓶內自由流動。在頻繁啟停或深放電工況下，極板表面較易產生白色<strong class="text-rose-400">硫酸鉛結晶（硫化）</strong>，且底部易產生酸液分層，不適用於配備 Start-Stop 與智慧充電之車型。`;
             } else if (batAnimMode === 'EFB') {
-                badgeEl.textContent = stressLevel ? '⚠️ 輕度硫化 · 充電接受度下降' : '內阻中等 · 循環壽命 2X';
+                badgeEl.textContent = stressLevel ? '劣化示意：輕度硫化結晶' : '增強型結構 · 適用基礎 Start-Stop';
                 badgeEl.className = stressLevel ? 'font-mono font-bold text-amber-400' : 'font-mono font-bold text-amber-300';
-                descEl.innerHTML = `<strong class="text-amber-300">EFB 增強型注水電瓶：</strong>在正極板表面增加一層<strong class="text-white">聚酯纖維網（Polyester Scrim）</strong>，固定活性物質防止脫落。雖可應付基本 Start-Stop，但仍屬液態酸液，在台式短途＋高溫環境下，抗硫化能力仍遜於 AGM。`;
+                descEl.innerHTML = `<strong class="text-amber-300">EFB 增強型注水電瓶（原理示意）：</strong>在正極板表面增加一層<strong class="text-white">聚酯纖維網（Polyester Scrim）</strong>，強化活性物質附著力。內部仍為液態電解液，循環耐受度高於傳統鉛酸電瓶。`;
             } else {
-                badgeEl.textContent = stressLevel ? '✅ 玻璃纖維鎖酸 · 極板零脫落' : '內阻極低 · 循環壽命 3X~4X';
+                badgeEl.textContent = stressLevel ? '結構示意：玻璃纖維鎖酸抗硫化' : '低內阻 · 高循環耐受';
                 badgeEl.className = 'font-mono font-bold text-cyan-400';
-                descEl.innerHTML = `<strong class="text-cyan-400">AGM 吸附式玻璃纖維電瓶：</strong>極板之間夾入高密度<strong class="text-white">超細玻璃纖維棉墊（Glass Mat）</strong>，100% 吸附電解液（無游離液體），並對極板施加緊密壓力。完全消除酸液分層，大電流回充極快，最適合台灣高溫與歐系車智慧充電系統。`;
+                descEl.innerHTML = `<strong class="text-cyan-400">AGM 吸附式玻璃纖維電瓶（原理示意）：</strong>極板之間夾入高密度<strong class="text-white">超細玻璃纖維棉墊（Glass Mat）</strong>，將電解液吸附於纖維中（無游離液體），並對極板施加緊密壓力，減少酸液分層並具備較低內阻與較高充電接受度。`;
             }
         }
 
@@ -877,19 +889,19 @@
                 voltEl.className = 'text-base font-mono font-bold text-amber-400';
                 ampEl.textContent = '-0.04 A (休眠微放電)';
                 ampEl.className = 'text-base font-mono font-bold text-rose-400';
-                descEl.innerHTML = `<strong class="text-amber-400">熄火鎖車靜置：</strong>BSI 電腦切斷非必要電源，僅防盜、Keyless 接收器與 IBS 維持運作（約 30~50mA）。若車主加裝不斷電行車記錄器，電流會飆升至 150mA 以上，加速電瓶虧電。`;
+                descEl.innerHTML = `<strong class="text-amber-400">熄火鎖車靜置（示意）：</strong>BSI 電腦切斷非必要電源，僅防盜、Keyless 接收器與 IBS 維持運作（正常休眠暗電流參考值約 30~50mA）。若車上有外加持續耗電設備，暗電流數值將會上升。`;
             } else if (bmsMode === 'CRUISE') {
                 voltEl.textContent = '12.80 V';
                 voltEl.className = 'text-base font-mono font-bold text-cyan-400';
                 ampEl.textContent = '0.00 A (發電機減載)';
                 ampEl.className = 'text-base font-mono font-bold text-cyan-300';
-                descEl.innerHTML = `<strong class="text-cyan-400">定速巡航智慧減載：</strong>Stellantis BMS 刻意將電瓶維持在 <strong class="text-white">80%~85% SOC</strong>（不充到 100%）。當電量足夠時，發電機降低發電電壓至 12.8V 減少引擎負載以節省油耗。這也是為何歐系車電瓶常處於「非滿電」狀態，必須用 AGM 才耐得住！`;
+                descEl.innerHTML = `<strong class="text-cyan-400">定速巡航智慧減載（示意）：</strong>Stellantis BMS 通常將電瓶 SOC 目標維持在約 <strong class="text-white">80%~85%</strong> 區間，預留動能回充空間；當電量達標時，發電機降低輸出電壓以減少引擎負載。`;
             } else {
                 voltEl.textContent = '14.85 V';
                 voltEl.className = 'text-base font-mono font-bold text-emerald-400';
-                ampEl.textContent = '+38.5 A (大電流回充)';
+                ampEl.textContent = '+38.5 A (動能回充)';
                 ampEl.className = 'text-base font-mono font-bold text-emerald-400';
-                descEl.innerHTML = `<strong class="text-emerald-400">滑行與煞車動能回充：</strong>放開油門滑行時，IBS 通知發電機瞬間拉高電壓至 <strong class="text-white">14.6V~15.0V</strong>，將車輛動能轉化為大電流灌入電瓶。AGM 因為極低內阻，能瞬間吸收這股強大電流；若誤裝傳統電瓶則會過熱失水。`;
+                descEl.innerHTML = `<strong class="text-emerald-400">滑行與煞車動能回充（示意）：</strong>減速滑行時，IBS 協調發電機提高充電電壓（約 <strong class="text-white">14.6V~15.0V</strong> 區間，依實際工況與溫度調整），利用車輛減速動能對電瓶進行快速回充。`;
             }
         }
 
@@ -1186,13 +1198,13 @@
 
             const statusBadge = document.getElementById('step4-status');
             if (soh >= 75) {
-                statusBadge.textContent = '狀態良好 (PASS)';
+                statusBadge.textContent = '模擬判定：狀態良好';
                 statusBadge.className = 'font-mono font-bold text-emerald-400 text-xs px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30';
             } else if (soh >= 70) {
-                statusBadge.textContent = '接近警戒 (觀察)';
+                statusBadge.textContent = '模擬判定：接近 70% 警戒線';
                 statusBadge.className = 'font-mono font-bold text-amber-400 text-xs px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30';
             } else {
-                statusBadge.textContent = '低於 70% (建議換新)';
+                statusBadge.textContent = '模擬判定：低於 70% 基準';
                 statusBadge.className = 'font-mono font-bold text-rose-400 text-xs px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30';
             }
 
@@ -1307,8 +1319,8 @@
                 ? 'temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-orange-500 text-slate-950 transition'
                 : 'temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:text-white transition';
 
-            document.getElementById('agm-shelf-life').textContent = temp === 25 ? '安全存放：約 8~10 個月' : '高溫存放：縮短至 5~6 個月';
-            document.getElementById('efb-shelf-life').textContent = temp === 25 ? '安全存放：約 4~5 個月' : '高溫存放：縮短至 2.5~3 個月';
+            document.getElementById('agm-shelf-life').textContent = temp === 25 ? '模擬存放期：約 8~10 個月' : '高溫模擬期：約 5~6 個月';
+            document.getElementById('efb-shelf-life').textContent = temp === 25 ? '模擬存放期：約 4~5 個月' : '高溫模擬期：約 2.5~3 個月';
 
             drawStorageChart();
         }
