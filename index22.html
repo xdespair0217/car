@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellantis 集團車用電瓶技術與計算互動教學面板 | Peugeot · Citroën · Alfa Romeo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono & Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Inter"', '"Noto Sans TC"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151e2e',
+                            900: '#0f172a',
+                            950: '#090d16',
+                        },
+                        tech: {
+                            blue: '#00d2ff',
+                            cyan: '#06b6d4',
+                            amber: '#f59e0b',
+                            orange: '#f97316',
+                            emerald: '#10b981',
+                            crimson: '#ef4444'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #090d16;
+            color: #e2e8f0;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(249, 115, 22, 0.06) 0%, transparent 40%);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #06b6d4; }
+        
+        /* Metallic Card Styling */
+        .diag-panel {
+            background: linear-gradient(145deg, rgba(21, 30, 46, 0.92), rgba(15, 23, 42, 0.96));
+            border: 1px solid rgba(56, 189, 248, 0.18);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #00d2ff;
+            cursor: pointer;
+            margin-top: -7px;
+            box-shadow: 0 0 10px rgba(0, 210, 255, 0.6);
+            border: 2px solid #fff;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1e293b;
+            border-radius: 3px;
+            border: 1px solid #334155;
+        }
+        input[type=range].amber-slider::-webkit-slider-thumb {
+            background: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
+        }
+        .tab-active {
+            background: linear-gradient(90deg, rgba(6, 182, 212, 0.2), rgba(0, 210, 255, 0.05));
+            border-bottom: 2px solid #00d2ff;
+            color: #fff;
+        }
+        .glow-text {
+            text-shadow: 0 0 12px rgba(0, 210, 255, 0.4);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-white">
+
+    <!-- Top Diagnostic Header -->
+    <header class="sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <!-- Brand & Title -->
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center shadow-lg shadow-cyan-500/20 border border-cyan-400/30 shrink-0">
+                    <i class="fa-solid fa-car-battery text-white text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-500/30">STELLANTIS TECH LAB</span>
+                        <span class="text-xs text-slate-400 font-mono">DiagBox / wiTECH 2.0 技術規範</span>
+                    </div>
+                    <h1 class="text-lg sm:text-xl font-black tracking-tight text-white mt-0.5">
+                        車用電瓶技術與計算互動教學面板
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav class="flex overflow-x-auto no-scrollbar gap-1 sm:gap-2 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+                <button onclick="switchModule(1)" id="nav-btn-1" class="nav-btn tab-active px-3 py-2 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-table-list text-cyan-400"></i> 1. 車型規格總覽
+                </button>
+                <button onclick="switchModule(2)" id="nav-btn-2" class="nav-btn text-slate-400 hover:text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-microchip text-amber-400"></i> 2. EFB/AGM 動態原理
+                </button>
+                <button onclick="switchModule(3)" id="nav-btn-3" class="nav-btn text-slate-400 hover:text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-calculator text-emerald-400"></i> 3. 計算機與逐步教學
+                </button>
+                <button onclick="switchModule(4)" id="nav-btn-4" class="nav-btn text-slate-400 hover:text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-bold whitespace-nowrap transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-warehouse text-orange-400"></i> 4. 庫存與廠長管理
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
+
+        <!-- ===================================================================== -->
+        <!-- MODULE 1: BRAND & VEHICLE BATTERY SPECIFICATIONS                      -->
+        <!-- ===================================================================== -->
+        <section id="module-1" class="module-section space-y-6">
+            <!-- Header Banner & Brand Filter -->
+            <div class="diag-panel rounded-2xl p-5 sm:p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span class="w-2 h-6 bg-cyan-400 rounded-full"></span>
+                            台灣市場 Stellantis 集團主流車型電瓶規格對照表
+                        </h2>
+                        <p class="text-sm text-slate-400 mt-1">
+                            涵蓋歐規 DIN 尺寸代號（LN2~LN5）、額定容量（Ah）、冷啟動電流（EN CCA）及原廠標配與升級建議。
+                        </p>
+                    </div>
+                    <!-- Brand Filter Buttons -->
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="filterBrand('ALL')" class="brand-filter-btn bg-cyan-500 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs transition" data-brand="ALL">全部車系</button>
+                        <button onclick="filterBrand('PEUGEOT')" class="brand-filter-btn bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold px-3.5 py-1.5 rounded-lg text-xs transition" data-brand="PEUGEOT">PEUGEOT 寶獅</button>
+                        <button onclick="filterBrand('CITROEN')" class="brand-filter-btn bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold px-3.5 py-1.5 rounded-lg text-xs transition" data-brand="CITROEN">CITROËN 雪鐵龍</button>
+                        <button onclick="filterBrand('ALFA')" class="brand-filter-btn bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold px-3.5 py-1.5 rounded-lg text-xs transition" data-brand="ALFA">ALFA ROMEO 愛快</button>
+                    </div>
+                </div>
+
+                <!-- Responsive Spec Table -->
+                <div class="overflow-x-auto mt-4">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 text-xs font-mono uppercase text-slate-400 bg-slate-900/60">
+                                <th class="p-3 rounded-tl-lg">品牌 / 車型 (動力)</th>
+                                <th class="p-3">歐規尺寸 (長×寬×高 mm)</th>
+                                <th class="p-3">容量 (Ah)</th>
+                                <th class="p-3">冷啟動 (CCA EN)</th>
+                                <th class="p-3">原廠技術</th>
+                                <th class="p-3 rounded-tr-lg">廠長升級與實務建議</th>
+                            </tr>
+                        </thead>
+                        <tbody id="spec-table-body" class="divide-y divide-slate-800 text-sm">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Workshop Chief Practical Commentary (廠長實務點評) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Card 1: EFB vs AGM in Taiwan Climate -->
+                <div class="diag-panel rounded-2xl p-5 sm:p-6 border-l-4 border-l-amber-500">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
+                            <i class="fa-solid fa-temperature-high text-xl"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-mono text-amber-400 font-bold">CHIEF INSIGHT #01 · 台灣用車環境解析</span>
+                            <h3 class="text-lg font-bold text-white mt-0.5">為何台灣高溫＋短途塞車，建議 EFB 升級 AGM？</h3>
+                            <div class="mt-3 space-y-2.5 text-sm text-slate-300 leading-relaxed">
+                                <p>
+                                    <strong class="text-white">1. 引擎室高溫加速失水：</strong>Peugeot/Citroën 渦輪引擎（1.2 PureTech / 1.6 THP / 1.5 BlueHDi）引擎室熱負荷高。傳統 EFB 仍為液態電解液，長期高溫易產生微蒸發與極板硫化；<span class="text-cyan-400 font-semibold">AGM 採用全密封閥控設計與玻璃纖維棉吸附</span>，高溫抗失水與抗震動能力提升 2 倍以上。
+                                </p>
+                                <p>
+                                    <strong class="text-white">2. 都會短途充電不足：</strong>台灣車主平均單趟行駛常低於 20 分鐘，加上 Start-Stop 怠速熄火頻繁作動。AGM 的內阻極低，<span class="text-emerald-400 font-semibold">接受大電流回充的速度比 EFB 快 30%~40%</span>，能有效在短時間內補回啟動消耗的電量。
+                                </p>
+                                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-700/80 text-xs text-amber-300">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> <strong>安裝位置注意：</strong>若電瓶位於引擎室內（多數 Peugeot/Citroën 車款），務必確認原廠隔熱護套完整裝回；Alfa Romeo Giulia/Stelvio 電瓶位於後行李廂，無引擎高溫問題，原廠即標配 LN4/LN5 AGM，更換時<strong>嚴禁降級使用 EFB</strong>。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: IBS & BMS Reset -->
+                <div class="diag-panel rounded-2xl p-5 sm:p-6 border-l-4 border-l-cyan-400">
+                    <div class="flex items-start gap-3">
+                        <div class="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+                            <i class="fa-solid fa-laptop-medical text-xl"></i>
+                        </div>
+                        <div>
+                            <span class="text-xs font-mono text-cyan-400 font-bold">CHIEF INSIGHT #02 · 電腦診斷與 IBS 邏輯</span>
+                            <h3 class="text-lg font-bold text-white mt-0.5">IBS 智慧電瓶感知器與 DiagBox / wiTECH 2.0 歸零</h3>
+                            <div class="mt-3 space-y-2.5 text-sm text-slate-300 leading-relaxed">
+                                <p>
+                                    <strong class="text-white">1. IBS 負極感知器運作原理：</strong>Stellantis 全車系電瓶負極樁頭均配有 <span class="text-cyan-400 font-semibold">IBS (Intelligent Battery Sensor)</span>，即時監控電瓶溫度、電流進出量與內阻，並向 BSI（車身控制電腦）回報 SOH（健康度）與 SOC（荷電狀態）。
+                                </p>
+                                <p>
+                                    <strong class="text-white">2. 不做 BMS Reset 的後果：</strong>電腦內存仍記憶「舊電瓶的老化內阻曲線」，導致對新電瓶採取<strong>錯誤的充電電壓策略（過充導致新電瓶提早鼓包失水，或限流導致充不飽）</strong>，且 Start-Stop 系統可能持續顯示「ECO 模式不可用」。
+                                </p>
+                                <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-700/80 text-xs space-y-1">
+                                    <div class="text-cyan-300 font-bold"><i class="fa-solid fa-wrench mr-1"></i> 交車前標準 SOP：</div>
+                                    <p class="text-slate-300">• <strong>Peugeot / Citroën：</strong>連接 <span class="text-white font-mono">DiagBox</span> 進入 BSI 系統執行「更換電瓶登錄」，並確認電瓶類型（EFB / AGM）與容量設定正確。</p>
+                                    <p class="text-slate-300">• <strong>Alfa Romeo：</strong>連接 <span class="text-white font-mono">wiTECH 2.0</span> 執行 IBS 模組重置，並鎖車靜置休眠 4 小時讓 IBS 重新校準 OCV（開路電壓）。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- MODULE 2: DYNAMIC ANIMATION (EFB vs AGM & BMS CHARGE/DISCHARGE)       -->
+        <!-- ===================================================================== -->
+        <section id="module-2" class="module-section hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Left Panel: Internal Structure Animation (7 cols) -->
+                <div class="lg:col-span-7 diag-panel rounded-2xl p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                            <div>
+                                <span class="text-xs font-mono text-cyan-400 font-bold">MICROSCOPIC SIMULATION · 極板與電解質結構</span>
+                                <h3 class="text-lg font-bold text-white">電瓶內部構造與抗硫化動態演示</h3>
+                            </div>
+                            <!-- Battery Type Selector -->
+                            <div class="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                                <button onclick="setBatteryAnimMode('FLOODED')" id="bat-mode-FLOODED" class="bat-mode-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">傳統鉛酸</button>
+                                <button onclick="setBatteryAnimMode('EFB')" id="bat-mode-EFB" class="bat-mode-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition">EFB 增強型</button>
+                                <button onclick="setBatteryAnimMode('AGM')" id="bat-mode-AGM" class="bat-mode-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 text-slate-950 transition">AGM 吸附式</button>
+                            </div>
+                        </div>
+
+                        <!-- Stress Test Toggle (Simulate Deep Discharge / High Temp) -->
+                        <div class="mt-3 flex flex-wrap items-center justify-between gap-3 bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-800">
+                            <span class="text-xs text-slate-300 font-medium">
+                                <i class="fa-solid fa-flask text-amber-400 mr-1"></i> 模擬工況測試：
+                            </span>
+                            <div class="flex gap-2">
+                                <button onclick="setStressLevel(0)" id="stress-btn-0" class="stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">正常循環狀態</button>
+                                <button onclick="setStressLevel(1)" id="stress-btn-1" class="stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 hover:text-white">模擬高溫＋頻繁深放電</button>
+                            </div>
+                        </div>
+
+                        <!-- HTML5 Canvas for Battery Micro Structure -->
+                        <div class="mt-4 relative rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 h-72 sm:h-80">
+                            <canvas id="structureCanvas" class="w-full h-full block"></canvas>
+                            <!-- Floating Legend Overlay -->
+                            <div class="absolute bottom-2 left-2 right-2 bg-slate-900/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-slate-700/70 flex flex-wrap justify-between items-center text-xs gap-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> 正極板 (PbO₂)</span>
+                                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block"></span> 負極板 (Pb)</span>
+                                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-white inline-block"></span> 硫酸鉛結晶 (硫化)</span>
+                                </div>
+                                <span id="struct-health-badge" class="font-mono font-bold text-cyan-400">內阻極低 · 循環壽命 3X</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Explanation Box -->
+                    <div id="structure-desc" class="mt-4 bg-slate-900/70 p-3.5 rounded-xl border border-slate-800 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        <!-- Updated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Right Panel: BMS Charge/Discharge Animation (5 cols) -->
+                <div class="lg:col-span-5 diag-panel rounded-2xl p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="pb-3 border-b border-slate-800">
+                            <span class="text-xs font-mono text-amber-400 font-bold">STELLANTIS IBS & BMS · 能量流向模擬</span>
+                            <h3 class="text-lg font-bold text-white">車輛靜置暗電流 vs IBS 智慧回充</h3>
+                        </div>
+
+                        <!-- Scenario Switcher -->
+                        <div class="grid grid-cols-3 gap-2 mt-3">
+                            <button onclick="setBmsMode('PARKED')" id="bms-btn-PARKED" class="bms-btn py-2 px-2 rounded-xl text-xs font-bold bg-amber-500 text-slate-950 transition text-center">
+                                <i class="fa-solid fa-moon block mb-1 text-sm"></i> 熄火靜置鎖車
+                            </button>
+                            <button onclick="setBmsMode('CRUISE')" id="bms-btn-CRUISE" class="bms-btn py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-center">
+                                <i class="fa-solid fa-gauge-high block mb-1 text-sm"></i> 定速巡航 (85% SOC)
+                            </button>
+                            <button onclick="setBmsMode('REGEN')" id="bms-btn-REGEN" class="bms-btn py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-center">
+                                <i class="fa-solid fa-bolt block mb-1 text-sm"></i> 滑行減速動能回充
+                            </button>
+                        </div>
+
+                        <!-- Canvas for BMS Flow -->
+                        <div class="mt-4 relative rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950 h-72 sm:h-80">
+                            <canvas id="bmsCanvas" class="w-full h-full block"></canvas>
+                            <!-- Live Telemetry Overlay -->
+                            <div class="absolute top-3 left-3 right-3 flex justify-between pointer-events-none">
+                                <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-700">
+                                    <div class="text-[10px] text-slate-400 font-mono">系統電壓 (V)</div>
+                                    <div id="bms-volt-readout" class="text-base font-mono font-bold text-amber-400">12.55 V</div>
+                                </div>
+                                <div class="bg-slate-900/90 px-3 py-1.5 rounded-lg border border-slate-700 text-right">
+                                    <div class="text-[10px] text-slate-400 font-mono">IBS 電流方向 (A)</div>
+                                    <div id="bms-amp-readout" class="text-base font-mono font-bold text-rose-400">-0.04 A (放電)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BMS Logic Note -->
+                    <div id="bms-desc" class="mt-4 bg-slate-900/70 p-3.5 rounded-xl border border-slate-800 text-xs sm:text-sm text-slate-300 leading-relaxed">
+                        <!-- Updated dynamically -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- MODULE 3: BATTERY CALCULATOR & STEP-BY-STEP DERIVATION                -->
+        <!-- ===================================================================== -->
+        <section id="module-3" class="module-section hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                <!-- Left Column: Interactive Sliders & Presets (5 cols) -->
+                <div class="lg:col-span-5 diag-panel rounded-2xl p-5 sm:p-6 space-y-5">
+                    <div class="border-b border-slate-800 pb-3">
+                        <span class="text-xs font-mono text-emerald-400 font-bold">INTERACTIVE SIMULATOR · 參數調整</span>
+                        <h3 class="text-lg font-bold text-white">電瓶容量與靜置天數計算機</h3>
+                        <p class="text-xs text-slate-400 mt-1">拖動下方滑桿或點選車型預設值，右側將即時逐步拆解計算公式。</p>
+                    </div>
+
+                    <!-- Quick Vehicle Presets -->
+                    <div>
+                        <label class="text-xs font-bold text-slate-400 block mb-2">快速套用實車參數：</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="applyPreset(70, 95, 35, 760)" class="text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 transition">
+                                <div class="text-xs font-bold text-cyan-400">Peugeot 3008 (新車)</div>
+                                <div class="text-[11px] font-mono text-slate-400">70Ah · SOH 95% · 35mA</div>
+                            </button>
+                            <button onclick="applyPreset(70, 68, 120, 760)" class="text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 transition">
+                                <div class="text-xs font-bold text-amber-400">3008 + 24H 停車監控</div>
+                                <div class="text-[11px] font-mono text-slate-400">70Ah · SOH 68% · 120mA</div>
+                            </button>
+                            <button onclick="applyPreset(80, 90, 40, 800)" class="text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 transition">
+                                <div class="text-xs font-bold text-cyan-400">Alfa Giulia 2.0T</div>
+                                <div class="text-[11px] font-mono text-slate-400">80Ah · SOH 90% · 40mA</div>
+                            </button>
+                            <button onclick="applyPreset(60, 60, 45, 640)" class="text-left p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 transition">
+                                <div class="text-xs font-bold text-rose-400">2008 老化電瓶警戒</div>
+                                <div class="text-[11px] font-mono text-slate-400">60Ah · SOH 60% · 45mA</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Slider 1: Rated Capacity (Ah) -->
+                    <div class="bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="input-ah" class="text-sm font-bold text-white">1. 電瓶額定容量 (Ah)</label>
+                            <span id="val-ah" class="font-mono font-bold text-cyan-400 text-base">70 Ah</span>
+                        </div>
+                        <input type="range" id="input-ah" min="50" max="105" step="5" value="70" class="w-full" oninput="recalculateBattery()">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+                            <span>50Ah (LN1)</span>
+                            <span>70Ah (LN3)</span>
+                            <span>95Ah (LN5)</span>
+                        </div>
+                    </div>
+
+                    <!-- Slider 2: SOH (%) -->
+                    <div class="bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="input-soh" class="text-sm font-bold text-white">2. 電瓶健康度 (SOH %)</label>
+                            <span id="val-soh" class="font-mono font-bold text-emerald-400 text-base">85 %</span>
+                        </div>
+                        <input type="range" id="input-soh" min="40" max="100" step="1" value="85" class="w-full" oninput="recalculateBattery()">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+                            <span class="text-rose-400">40% (報廢)</span>
+                            <span class="text-amber-400">70% (建議更換)</span>
+                            <span class="text-emerald-400">100% (全新)</span>
+                        </div>
+                    </div>
+
+                    <!-- Slider 3: Parasitic Draw (mA) -->
+                    <div class="bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="input-ma" class="text-sm font-bold text-white">3. 車輛靜置總暗電流 (mA)</label>
+                            <span id="val-ma" class="font-mono font-bold text-amber-400 text-base">40 mA</span>
+                        </div>
+                        <input type="range" id="input-ma" min="20" max="300" step="5" value="40" class="w-full amber-slider" oninput="recalculateBattery()">
+                        <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-1">
+                            <span>30mA (原廠休眠)</span>
+                            <span>120mA (+行車記錄器)</span>
+                            <span>300mA (漏電異常)</span>
+                        </div>
+                    </div>
+
+                    <!-- Slider 4: Rated CCA -->
+                    <div class="bg-slate-900/70 p-3.5 rounded-xl border border-slate-800">
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="input-cca" class="text-sm font-bold text-white">4. 電瓶標示冷啟動電流 (EN CCA)</label>
+                            <span id="val-cca" class="font-mono font-bold text-cyan-400 text-base">760 A</span>
+                        </div>
+                        <input type="range" id="input-cca" min="500" max="950" step="20" value="760" class="w-full" oninput="recalculateBattery()">
+                    </div>
+                </div>
+
+                <!-- Right Column: Step-by-Step Formula Breakdown & Voltage Curve (7 cols) -->
+                <div class="lg:col-span-7 space-y-6">
+                    
+                    <!-- Step-by-Step Formula Cards -->
+                    <div class="diag-panel rounded-2xl p-5 sm:p-6 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <div>
+                                <span class="text-xs font-mono text-cyan-400 font-bold">STEP-BY-STEP DERIVATION · 技師教學算式</span>
+                                <h3 class="text-lg font-bold text-white">逐步公式推導與判定標準</h3>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-slate-400 block">安全可靜置天數</span>
+                                <span id="summary-days-badge" class="text-2xl font-mono font-black text-emerald-400 glow-text">31.0 天</span>
+                            </div>
+                        </div>
+
+                        <!-- Step 1 -->
+                        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-950 text-cyan-400">STEP 1 · 有效可用容量 (Usable Ah)</span>
+                                <span id="step1-result" class="font-mono font-bold text-white text-base">29.75 Ah</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-2">
+                                鉛酸/AGM 電瓶放電深度（DoD）不可超過 <strong class="text-white">50%</strong>（低於 12.0V 易造成不可逆硫化且無法發動），再乘上當前健康度 SOH：
+                            </p>
+                            <div id="step1-formula" class="font-mono text-xs sm:text-sm bg-slate-950 p-2.5 rounded-lg text-cyan-300 border border-slate-800">
+                                70 Ah × 85% (SOH) × 50% (安全放電深度) = 29.75 Ah
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-400">STEP 2 · 靜置暗電流單位換算 (mA → A)</span>
+                                <span id="step2-result" class="font-mono font-bold text-white text-base">0.040 A</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-2">
+                                Stellantis 車系鎖車進入深度休眠（約 15~30 分鐘後）正常暗電流為 <strong class="text-white">30~50 mA</strong>。1 安培 (A) = 1,000 毫安培 (mA)：
+                            </p>
+                            <div id="step2-formula" class="font-mono text-xs sm:text-sm bg-slate-950 p-2.5 rounded-lg text-amber-300 border border-slate-800">
+                                40 mA ÷ 1000 = 0.040 A (每小時消耗 0.040 Ah)
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400">STEP 3 · 理論安全靜置時間計算</span>
+                                <span id="step3-result" class="font-mono font-bold text-emerald-400 text-base">743.8 小時 (31.0 天)</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mb-2">
+                                將有效可用容量除以每小時消耗安培數，再除以 24 小時換算為天數：
+                            </p>
+                            <div id="step3-formula" class="font-mono text-xs sm:text-sm bg-slate-950 p-2.5 rounded-lg text-emerald-300 border border-slate-800">
+                                29.75 Ah ÷ 0.040 A = 743.8 小時 ÷ 24 = 31.0 天
+                            </div>
+                        </div>
+
+                        <!-- Step 4: RC & CCA Standards -->
+                        <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-purple-950 text-purple-300">STEP 4 · 儲備容量 (RC) 與 CCA 換電判定</span>
+                                <span id="step4-status" class="font-mono font-bold text-emerald-400 text-xs px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">狀態良好</span>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 text-xs">
+                                <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                    <div class="text-slate-400">估算有效儲備容量 (RC, 25A放電)：</div>
+                                    <div id="step4-rc" class="font-mono text-sm font-bold text-white mt-0.5">約 119 分鐘</div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">公式：實際 Ah × 2 × 0.85 (發電機故障可撐時間)</div>
+                                </div>
+                                <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                                    <div class="text-slate-400">推估實測 CCA / 70% 更換警戒線：</div>
+                                    <div id="step4-cca" class="font-mono text-sm font-bold text-cyan-400 mt-0.5">646 A / 警戒線 532 A</div>
+                                    <div class="text-[11px] text-slate-500 mt-0.5">低於額定 CCA 70% 建議預防性更換</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Voltage Decay Chart & Status Lights -->
+                    <div class="diag-panel rounded-2xl p-5 sm:p-6">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h4 class="text-base font-bold text-white">靜置天數 vs 開路電壓 (OCV) 衰減預測曲線</h4>
+                                <p class="text-xs text-slate-400">觀察電瓶從 12.65V 滿電降至 12.0V 警戒線的過程</p>
+                            </div>
+                            <!-- Status Traffic Lights -->
+                            <div class="flex items-center gap-2 text-[11px] font-mono">
+                                <span class="flex items-center gap-1 px-2 py-1 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-500/30"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> ≥12.5V 滿電</span>
+                                <span class="flex items-center gap-1 px-2 py-1 rounded bg-amber-950/80 text-amber-400 border border-amber-500/30"><span class="w-2 h-2 rounded-full bg-amber-400"></span> 12.2V 警戒</span>
+                                <span class="flex items-center gap-1 px-2 py-1 rounded bg-rose-950/80 text-rose-400 border border-rose-500/30"><span class="w-2 h-2 rounded-full bg-rose-500"></span> ≤11.8V 硫化</span>
+                            </div>
+                        </div>
+
+                        <div class="relative h-56 w-full bg-slate-950 rounded-xl border border-slate-800 p-2">
+                            <canvas id="voltageChartCanvas" class="w-full h-full block"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- MODULE 4: WAREHOUSE STORAGE & WORKSHOP MANAGEMENT                     -->
+        <!-- ===================================================================== -->
+        <section id="module-4" class="module-section hidden space-y-6">
+            
+            <!-- Top Row: Self-Discharge Curve & Warehouse Simulator -->
+            <div class="diag-panel rounded-2xl p-5 sm:p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <span class="text-xs font-mono text-orange-400 font-bold">INVENTORY MANAGEMENT · 庫存自放電與補電規範</span>
+                        <h3 class="text-xl font-bold text-white mt-0.5">新品電瓶在倉庫能放多久？自放電曲線模擬</h3>
+                        <p class="text-sm text-slate-400 mt-1">
+                            鉛酸電瓶即使未接車，內部仍會進行化學自放電。環境溫度越高（如台灣夏季鐵皮倉庫），自放電速度越快！
+                        </p>
+                    </div>
+                    <!-- Temperature Toggle -->
+                    <div class="flex items-center gap-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                        <span class="text-xs text-slate-400 px-2">倉庫室溫：</span>
+                        <button onclick="setWarehouseTemp(25)" id="temp-btn-25" class="temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 text-slate-950 transition">25°C 標準室溫</button>
+                        <button onclick="setWarehouseTemp(35)" id="temp-btn-35" class="temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:text-white transition">35°C 夏季高溫</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-5 items-center">
+                    <!-- Self Discharge Chart (7 cols) -->
+                    <div class="lg:col-span-7 bg-slate-950 rounded-xl border border-slate-800 p-3 h-72">
+                        <canvas id="storageCanvas" class="w-full h-full block"></canvas>
+                    </div>
+
+                    <!-- Key Takeaways Cards (5 cols) -->
+                    <div class="lg:col-span-5 space-y-3">
+                        <div class="bg-slate-900/90 p-4 rounded-xl border border-cyan-500/30">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-cyan-400 text-sm"><i class="fa-solid fa-shield-halved mr-1.5"></i>AGM 吸附式電瓶</span>
+                                <span id="agm-shelf-life" class="font-mono text-xs px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30">安全存放：約 8~10 個月</span>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                                採用高純度鉛鈣合金極板，每月自放電率僅約 <strong class="text-white">1% ~ 3%</strong>。但若倉庫高溫達 35°C，自放電率會翻倍，建議每 6 個月巡檢電壓一次。
+                            </p>
+                        </div>
+
+                        <div class="bg-slate-900/90 p-4 rounded-xl border border-amber-500/30">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-amber-400 text-sm"><i class="fa-solid fa-battery-three-quarters mr-1.5"></i>EFB / 傳統液態電瓶</span>
+                                <span id="efb-shelf-life" class="font-mono text-xs px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-500/30">安全存放：約 4~5 個月</span>
+                            </div>
+                            <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+                                每月自放電率約 <strong class="text-white">3% ~ 5%</strong>，且長期靜置容易發生「電解液分層（酸液沉底）」，加速極板下部硫化。務必嚴格執行先進先出（FIFO）。
+                            </p>
+                        </div>
+
+                        <div class="bg-rose-950/30 p-4 rounded-xl border border-rose-500/40">
+                            <div class="font-bold text-rose-400 text-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-bolt-lightning"></i> 強制補電紅線：12.40 V
+                            </div>
+                            <p class="text-xs text-slate-300 mt-1.5 leading-relaxed">
+                                庫存電瓶靜置開路電壓（OCV）一旦低於 <strong class="text-white font-mono">12.40V</strong>（約剩 75% 電量），極板便開始產生硫酸鉛結晶！必須立即使用具有 <strong class="text-amber-300">AGM / EFB 專用模式</strong> 的智慧充電器進行維護充電，嚴禁直接裝車交給客戶。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Workshop PDI & Installation SOP Checklist -->
+            <div class="diag-panel rounded-2xl p-5 sm:p-6">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2 mb-4">
+                    <i class="fa-solid fa-clipboard-check text-emerald-400"></i>
+                    保養廠「電瓶入庫、換裝與交車 PDI」標準作業檢核表
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Step A -->
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs font-mono text-cyan-400 font-bold mb-1">STAGE 01 · 倉庫入庫與月檢</div>
+                        <h4 class="font-bold text-white text-base mb-2">先進先出與電壓登錄</h4>
+                        <ul class="space-y-2 text-xs text-slate-300">
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>到貨時核對電瓶製造週期碼，貼上入庫日期標籤，採先進先出（FIFO）發料。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>每月 1 號使用電瓶分析儀抽測庫存電壓，低於 <strong class="text-amber-300">12.4V</strong> 立即上架補電至 12.7V 以上。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>電瓶存放於陰涼通風貨架，避免陽光直射與潮濕地面。</span></li>
+                        </ul>
+                    </div>
+
+                    <!-- Step B -->
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs font-mono text-amber-400 font-bold mb-1">STAGE 02 · 實車拆裝施工</div>
+                        <h4 class="font-bold text-white text-base mb-2">斷電保護與 IBS 拆裝順序</h4>
+                        <ul class="space-y-2 text-xs text-slate-300">
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>熄火拔鑰匙後，<strong>等待 5 分鐘讓 BSI 電腦進入休眠</strong>再進行斷電作業（避免防盜鎖死或音響密碼異常）。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>先拆負極（注意保護 IBS 感知器排線，勿用蠻力敲擊樁頭），再拆正極。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>裝回時先接正極、後接負極，並確保<strong>排氣孔塞（後車廂電瓶如 Alfa）</strong>已正確連接排氣管。</span></li>
+                        </ul>
+                    </div>
+
+                    <!-- Step C -->
+                    <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-800">
+                        <div class="text-xs font-mono text-emerald-400 font-bold mb-1">STAGE 03 · 電腦歸零與交車</div>
+                        <h4 class="font-bold text-white text-base mb-2">BMS Reset 與暗電流確認</h4>
+                        <ul class="space-y-2 text-xs text-slate-300">
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>接上 <strong class="text-cyan-300">DiagBox / wiTECH 2.0</strong> 執行電瓶更換歸零，並清除因低電壓產生的歷史故障碼。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>發動測試發電機回充電壓（怠速開大燈/冷氣應穩定於 <strong class="text-white">13.8V ~ 14.8V</strong> 之間）。</span></li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-check text-emerald-400 mt-0.5"></i> <span>主動向車主說明新電瓶參數與行車記錄器停車監控對電瓶壽命的影響，建立專業信任。</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-slate-950 py-4 px-4 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <span>Stellantis 集團車用電瓶技術教學系統 · 專為台灣歐系專業保養廠設計</span>
+            <span class="font-mono text-slate-600">PEUGEOT · CITROËN · ALFA ROMEO · DIN / EN STANDARD</span>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // =========================================================================
+        // 1. DATA: STELLANTIS TAIWAN VEHICLE BATTERY SPECIFICATIONS
+        // =========================================================================
+        const vehicleData = [
+            {
+                brand: 'PEUGEOT',
+                brandColor: 'text-blue-400 bg-blue-950/70 border-blue-500/30',
+                model: '2008 / 208 (1.2 PureTech 渦輪)',
+                din: 'LN2 / L2 (242×175×190)',
+                ah: '60 Ah',
+                cca: '640 A (EN)',
+                oemType: 'EFB',
+                tip: '引擎室緊湊熱度高，強烈建議直上 LN2 AGM (60Ah/680A)，可大幅延長 Start-Stop 壽命。'
+            },
+            {
+                brand: 'PEUGEOT',
+                brandColor: 'text-blue-400 bg-blue-950/70 border-blue-500/30',
+                model: '3008 / 5008 / 408 (1.2T / 1.6T 汽油)',
+                din: 'LN3 / L3 (278×175×190)',
+                ah: '70 Ah',
+                cca: '720~760 A',
+                oemType: 'EFB / AGM',
+                tip: '台灣主力車型！原廠多配 70Ah EFB，升級 LN3 AGM (70Ah/760A) 後需進 DiagBox 更改電瓶技術設定。'
+            },
+            {
+                brand: 'PEUGEOT',
+                brandColor: 'text-blue-400 bg-blue-950/70 border-blue-500/30',
+                model: '3008 / 5008 / Traveller (1.5 / 2.0 BlueHDi 柴油)',
+                din: 'LN3 或 LN4 (315×175×190)',
+                ah: '70~80 Ah',
+                cca: '760~800 A',
+                oemType: 'AGM',
+                tip: '柴油高壓縮比啟動電流大，且配備尿素加熱系統，必須使用 AGM 規格，不可降級。'
+            },
+            {
+                brand: 'CITROEN',
+                brandColor: 'text-rose-400 bg-rose-950/70 border-rose-500/30',
+                model: 'Berlingo 布丁狗 (1.5 BlueHDi 柴油 / 1.2T)',
+                din: 'LN3 / L3 (278×175×190)',
+                ah: '70 Ah',
+                cca: '720~760 A',
+                oemType: 'EFB / AGM',
+                tip: 'Berlingo 車主常加裝露營電裝或 24H 監控，建議換裝 LN3 AGM 並提醒加裝低電壓斷電保護器。'
+            },
+            {
+                brand: 'CITROEN',
+                brandColor: 'text-rose-400 bg-rose-950/70 border-rose-500/30',
+                model: 'C5 Aircross / C4 (1.6 THP / 1.2 PureTech)',
+                din: 'LN3 / L3 (278×175×190)',
+                ah: '70 Ah',
+                cca: '760 A',
+                oemType: 'EFB / AGM',
+                tip: '液壓懸吊與電子系統耗電較高，更換時務必先休眠斷電，完畢後執行 BSI 歸零。'
+            },
+            {
+                brand: 'ALFA',
+                brandColor: 'text-emerald-400 bg-emerald-950/70 border-emerald-500/30',
+                model: 'Giulia / Stelvio (2.0T Veloce / Sprint)',
+                din: 'LN4 / L4 (315×175×190)',
+                ah: '80 Ah',
+                cca: '800 A',
+                oemType: 'AGM (後車廂)',
+                tip: '電瓶位於後行李廂右側飾板內，務必插回「排氣導管」，更換後需用 wiTECH 2.0 重置 IBS。'
+            },
+            {
+                brand: 'ALFA',
+                brandColor: 'text-emerald-400 bg-emerald-950/70 border-emerald-500/30',
+                model: 'Giulia / Stelvio Quadrifoglio (2.9 V6 四葉草)',
+                din: 'LN5 / L5 (353×175×190)',
+                ah: '95 Ah',
+                cca: '850~900 A',
+                oemType: 'AGM (後車廂)',
+                tip: '高階性能車款對電壓波動極敏感，電瓶老化常引發多種電子輔助系統亮燈誤報，建議 2.5 年預防性更換。'
+            }
+        ];
+
+        function renderSpecTable(filter = 'ALL') {
+            const tbody = document.getElementById('spec-table-body');
+            tbody.innerHTML = '';
+            const filtered = filter === 'ALL' ? vehicleData : vehicleData.filter(item => item.brand === filter);
+            
+            filtered.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/50 transition-colors';
+                tr.innerHTML = `
+                    <td class="p-3">
+                        <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${row.brandColor} inline-block mb-1">${row.brand}</span>
+                        <div class="font-bold text-white">${row.model}</div>
+                    </td>
+                    <td class="p-3 font-mono text-xs text-cyan-300">${row.din}</td>
+                    <td class="p-3 font-mono font-bold text-white">${row.ah}</td>
+                    <td class="p-3 font-mono text-amber-300">${row.cca}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded text-xs font-mono font-bold ${row.oemType.includes('AGM') ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' : 'bg-slate-700 text-slate-200'}">
+                            ${row.oemType}
+                        </span>
+                    </td>
+                    <td class="p-3 text-xs text-slate-300 max-w-xs leading-relaxed">${row.tip}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterBrand(brand) {
+            document.querySelectorAll('.brand-filter-btn').forEach(btn => {
+                if (btn.dataset.brand === brand) {
+                    btn.className = 'brand-filter-btn bg-cyan-500 text-slate-950 font-bold px-3.5 py-1.5 rounded-lg text-xs transition';
+                } else {
+                    btn.className = 'brand-filter-btn bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold px-3.5 py-1.5 rounded-lg text-xs transition';
+                }
+            });
+            renderSpecTable(brand);
+        }
+
+        // =========================================================================
+        // 2. NAVIGATION TAB SWITCHING
+        // =========================================================================
+        let currentModule = 1;
+        function switchModule(modNum) {
+            currentModule = modNum;
+            document.querySelectorAll('.module-section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(`module-${modNum}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('tab-active', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById(`nav-btn-${modNum}`);
+            activeBtn.classList.add('tab-active', 'text-white');
+            activeBtn.classList.remove('text-slate-400');
+
+            // Trigger canvas resize & redraw when switching tabs
+            setTimeout(() => {
+                resizeAllCanvases();
+                if (modNum === 3) recalculateBattery();
+                if (modNum === 4) drawStorageChart();
+            }, 30);
+        }
+
+        // =========================================================================
+        // 3. MODULE 2: CANVAS ANIMATIONS (STRUCTURE & BMS FLOW)
+        // =========================================================================
+        let batAnimMode = 'AGM'; // FLOODED, EFB, AGM
+        let stressLevel = 0;     // 0: Normal, 1: High Temp & Deep Discharge
+        let bmsMode = 'PARKED';  // PARKED, CRUISE, REGEN
+        let animTime = 0;
+
+        // Particles for electrolyte ions & electrons
+        let ions = [];
+        for (let i = 0; i < 65; i++) {
+            ions.push({
+                x: Math.random(),
+                y: Math.random(),
+                vx: (Math.random() - 0.5) * 0.004,
+                vy: (Math.random() - 0.5) * 0.004,
+                size: 2 + Math.random() * 2.5
+            });
+        }
+
+        function setBatteryAnimMode(mode) {
+            batAnimMode = mode;
+            ['FLOODED', 'EFB', 'AGM'].forEach(m => {
+                const btn = document.getElementById(`bat-mode-${m}`);
+                if (m === mode) {
+                    btn.className = 'bat-mode-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 text-slate-950 transition';
+                } else {
+                    btn.className = 'bat-mode-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition';
+                }
+            });
+            updateStructureText();
+        }
+
+        function setStressLevel(level) {
+            stressLevel = level;
+            document.getElementById('stress-btn-0').className = level === 0 
+                ? 'stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                : 'stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 hover:text-white';
+            document.getElementById('stress-btn-1').className = level === 1 
+                ? 'stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                : 'stress-btn px-3 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700 hover:text-white';
+            updateStructureText();
+        }
+
+        function updateStructureText() {
+            const descEl = document.getElementById('structure-desc');
+            const badgeEl = document.getElementById('struct-health-badge');
+            
+            if (batAnimMode === 'FLOODED') {
+                badgeEl.textContent = stressLevel ? '⚠️ 嚴重硫化 · 活性物質脫落' : '循環壽命 1X · 不可用於 Start-Stop';
+                badgeEl.className = stressLevel ? 'font-mono font-bold text-rose-400' : 'font-mono font-bold text-slate-400';
+                descEl.innerHTML = `<strong class="text-white">傳統液態鉛酸電瓶：</strong>電解液在電瓶內自由流動。在頻繁啟停或高溫深放電下，極板表面會快速堆積白色<strong class="text-rose-400">硫酸鉛結晶（硫化）</strong>，且底部易產生酸液分層，裝在 Stellantis 車上通常半年內即損壞。`;
+            } else if (batAnimMode === 'EFB') {
+                badgeEl.textContent = stressLevel ? '⚠️ 輕度硫化 · 充電接受度下降' : '內阻中等 · 循環壽命 2X';
+                badgeEl.className = stressLevel ? 'font-mono font-bold text-amber-400' : 'font-mono font-bold text-amber-300';
+                descEl.innerHTML = `<strong class="text-amber-300">EFB 增強型注水電瓶：</strong>在正極板表面增加一層<strong class="text-white">聚酯纖維網（Polyester Scrim）</strong>，固定活性物質防止脫落。雖可應付基本 Start-Stop，但仍屬液態酸液，在台式短途＋高溫環境下，抗硫化能力仍遜於 AGM。`;
+            } else {
+                badgeEl.textContent = stressLevel ? '✅ 玻璃纖維鎖酸 · 極板零脫落' : '內阻極低 · 循環壽命 3X~4X';
+                badgeEl.className = 'font-mono font-bold text-cyan-400';
+                descEl.innerHTML = `<strong class="text-cyan-400">AGM 吸附式玻璃纖維電瓶：</strong>極板之間夾入高密度<strong class="text-white">超細玻璃纖維棉墊（Glass Mat）</strong>，100% 吸附電解液（無游離液體），並對極板施加緊密壓力。完全消除酸液分層，大電流回充極快，最適合台灣高溫與歐系車智慧充電系統。`;
+            }
+        }
+
+        function setBmsMode(mode) {
+            bmsMode = mode;
+            ['PARKED', 'CRUISE', 'REGEN'].forEach(m => {
+                const btn = document.getElementById(`bms-btn-${m}`);
+                if (m === mode) {
+                    const color = m === 'PARKED' ? 'bg-amber-500 text-slate-950' : (m === 'CRUISE' ? 'bg-cyan-500 text-slate-950' : 'bg-emerald-500 text-slate-950');
+                    btn.className = `bms-btn py-2 px-2 rounded-xl text-xs font-bold ${color} transition text-center`;
+                } else {
+                    btn.className = 'bms-btn py-2 px-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 transition text-center';
+                }
+            });
+            updateBmsText();
+        }
+
+        function updateBmsText() {
+            const voltEl = document.getElementById('bms-volt-readout');
+            const ampEl = document.getElementById('bms-amp-readout');
+            const descEl = document.getElementById('bms-desc');
+
+            if (bmsMode === 'PARKED') {
+                voltEl.textContent = '12.55 V';
+                voltEl.className = 'text-base font-mono font-bold text-amber-400';
+                ampEl.textContent = '-0.04 A (休眠微放電)';
+                ampEl.className = 'text-base font-mono font-bold text-rose-400';
+                descEl.innerHTML = `<strong class="text-amber-400">熄火鎖車靜置：</strong>BSI 電腦切斷非必要電源，僅防盜、Keyless 接收器與 IBS 維持運作（約 30~50mA）。若車主加裝不斷電行車記錄器，電流會飆升至 150mA 以上，加速電瓶虧電。`;
+            } else if (bmsMode === 'CRUISE') {
+                voltEl.textContent = '12.80 V';
+                voltEl.className = 'text-base font-mono font-bold text-cyan-400';
+                ampEl.textContent = '0.00 A (發電機減載)';
+                ampEl.className = 'text-base font-mono font-bold text-cyan-300';
+                descEl.innerHTML = `<strong class="text-cyan-400">定速巡航智慧減載：</strong>Stellantis BMS 刻意將電瓶維持在 <strong class="text-white">80%~85% SOC</strong>（不充到 100%）。當電量足夠時，發電機降低發電電壓至 12.8V 減少引擎負載以節省油耗。這也是為何歐系車電瓶常處於「非滿電」狀態，必須用 AGM 才耐得住！`;
+            } else {
+                voltEl.textContent = '14.85 V';
+                voltEl.className = 'text-base font-mono font-bold text-emerald-400';
+                ampEl.textContent = '+38.5 A (大電流回充)';
+                ampEl.className = 'text-base font-mono font-bold text-emerald-400';
+                descEl.innerHTML = `<strong class="text-emerald-400">滑行與煞車動能回充：</strong>放開油門滑行時，IBS 通知發電機瞬間拉高電壓至 <strong class="text-white">14.6V~15.0V</strong>，將車輛動能轉化為大電流灌入電瓶。AGM 因為極低內阻，能瞬間吸收這股強大電流；若誤裝傳統電瓶則會過熱失水。`;
+            }
+        }
+
+        function drawStructureCanvas() {
+            const canvas = document.getElementById('structureCanvas');
+            if (!canvas || canvas.offsetParent === null) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Background Grid
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.25)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < w; x += 25) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+            for (let y = 0; y < h; y += 25) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+            const padX = w * 0.12;
+            const padY = h * 0.14;
+            const boxW = w - padX * 2;
+            const boxH = h - padY * 2 - 20;
+
+            // Electrolyte Background Fill
+            if (batAnimMode === 'AGM') {
+                // Glass Mat texture background
+                ctx.fillStyle = 'rgba(6, 182, 212, 0.12)';
+                ctx.fillRect(padX, padY, boxW, boxH);
+                // Draw fibrous glass mat mesh lines
+                ctx.strokeStyle = 'rgba(165, 243, 252, 0.18)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 40; i++) {
+                    const yPos = padY + (boxH / 40) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(padX, yPos);
+                    ctx.lineTo(padX + boxW, yPos + Math.sin(i + animTime * 0.02) * 3);
+                    ctx.stroke();
+                }
+            } else {
+                // Liquid electrolyte with wave on top
+                const grad = ctx.createLinearGradient(0, padY, 0, padY + boxH);
+                if (stressLevel === 1 && batAnimMode === 'FLOODED') {
+                    // Acid stratification visual (darker bottom)
+                    grad.addColorStop(0, 'rgba(56, 189, 248, 0.05)');
+                    grad.addColorStop(1, 'rgba(245, 158, 11, 0.28)');
+                } else {
+                    grad.addColorStop(0, 'rgba(56, 189, 248, 0.12)');
+                    grad.addColorStop(1, 'rgba(14, 165, 233, 0.25)');
+                }
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(padX, padY + boxH);
+                for (let x = padX; x <= padX + boxW; x += 10) {
+                    const waveY = padY + 8 + Math.sin(x * 0.04 + animTime * 0.06) * 4;
+                    ctx.lineTo(x, waveY);
+                }
+                ctx.lineTo(padX + boxW, padY + boxH);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Draw Plates (3 Positive, 3 Negative alternating)
+            const numPlates = 6;
+            const spacing = boxW / (numPlates + 1);
+            const plateW = Math.min(18, spacing * 0.36);
+            const plateH = boxH * 0.78;
+            const plateTop = padY + boxH * 0.14;
+
+            for (let i = 0; i < numPlates; i++) {
+                const isPos = i % 2 === 0;
+                const px = padX + spacing * (i + 1) - plateW / 2;
+
+                // AGM Glass Mat Separator wrapping
+                if (batAnimMode === 'AGM') {
+                    ctx.fillStyle = 'rgba(226, 232, 240, 0.22)';
+                    ctx.fillRect(px - 5, plateTop - 4, plateW + 10, plateH + 8);
+                }
+
+                // Plate Core
+                ctx.fillStyle = isPos ? '#dc2626' : '#64748b';
+                ctx.beginPath();
+                ctx.roundRect(px, plateTop, plateW, plateH, 3);
+                ctx.fill();
+
+                // EFB Polyester Scrim on Positive Plates
+                if (batAnimMode === 'EFB' && isPos) {
+                    ctx.strokeStyle = '#fbbf24';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([4, 3]);
+                    ctx.strokeRect(px - 2, plateTop - 2, plateW + 4, plateH + 4);
+                    ctx.setLineDash([]);
+                }
+
+                // Sulfation Crystals (White buildup) when Stress Level = 1
+                if (stressLevel === 1) {
+                    let crystalCount = batAnimMode === 'FLOODED' ? 14 : (batAnimMode === 'EFB' ? 6 : 1);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    for (let c = 0; c < crystalCount; c++) {
+                        const cy = plateTop + (plateH / crystalCount) * c + 5;
+                        const cx = px + (c % 2 === 0 ? -3 : plateW);
+                        const cSize = batAnimMode === 'FLOODED' ? 4.5 : 3;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, cSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // Draw Moving Ions
+            ions.forEach(ion => {
+                const speedMult = batAnimMode === 'AGM' ? 1.5 : (batAnimMode === 'EFB' ? 1.0 : 0.7);
+                if (batAnimMode === 'AGM') {
+                    // Horizontal fast shuttle between plates
+                    ion.x += Math.cos(animTime * 0.05 + ion.y * 10) * 0.005 * speedMult;
+                } else {
+                    ion.x += ion.vx * speedMult;
+                    ion.y += ion.vy * speedMult;
+                }
+                if (ion.x < 0.05) ion.x = 0.95;
+                if (ion.x > 0.95) ion.x = 0.05;
+                if (ion.y < 0.1) ion.y = 0.9;
+                if (ion.y > 0.9) ion.y = 0.1;
+
+                ctx.fillStyle = batAnimMode === 'AGM' ? 'rgba(0, 210, 255, 0.75)' : 'rgba(56, 189, 248, 0.55)';
+                ctx.beginPath();
+                ctx.arc(padX + ion.x * boxW, padY + ion.y * boxH, ion.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Outer Battery Casing
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(padX, padY, boxW, boxH);
+
+            // Top Label
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 11px "JetBrains Mono", monospace';
+            ctx.textAlign = 'center';
+            const topTitle = batAnimMode === 'AGM' 
+                ? 'AGM: 玻璃纖維吸附電解液 · 極板緊密加壓' 
+                : (batAnimMode === 'EFB' ? 'EFB: 正極聚酯纖維網 + 液態電解液' : 'FLOODED: 游離液態酸液 · 易分層與硫化');
+            ctx.fillText(topTitle, w / 2, padY - 10);
+        }
+
+        function drawBmsCanvas() {
+            const canvas = document.getElementById('bmsCanvas');
+            if (!canvas || canvas.offsetParent === null) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            // Center coordinates for 3 nodes: Alternator (Top), Battery+IBS (Bottom Left), Vehicle Load (Bottom Right)
+            const altPos = { x: w * 0.5, y: h * 0.28 };
+            const batPos = { x: w * 0.24, y: h * 0.72 };
+            const loadPos = { x: w * 0.76, y: h * 0.72 };
+
+            // Helper to draw energy flow line with moving dots
+            function drawFlowLine(p1, p2, active, color, speed, reverse = false) {
+                ctx.strokeStyle = active ? color : 'rgba(71, 85, 105, 0.35)';
+                ctx.lineWidth = active ? 3.5 : 2;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+
+                if (active) {
+                    const dots = 5;
+                    for (let i = 0; i < dots; i++) {
+                        let t = ((animTime * speed) + i / dots) % 1;
+                        if (reverse) t = 1 - t;
+                        const dx = p1.x + (p2.x - p1.x) * t;
+                        const dy = p1.y + (p2.y - p1.y) * t;
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.arc(dx, dy, 4, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            // Draw connections based on BMS mode
+            if (bmsMode === 'PARKED') {
+                // Battery -> Vehicle Load (Slow discharge)
+                drawFlowLine(altPos, batPos, false, '#334155', 0);
+                drawFlowLine(altPos, loadPos, false, '#334155', 0);
+                drawFlowLine(batPos, loadPos, true, '#f59e0b', 0.005, false);
+            } else if (bmsMode === 'CRUISE') {
+                // Alternator -> Vehicle Load only (Battery isolated/resting at 85%)
+                drawFlowLine(altPos, batPos, false, '#00d2ff', 0);
+                drawFlowLine(altPos, loadPos, true, '#00d2ff', 0.015, false);
+                drawFlowLine(batPos, loadPos, false, '#334155', 0);
+            } else if (bmsMode === 'REGEN') {
+                // Alternator -> Battery (High speed charge) & Alternator -> Load
+                drawFlowLine(altPos, batPos, true, '#10b981', 0.025, false);
+                drawFlowLine(altPos, loadPos, true, '#00d2ff', 0.015, false);
+                drawFlowLine(batPos, loadPos, false, '#334155', 0);
+            }
+
+            // Draw Node Cards
+            function drawNode(pos, title, sub, borderColor, iconText) {
+                const bw = 114;
+                const bh = 56;
+                ctx.fillStyle = '#0f172a';
+                ctx.strokeStyle = borderColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(pos.x - bw / 2, pos.y - bh / 2, bw, bh, 10);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(iconText + ' ' + title, pos.x, pos.y - 4);
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '10px "JetBrains Mono", monospace';
+                ctx.fillText(sub, pos.x, pos.y + 14);
+            }
+
+            drawNode(altPos, '智慧發電機', bmsMode === 'PARKED' ? 'OFF (熄火)' : (bmsMode === 'REGEN' ? '14.85V 全力回充' : '12.80V 節能減載'), bmsMode === 'REGEN' ? '#10b981' : '#38bdf8', '⚡');
+            drawNode(batPos, '電瓶 + IBS', 'SOC監控中', '#00d2ff', '🔋');
+            drawNode(loadPos, 'BSI 車身電裝', bmsMode === 'PARKED' ? '休眠 40mA' : '行車電腦/冷氣', '#f59e0b', '🚘');
+        }
+
+        function animationLoop() {
+            animTime++;
+            if (currentModule === 2) {
+                drawStructureCanvas();
+                drawBmsCanvas();
+            }
+            requestAnimationFrame(animationLoop);
+        }
+
+        // =========================================================================
+        // 4. MODULE 3: BATTERY CALCULATOR & VOLTAGE DECAY CURVE
+        // =========================================================================
+        function applyPreset(ah, soh, ma, cca) {
+            document.getElementById('input-ah').value = ah;
+            document.getElementById('input-soh').value = soh;
+            document.getElementById('input-ma').value = ma;
+            document.getElementById('input-cca').value = cca;
+            recalculateBattery();
+        }
+
+        function recalculateBattery() {
+            const ah = parseFloat(document.getElementById('input-ah').value);
+            const soh = parseFloat(document.getElementById('input-soh').value);
+            const ma = parseFloat(document.getElementById('input-ma').value);
+            const ratedCca = parseFloat(document.getElementById('input-cca').value);
+
+            // Update slider labels
+            document.getElementById('val-ah').textContent = `${ah} Ah`;
+            document.getElementById('val-soh').textContent = `${soh} %`;
+            document.getElementById('val-ma').textContent = `${ma} mA`;
+            document.getElementById('val-cca').textContent = `${ratedCca} A`;
+
+            // Color coding for SOH
+            const sohEl = document.getElementById('val-soh');
+            sohEl.className = soh >= 75 ? 'font-mono font-bold text-emerald-400 text-base' : (soh >= 65 ? 'font-mono font-bold text-amber-400 text-base' : 'font-mono font-bold text-rose-400 text-base');
+
+            // Step 1: Usable Ah (50% DoD limit * SOH)
+            const actualAh = ah * (soh / 100);
+            const usableAh = actualAh * 0.5;
+            document.getElementById('step1-result').textContent = `${usableAh.toFixed(2)} Ah`;
+            document.getElementById('step1-formula').textContent = `${ah} Ah × ${soh}% (SOH) × 50% (安全放電深度) = ${usableAh.toFixed(2)} Ah`;
+
+            // Step 2: mA to A
+            const amps = ma / 1000;
+            document.getElementById('step2-result').textContent = `${amps.toFixed(3)} A`;
+            document.getElementById('step2-formula').textContent = `${ma} mA ÷ 1000 = ${amps.toFixed(3)} A (每小時消耗 ${amps.toFixed(3)} Ah)`;
+
+            // Step 3: Hours & Days
+            const hours = usableAh / amps;
+            const days = hours / 24;
+            document.getElementById('step3-result').textContent = `${hours.toFixed(1)} 小時 (${days.toFixed(1)} 天)`;
+            document.getElementById('step3-formula').textContent = `${usableAh.toFixed(2)} Ah ÷ ${amps.toFixed(3)} A = ${hours.toFixed(1)} 小時 ÷ 24 = ${days.toFixed(1)} 天`;
+
+            const summaryDaysEl = document.getElementById('summary-days-badge');
+            summaryDaysEl.textContent = `${days.toFixed(1)} 天`;
+            summaryDaysEl.className = days >= 14 
+                ? 'text-2xl font-mono font-black text-emerald-400 glow-text' 
+                : (days >= 7 ? 'text-2xl font-mono font-black text-amber-400' : 'text-2xl font-mono font-black text-rose-400');
+
+            // Step 4: RC & CCA
+            const estRc = Math.round(actualAh * 2 * 0.85);
+            const estCca = Math.round(ratedCca * (soh / 100));
+            const thresholdCca = Math.round(ratedCca * 0.70);
+
+            document.getElementById('step4-rc').textContent = `約 ${estRc} 分鐘`;
+            document.getElementById('step4-cca').textContent = `${estCca} A / 警戒線 ${thresholdCca} A`;
+
+            const statusBadge = document.getElementById('step4-status');
+            if (soh >= 75) {
+                statusBadge.textContent = '狀態良好 (PASS)';
+                statusBadge.className = 'font-mono font-bold text-emerald-400 text-xs px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30';
+            } else if (soh >= 70) {
+                statusBadge.textContent = '接近警戒 (觀察)';
+                statusBadge.className = 'font-mono font-bold text-amber-400 text-xs px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30';
+            } else {
+                statusBadge.textContent = '低於 70% (建議換新)';
+                statusBadge.className = 'font-mono font-bold text-rose-400 text-xs px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/30';
+            }
+
+            // Draw Voltage Decay Chart
+            drawVoltageChart(days, actualAh, amps);
+        }
+
+        function drawVoltageChart(safeDays, actualAh, amps) {
+            const canvas = document.getElementById('voltageChartCanvas');
+            if (!canvas || canvas.offsetParent === null) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const padL = 46, padR = 20, padT = 18, padB = 28;
+            const plotW = w - padL - padR;
+            const plotH = h - padT - padB;
+
+            // Voltage Y range: 11.6V to 12.8V
+            const minV = 11.6, maxV = 12.8;
+            const vToY = v => padT + plotH * (1 - (v - minV) / (maxV - minV));
+
+            // Max X days: dynamic scale so curve looks clean
+            const totalEmptyDays = safeDays * 2;
+            const maxXDays = Math.max(10, Math.ceil(totalEmptyDays * 1.15));
+            const dToX = d => padL + plotW * (d / maxXDays);
+
+            // Background Warning Zones
+            // >= 12.2V Safe
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.06)';
+            ctx.fillRect(padL, vToY(12.8), plotW, vToY(12.2) - vToY(12.8));
+            // 12.0V - 12.2V Caution
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.08)';
+            ctx.fillRect(padL, vToY(12.2), plotW, vToY(12.0) - vToY(12.2));
+            // < 12.0V Sulfation Danger
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+            ctx.fillRect(padL, vToY(12.0), plotW, vToY(11.6) - vToY(12.0));
+
+            // Horizontal Grid & Voltage Labels
+            const vTicks = [12.6, 12.4, 12.2, 12.0, 11.8];
+            ctx.font = '10px "JetBrains Mono", monospace';
+            ctx.textAlign = 'right';
+            vTicks.forEach(v => {
+                const y = vToY(v);
+                ctx.strokeStyle = v === 12.0 ? 'rgba(239, 68, 68, 0.5)' : 'rgba(71, 85, 105, 0.3)';
+                ctx.setLineDash(v === 12.0 ? [4, 4] : []);
+                ctx.beginPath();
+                ctx.moveTo(padL, y);
+                ctx.lineTo(padL + plotW, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = v === 12.0 ? '#f87171' : '#94a3b8';
+                ctx.fillText(v.toFixed(1) + 'V', padL - 6, y + 3);
+            });
+
+            // X-Axis Ticks
+            ctx.textAlign = 'center';
+            const stepX = Math.max(1, Math.floor(maxXDays / 6));
+            for (let d = 0; d <= maxXDays; d += stepX) {
+                const x = dToX(d);
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText(d + '天', x, h - 8);
+            }
+
+            // Plot Voltage Decay Curve (12.65V at 100% SOC -> 12.05V at 50% SOC -> 11.65V at 15% SOC)
+            ctx.strokeStyle = '#00d2ff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let px = 0; px <= plotW; px += 4) {
+                const day = (px / plotW) * maxXDays;
+                const consumedAh = day * 24 * amps;
+                const soc = Math.max(0, 1 - (consumedAh / actualAh));
+                // Realistic AGM OCV curve approximation
+                const volt = 11.55 + 1.10 * Math.pow(soc, 0.85);
+                const clampedV = Math.max(minV, Math.min(maxV, volt));
+                if (px === 0) ctx.moveTo(padL + px, vToY(clampedV));
+                else ctx.lineTo(padL + px, vToY(clampedV));
+            }
+            ctx.stroke();
+
+            // Highlight Safe Limit Point (50% DoD ~ 12.06V)
+            if (safeDays <= maxXDays) {
+                const sx = dToX(safeDays);
+                const sy = vToY(12.06);
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+                ctx.textAlign = safeDays > maxXDays * 0.75 ? 'right' : 'left';
+                const offsetX = safeDays > maxXDays * 0.75 ? -8 : 8;
+                ctx.fillText(`安全底線: ${safeDays.toFixed(1)}天 (12.06V)`, sx + offsetX, sy - 8);
+            }
+        }
+
+        // =========================================================================
+        // 5. MODULE 4: WAREHOUSE SELF-DISCHARGE CHART
+        // =========================================================================
+        let warehouseTemp = 25;
+
+        function setWarehouseTemp(temp) {
+            warehouseTemp = temp;
+            document.getElementById('temp-btn-25').className = temp === 25
+                ? 'temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-cyan-500 text-slate-950 transition'
+                : 'temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:text-white transition';
+            document.getElementById('temp-btn-35').className = temp === 35
+                ? 'temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-orange-500 text-slate-950 transition'
+                : 'temp-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 text-slate-300 hover:text-white transition';
+
+            document.getElementById('agm-shelf-life').textContent = temp === 25 ? '安全存放：約 8~10 個月' : '高溫存放：縮短至 5~6 個月';
+            document.getElementById('efb-shelf-life').textContent = temp === 25 ? '安全存放：約 4~5 個月' : '高溫存放：縮短至 2.5~3 個月';
+
+            drawStorageChart();
+        }
+
+        function drawStorageChart() {
+            const canvas = document.getElementById('storageCanvas');
+            if (!canvas || canvas.offsetParent === null) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const padL = 48, padR = 24, padT = 28, padB = 30;
+            const plotW = w - padL - padR;
+            const plotH = h - padT - padB;
+
+            const minV = 12.1, maxV = 12.8;
+            const vToY = v => padT + plotH * (1 - (v - minV) / (maxV - minV));
+            const maxMonths = 12;
+            const mToX = m => padL + plotW * (m / maxMonths);
+
+            // Grid & Y labels
+            const vTicks = [12.7, 12.6, 12.5, 12.4, 12.3, 12.2];
+            ctx.font = '10px "JetBrains Mono", monospace';
+            ctx.textAlign = 'right';
+            vTicks.forEach(v => {
+                const y = vToY(v);
+                ctx.strokeStyle = v === 12.4 ? 'rgba(244, 63, 94, 0.7)' : 'rgba(71, 85, 105, 0.28)';
+                ctx.lineWidth = v === 12.4 ? 2 : 1;
+                ctx.setLineDash(v === 12.4 ? [5, 4] : []);
+                ctx.beginPath();
+                ctx.moveTo(padL, y);
+                ctx.lineTo(padL + plotW, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = v === 12.4 ? '#fb7185' : '#94a3b8';
+                ctx.fillText(v.toFixed(1) + 'V', padL - 6, y + 3);
+            });
+
+            // 12.4V Recharge Threshold Label
+            ctx.fillStyle = '#fb7185';
+            ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText('⚠️ 12.40V 強制補電紅線 (低於此值開始硫化)', padL + plotW, vToY(12.4) - 6);
+
+            // X labels (Months)
+            ctx.textAlign = 'center';
+            ctx.font = '10px "JetBrains Mono", monospace';
+            for (let m = 0; m <= maxMonths; m += 2) {
+                ctx.fillStyle = '#94a3b8';
+                ctx.fillText(m + '個月', mToX(m), h - 8);
+            }
+
+            // Monthly self-discharge voltage drop rate
+            // At 25°C: AGM ~ 0.032V/mo, EFB ~ 0.065V/mo
+            // At 35°C: rates roughly double (Arrhenius rule: every +10°C doubles chemical reaction rate)
+            const tempMult = warehouseTemp === 35 ? 1.85 : 1.0;
+            const agmDrop = 0.032 * tempMult;
+            const efbDrop = 0.068 * tempMult;
+
+            // Draw AGM Curve
+            ctx.strokeStyle = '#00d2ff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let m = 0; m <= maxMonths; m += 0.2) {
+                const v = Math.max(minV, 12.75 - agmDrop * m);
+                if (m === 0) ctx.moveTo(mToX(m), vToY(v));
+                else ctx.lineTo(mToX(m), vToY(v));
+            }
+            ctx.stroke();
+
+            // Draw EFB Curve
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            for (let m = 0; m <= maxMonths; m += 0.2) {
+                const v = Math.max(minV, 12.70 - efbDrop * m);
+                if (m === 0) ctx.moveTo(mToX(m), vToY(v));
+                else ctx.lineTo(mToX(m), vToY(v));
+            }
+            ctx.stroke();
+
+            // Legend Top Left
+            ctx.fillStyle = '#00d2ff';
+            ctx.fillRect(padL + 8, 8, 14, 3);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`AGM 吸附式 (${warehouseTemp}°C)`, padL + 28, 13);
+
+            ctx.fillStyle = '#f59e0b';
+            ctx.fillRect(padL + 165, 8, 14, 3);
+            ctx.fillStyle = '#e2e8f0';
+            ctx.fillText(`EFB / 傳統液態 (${warehouseTemp}°C)`, padL + 185, 13);
+        }
+
+        // =========================================================================
+        // 6. RESPONSIVE CANVAS RESIZING & INITIALIZATION
+        // =========================================================================
+        function resizeAllCanvases() {
+            const canvasIds = ['structureCanvas', 'bmsCanvas', 'voltageChartCanvas', 'storageCanvas'];
+            canvasIds.forEach(id => {
+                const c = document.getElementById(id);
+                if (c && c.parentElement) {
+                    const rect = c.parentElement.getBoundingClientRect();
+                    if (rect.width > 0 && rect.height > 0) {
+                        c.width = rect.width;
+                        c.height = rect.height;
+                    }
+                }
+            });
+        }
+
+        window.addEventListener('resize', () => {
+            resizeAllCanvases();
+            if (currentModule === 3) recalculateBattery();
+            if (currentModule === 4) drawStorageChart();
+        });
+
+        window.onload = function() {
+            renderSpecTable('ALL');
+            updateStructureText();
+            updateBmsText();
+            resizeAllCanvases();
+            recalculateBattery();
+            animationLoop();
+        };
+    </script>
+</body>
+</html>
