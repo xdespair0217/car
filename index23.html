@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citroën Berlingo (K9) 尾門開啟與中央門鎖邊緣故障動態解構面板</title>
+    <style>
+        :root {
+            --bg-app: #080c14;
+            --bg-panel: #0f1623;
+            --bg-card: #151e2e;
+            --bg-card-hover: #1b263b;
+            --border-subtle: #233047;
+            --border-bright: #334666;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            --cyan: #00f0ff;
+            --cyan-dim: rgba(0, 240, 255, 0.15);
+            --amber: #f59e0b;
+            --amber-dim: rgba(245, 158, 11, 0.15);
+            --red: #ef4444;
+            --red-dim: rgba(239, 68, 68, 0.18);
+            --green: #10b981;
+            --green-dim: rgba(16, 185, 129, 0.15);
+            --purple: #a855f7;
+            --magenta: #f43f5e;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", "PingFang TC", sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-app);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* 頂部標頭列 */
+        .app-header {
+            background: linear-gradient(180deg, #111927 0%, #0b101b 100%);
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 10px 18px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .brand-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: var(--cyan-dim);
+            border: 1px solid rgba(0, 240, 255, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--cyan);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .app-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: #f8fafc;
+        }
+
+        .badge-sedre {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: var(--amber-dim);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .vin-meta {
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            color: var(--text-muted);
+            margin-top: 3px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .vin-meta strong {
+            color: var(--cyan);
+        }
+
+        /* 頂部模式切換頁籤 */
+        .mode-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .tab-btn {
+            padding: 7px 13px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid var(--border-bright);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover {
+            background: var(--bg-card-hover);
+            color: #fff;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.18), rgba(15, 23, 42, 0.95));
+            border-color: var(--cyan);
+            color: var(--cyan);
+            box-shadow: 0 0 14px rgba(0, 240, 255, 0.2);
+        }
+
+        .tab-btn.active-guide {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(15, 23, 42, 0.95));
+            border-color: var(--amber);
+            color: #fbbf24;
+            box-shadow: 0 0 14px rgba(245, 158, 11, 0.2);
+        }
+
+        /* 主雙欄工作區：左側 62% Canvas，右側 38% 控制台 */
+        .workspace {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 12px;
+            max-width: 1920px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 1024px) {
+            .workspace {
+                flex-direction: row;
+                align-items: stretch;
+                height: calc(100vh - 64px);
+            }
+            .left-pane {
+                width: 62%;
+                display: flex;
+                flex-direction: column;
+            }
+            .right-pane {
+                width: 38%;
+                display: flex;
+                flex-direction: column;
+            }
+        }
+
+        .pane-box {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+        }
+
+        /* 左側 Canvas 操作列 */
+        .canvas-toolbar {
+            background: #0c121e;
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 8px 14px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .toolbar-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--cyan);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 8px var(--cyan);
+            animation: pulseDot 1.5s infinite;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+
+        .trigger-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            align-items: center;
+        }
+
+        .act-btn {
+            padding: 6px 11px;
+            border-radius: 7px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
+            user-select: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .act-btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-oem-sw {
+            background: rgba(245, 158, 11, 0.18);
+            border-color: rgba(245, 158, 11, 0.55);
+            color: #fcd34d;
+        }
+        .btn-oem-sw:hover, .btn-oem-sw.pressed {
+            background: rgba(245, 158, 11, 0.35);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-rf {
+            background: rgba(0, 240, 255, 0.15);
+            border-color: rgba(0, 240, 255, 0.5);
+            color: #67e8f9;
+        }
+        .btn-rf:hover {
+            background: rgba(0, 240, 255, 0.28);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+        }
+
+        .btn-mod-sw {
+            background: rgba(244, 63, 94, 0.22);
+            border-color: rgba(244, 63, 94, 0.7);
+            color: #fda4af;
+            animation: modGlow 2s infinite;
+        }
+        .btn-mod-sw:hover, .btn-mod-sw.pressed {
+            background: rgba(244, 63, 94, 0.42);
+            color: #fff;
+        }
+
+        @keyframes modGlow {
+            0%, 100% { box-shadow: 0 0 6px rgba(244, 63, 94, 0.25); }
+            50% { box-shadow: 0 0 14px rgba(244, 63, 94, 0.55); }
+        }
+
+        .btn-latch {
+            background: #1e293b;
+            border-color: #475569;
+            color: #e2e8f0;
+            font-weight: 600;
+        }
+        .btn-latch:hover {
+            background: #334155;
+        }
+
+        /* Canvas 容器 */
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+            background: #070b12;
+            min-height: 440px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 畫布懸浮提示框 */
+        .canvas-tooltip {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            max-width: 440px;
+            background: rgba(9, 14, 24, 0.95);
+            border: 1px solid rgba(0, 240, 255, 0.55);
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #e2e8f0;
+            pointer-events: none;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7);
+            display: none;
+            z-index: 10;
+        }
+
+        .canvas-tooltip strong {
+            color: var(--cyan);
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        /* 底部圖例列 */
+        .canvas-legend {
+            background: #0c121e;
+            border-top: 1px solid var(--border-subtle);
+            padding: 7px 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .legend-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .swatch {
+            width: 14px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        /* 右側控制台樣式 */
+        .right-header {
+            background: #0c121e;
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .right-header h2 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #fbbf24;
+        }
+
+        .status-pill {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid;
+        }
+
+        .right-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* 自訂滾動條 */
+        .right-scroll::-webkit-scrollbar { width: 6px; }
+        .right-scroll::-webkit-scrollbar-track { background: #0b101b; }
+        .right-scroll::-webkit-scrollbar-thumb { background: #2c3b55; border-radius: 3px; }
+
+        /* 情境按鈕網格 */
+        .scenario-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 6px;
+        }
+
+        .sc-btn {
+            text-align: left;
+            padding: 8px 11px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.18s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .sc-btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--border-bright);
+        }
+
+        .sc-btn.active-ok {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.18), var(--bg-card));
+            border-color: var(--green);
+        }
+
+        .sc-btn.active-fault {
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.22), var(--bg-card));
+            border-color: var(--red);
+        }
+
+        .sc-title {
+            font-size: 12.5px;
+            font-weight: 700;
+        }
+
+        .sc-tag {
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        /* 情境 3 子模式控制區 */
+        .mod-subpanel {
+            background: rgba(244, 63, 94, 0.08);
+            border: 1px solid rgba(244, 63, 94, 0.4);
+            border-radius: 9px;
+            padding: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .mod-subpanel.visible {
+            display: flex;
+        }
+
+        .sub-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #fda4af;
+        }
+
+        .sub-btn-row {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .sub-mode-btn {
+            text-align: left;
+            padding: 7px 10px;
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #131b2b;
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            transition: all 0.15s;
+        }
+
+        .sub-mode-btn:hover {
+            background: #1e293b;
+        }
+
+        .sub-mode-btn.active {
+            background: #9f1239;
+            border-color: #fb7185;
+            color: #fff;
+        }
+
+        .sub-mode-btn.active-safe {
+            background: #065f46;
+            border-color: #34d399;
+            color: #fff;
+        }
+
+        .mod-interactive-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding-top: 4px;
+            border-top: 1px dashed rgba(244, 63, 94, 0.35);
+        }
+
+        /* 診斷資訊卡片 */
+        .diag-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 9px;
+            padding: 11px 12px;
+        }
+
+        .diag-card h3 {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--cyan);
+            margin-bottom: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .diag-card p {
+            font-size: 12px;
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        /* 量測表格 */
+        .meter-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+
+        .meter-table th {
+            text-align: left;
+            padding: 5px 6px;
+            border-bottom: 1px solid var(--border-bright);
+            color: var(--text-muted);
+        }
+
+        .meter-table td {
+            padding: 6px;
+            border-bottom: 1px solid rgba(35, 48, 71, 0.6);
+            vertical-align: top;
+        }
+
+        .meter-table tr.row-alert {
+            background: rgba(239, 68, 68, 0.12);
+        }
+
+        .val-ok { color: #38bdf8; font-weight: 700; }
+        .val-bad { color: #f87171; font-weight: 700; }
+
+        /* SOP 步驟列表 */
+        .sop-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .sop-item {
+            background: #0d131f;
+            border: 1px solid #1e293b;
+            border-radius: 7px;
+            padding: 8px 10px;
+            font-size: 12px;
+            line-height: 1.55;
+            color: #cbd5e1;
+            display: flex;
+            gap: 8px;
+        }
+
+        .sop-num {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--green-dim);
+            border: 1px solid rgba(16, 185, 129, 0.45);
+            color: #34d399;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* 專項測量教學模式卡片 */
+        .guide-step-card {
+            background: #0d131f;
+            border: 1px solid #26354d;
+            border-left: 3px solid var(--amber);
+            border-radius: 7px;
+            padding: 9px 11px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .guide-step-card:hover, .guide-step-card.active-probe {
+            background: #162033;
+            border-color: var(--amber);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+        }
+
+        .guide-step-title {
+            font-size: 12.5px;
+            font-weight: 700;
+            color: #fbbf24;
+            margin-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .guide-step-desc {
+            font-size: 11.8px;
+            line-height: 1.55;
+            color: #cbd5e1;
+        }
+
+        .pullup-explain {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.08), rgba(15, 23, 42, 0.9));
+            border: 1px solid rgba(0, 240, 255, 0.35);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #e2e8f0;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- 頂部診斷工作站標頭 -->
+    <header class="app-header">
+        <div class="brand-area">
+            <div class="brand-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="title-row">
+                    <h1 class="app-title">Citroën Berlingo (K9) 尾門開啟與中央門鎖邊緣故障互動教案</h1>
+                    <span class="badge-sedre">SEDRE 原廠拓撲 / 廠長實戰版</span>
+                </div>
+                <div class="vin-meta">
+                    <span>VIN: <strong>VR7EBYHZ4VJ006870</strong></span>
+                    <span>•</span>
+                    <span>OPR: <strong>18092</strong></span>
+                    <span>•</span>
+                    <span>核心節點: <strong>BSI1 (60V MR) / IC82A (22V NR) / 6282 / 6222 / EM63B</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 頂部雙模式切換頁籤 -->
+        <div class="mode-tabs">
+            <button id="tabSimMode" class="tab-btn active" onclick="switchTopMode('sim')">
+                <span>⚡ 電路動態與邊緣故障模擬</span>
+            </button>
+            <button id="tabGuideMode" class="tab-btn" onclick="switchTopMode('guide')">
+                <span>📏 6282 按壓開關全路徑走線與萬用表量測教學</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主工作區 -->
+    <main class="workspace">
+        
+        <!-- 左側 62%：HTML5 高解析動態電路畫布 -->
+        <section class="left-pane pane-box">
+            <div class="canvas-toolbar">
+                <div class="toolbar-title">
+                    <span class="live-dot"></span>
+                    <span id="canvasHeaderLabel">即時電流粒子與腳位電位動態模擬</span>
+                </div>
+
+                <!-- 互動觸發按鈕組 -->
+                <div class="trigger-group">
+                    <button id="btnPress6282" class="act-btn btn-oem-sw"
+                        onmousedown="setOemSwitch(true)" onmouseup="setOemSwitch(false)" onmouseleave="setOemSwitch(false)"
+                        ontouchstart="setOemSwitch(true)" ontouchend="setOemSwitch(false)">
+                        👇 按住原廠尾門開關 (6282)
+                    </button>
+
+                    <button id="btnPressRF" class="act-btn btn-rf" onclick="triggerRfUnlock()">
+                        📡 按遙控器解鎖 (RF)
+                    </button>
+
+                    <!-- 僅在情境 3 顯示的改裝按鈕 -->
+                    <button id="btnCanvasModSw" class="act-btn btn-mod-sw hidden"
+                        onmousedown="setModSwitch(true)" onmouseup="setModSwitch(false)" onmouseleave="setModSwitch(false)"
+                        ontouchstart="setModSwitch(true)" ontouchend="setModSwitch(false)">
+                        🔘 按下飾板內改裝開關
+                    </button>
+
+                    <button id="btnToggleDoor" class="act-btn btn-latch" onclick="toggleDoorAjar()">
+                        尾門狀態: <span id="doorStateText" style="color:#34d399; font-weight:700;">已關閉 (0V)</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="canvas-wrapper" id="canvasContainer">
+                <canvas id="schematicCanvas"></canvas>
+                <div id="canvasTooltip" class="canvas-tooltip"></div>
+            </div>
+
+            <div class="canvas-legend">
+                <div class="legend-items">
+                    <span class="legend-item"><span class="swatch" style="background:#00f0ff;"></span>62C0 上拉弱電 (11.8V→0V)</span>
+                    <span class="legend-item"><span class="swatch" style="background:#f59e0b;"></span>62B0 +12V 馬達強電</span>
+                    <span class="legend-item"><span class="swatch" style="background:#a855f7;"></span>62H2 門碰微動回饋</span>
+                    <span class="legend-item"><span class="swatch" style="background:#10b981;"></span>EM63B / MC63 搭鐵迴路</span>
+                    <span class="legend-item"><span class="swatch" style="background:#f43f5e;"></span>逆流倒灌 / 斷路異常</span>
+                </div>
+                <span>💡 移動滑鼠至元件或腳位可檢視實測定義</span>
+            </div>
+        </section>
+
+        <!-- 右側 38%：互動診斷與實戰量測控制台 -->
+        <aside class="right-pane pane-box">
+            <div class="right-header">
+                <h2 id="rightPanelTitle">🛠️ 實戰邊緣案例選擇與現場排查 SOP</h2>
+                <span id="statusBadge" class="status-pill" style="background:rgba(16,185,129,0.18); color:#34d399; border-color:rgba(16,185,129,0.45);">
+                    正常基準
+                </span>
+            </div>
+
+            <div class="right-scroll">
+                
+                <!-- ==================== 視圖 A：五種邊緣故障與改裝情境控制台 ==================== -->
+                <div id="simControlView" style="display:flex; flex-direction:column; gap:11px;">
+                    
+                    <!-- 5 個情境按鈕 -->
+                    <div class="scenario-grid" id="scenarioButtons"></div>
+
+                    <!-- 情境 3 專屬：尾門內飾板加裝外接開關（3種接法控制子面板） -->
+                    <div id="modSubPanel" class="mod-subpanel">
+                        <div class="sub-title">⚠️ 尾門飾板背後「車內開啟改裝開關」3種接線鑑識模擬：</div>
+                        <div class="sub-btn-row">
+                            <button id="modBtnA" class="sub-mode-btn active" onclick="selectModMode('A')">
+                                接法 A（致命）：並聯 62B0 馬達線直接灌入 +12V 強電（無二極體逆流燒繼電器 R2/R3）
+                            </button>
+                            <button id="modBtnB" class="sub-mode-btn" onclick="selectModMode('B')">
+                                接法 B（高危）：誤接 +12V 強電灌入 62C0 訊號線（直接擊穿 BSI1 Pin 7 上拉與 MCU）
+                            </button>
+                            <button id="modBtnC" class="sub-mode-btn" onclick="selectModMode('C')">
+                                接法 C（無源並聯）：並聯 62C0 與 MC62D（不燒 BSI，但潛藏受潮連跳「不丁狗」或漏電）
+                            </button>
+                        </div>
+
+                        <div class="mod-interactive-bar">
+                            <button class="act-btn btn-mod-sw"
+                                onmousedown="setModSwitch(true)" onmouseup="setModSwitch(false)" onmouseleave="setModSwitch(false)"
+                                ontouchstart="setModSwitch(true)" ontouchend="setModSwitch(false)">
+                                🔘 按住測試改裝開關瞬間電流
+                            </button>
+                            <button id="btnModJamToggle" class="act-btn btn-latch hidden" onclick="toggleModJammed()">
+                                💧 模擬按鈕受潮/行李擠壓卡鍵：<span id="modJamLabel" style="color:#94a3b8;">正常釋放</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 1. 故障現象與邏輯推演 -->
+                    <div class="diag-card">
+                        <h3>① 故障現象與第一道分水嶺邏輯推演</h3>
+                        <p id="logicText"></p>
+                    </div>
+
+                    <!-- 2. 萬用表實測數值對照表 -->
+                    <div class="diag-card">
+                        <h3>
+                            <span>② 關鍵量測點萬用表實測對照表</span>
+                            <span style="font-size:10.5px; color:#94a3b8; font-weight:400;">基準電瓶: 12.4V</span>
+                        </h3>
+                        <table class="meter-table">
+                            <thead>
+                                <tr>
+                                    <th>量測腳位 / 線號</th>
+                                    <th>正常基準值</th>
+                                    <th>當前情境實測</th>
+                                </tr>
+                            </thead>
+                            <tbody id="meterBody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- 3. 拒絕盲換 BSI 三步現場隔離 SOP -->
+                    <div class="diag-card">
+                        <h3 id="sopCardTitle" style="color:#34d399;">③ 拒絕盲換 BSI1：現場三步精準隔離法</h3>
+                        <ol class="sop-list" id="sopList"></ol>
+                    </div>
+
+                </div>
+
+                <!-- ==================== 視圖 B：6282 開關走線與手把手萬用表量測教學 ==================== -->
+                <div id="guideControlView" class="hidden" style="display:flex; flex-direction:column; gap:11px;">
+                    
+                    <div class="pullup-explain">
+                        <strong style="color:#00f0ff; display:block; margin-bottom:4px;">💡 核心觀念：為什麼按壓開關下去，12V 會瞬間變成 0V？</strong>
+                        BSI1 內部在 <code>60V MR Pin 7 (62C0)</code> 串接了一顆「限流上拉電阻」連到 +12V（就像一根水壓 12 公斤但細口限流的水管）。<br>
+                        • <strong>沒按開關時</strong>：開關斷開，水（電流）流不出去，整條 <code>62C0</code> 充滿靜態壓力，電錶量到 <strong>~11.8V</strong>。<br>
+                        • <strong>按下開關時</strong>：<code>6282</code> 內部閉合，將 <code>62C0</code> 直接連通搭鐵 <code>MC62D → EM63B → MC63</code>（打開水龍頭通往大海），12V 壓降全被 BSI 內部電阻吸收，線束電位被拉低至 <strong>0.0V</strong>（不會燒保險絲），BSI 偵測到「12V→0V」即觸發解鎖！
+                    </div>
+
+                    <div class="diag-card">
+                        <h3>🗺️ 6282 按壓開關完整物理走線（Pin 對 Pin）</h3>
+                        <p style="font-family:var(--font-mono); font-size:11.5px; color:#e2e8f0; background:#0b101b; padding:8px; border-radius:6px; border:1px solid #1e293b;">
+                            <span style="color:#00f0ff;">[訊號端]</span> BSI1 (60V MR Pin 7) ➔ 線號 <strong>62C0</strong> ➔ 過線總插頭 IC82A (22V NR Pin 13) ➔ 尾門蛇管折彎處 ➔ 尾門開關 <strong>6282 (2V NR Pin 1)</strong><br><br>
+                            <span style="color:#10b981;">[搭鐵端]</span> 尾門開關 <strong>6282 (2V NR Pin 2)</strong> ➔ 線號 <strong>MC62D</strong> ➔ 壓接匯流點 <strong>EM63B</strong> (與門鎖 MC62A 共用) ➔ 線號 <strong>MC60B</strong> ➔ 1V ND ➔ 車身搭鐵螺絲 <strong>MC63</strong>
+                        </p>
+                    </div>
+
+                    <div class="diag-card">
+                        <h3 style="color:#fbbf24;">📏 手把手萬用表實測四步驟（點擊步驟高亮畫布探針）</h3>
+                        
+                        <div id="probeStepA" class="guide-step-card active-probe" onclick="highlightProbe('A')">
+                            <div class="guide-step-title">
+                                <span>點位 A：開路靜態電壓測試（抓 62C0 斷線）</span>
+                                <span>檔位：DCV 20V</span>
+                            </div>
+                            <div class="guide-step-desc">
+                                拔開尾門開關 <code>6282</code> 插頭，<strong>黑棒夾尾門乾淨搭鐵金屬、紅棒插線束端 Pin 1 (62C0)</strong>。<br>
+                                • <strong>正常值</strong>：應量到 BSI 送出的 <strong>11.5V ~ 12.0V</strong> 上拉電壓。<br>
+                                • <strong>異常判讀</strong>：若為 <strong>0V</strong>，代表 <code>62C0</code> 在蛇管內斷（外皮完好銅芯斷）、<code>IC82A Pin 13</code> 退針，或 BSI 內部已被改裝強電燒毀。
+                            </div>
+                        </div>
+
+                        <div id="probeStepB" class="guide-step-card" onclick="highlightProbe('B')">
+                            <div class="guide-step-title">
+                                <span>點位 B：搭鐵迴路與帶負載測試（抓 EM63B 氧化）</span>
+                                <span>檔位：Ω / LED試燈</span>
+                            </div>
+                            <div class="guide-step-desc">
+                                1. 電阻檔量測 <code>6282</code> 插頭 <strong>Pin 2 (MC62D)</strong> 對車身搭鐵，正常必須 <strong>&lt; 0.5 Ω</strong>。<br>
+                                2. <strong>老師傅必殺技（帶負載測試）</strong>：用一顆小功率試燈（或跨接線）直接跨接插頭的 <strong>Pin 1 與 Pin 2</strong>。若尾門立刻「啪」一聲彈開，代表整條車身與尾門線束完全健康，<strong>100% 是開關 6282 本體壞掉</strong>！
+                            </div>
+                        </div>
+
+                        <div id="probeStepC" class="guide-step-card" onclick="highlightProbe('C')">
+                            <div class="guide-step-title">
+                                <span>點位 C：6282 開關本體微動通斷測試</span>
+                                <span>檔位：Ω 蜂鳴檔</span>
+                            </div>
+                            <div class="guide-step-desc">
+                                紅黑棒直接量測已拔下插頭的開關 <code>6282</code> 本體兩支腳位（Pin 1 與 Pin 2）：<br>
+                                • <strong>未按壓時</strong>：必須顯示 <strong>OL（無窮大 / 不導通）</strong>；若有阻值代表進水漏電。<br>
+                                • <strong>按下開關時</strong>：必須瞬間降為 <strong>&lt; 1.0 Ω</strong> 且蜂鳴器長響；若阻值跳動超過 50Ω 代表內部微動接點氧化。
+                            </div>
+                        </div>
+
+                        <div id="probeStepD" class="guide-step-card" onclick="highlightProbe('D')">
+                            <div class="guide-step-title">
+                                <span>點位 D：BSI 端直接搭鐵隔離法（免盲換 BSI）</span>
+                                <span>工具：跨接線 / LED試燈</span>
+                            </div>
+                            <div class="guide-step-desc">
+                                當懷疑換了新 BSI 仍不動作時，到駕駛座左下方 <code>BSI1</code> 找到棕色 60 腳插頭 <strong>60V MR 的 Pin 7 (62C0)</strong>（或左後過線插頭 <code>IC82A Pin 13</code> 車身側），用帶保護的試燈一端夾車身搭鐵、探針點觸 Pin 7。<br>
+                                • <strong>若尾門立刻彈開</strong>：證明 BSI1、繼電器、門鎖馬達全好，故障死鎖在 <code>Pin 7 → 6282 Pin 1</code> 之間！
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // ==================== 1. 實戰診斷資料庫 ====================
+        const SCENARIOS = [
+            {
+                id: 0,
+                title: "情境 0：正常運作基準（遙控與開關雙軌皆通）",
+                tag: "正常基準",
+                isFault: false,
+                badgeStyle: "background:rgba(16,185,129,0.18); color:#34d399; border-color:rgba(16,185,129,0.45);",
+                logic: "【雙軌輸入 + 單軌功率輸出】尾門開啟共有兩條獨立請求路徑：(1) 遙控器無線電波 (RF) 直接進入 BSI1 主控 MCU；(2) 按下尾門開關 6282 時，將 BSI1 (60V MR Pin 7 / 62C0) 的 11.8V 上拉電位拉低至 0V。只要任一請求成立且 62H2 門碰邏輯無衝突，BSI1 內部繼電器 R2/R3 吸合 0.4 秒，經 62B0 送出 +12V 驅動 6222 馬達解鎖。",
+                meter: [
+                    { pin: "BSI 60V MR Pin 7 (62C0)", std: "靜態 ~11.8V / 按壓 0.0V", cur: "靜態 11.8V / 按壓 0.0V", bad: false },
+                    { pin: "IC82A Pin 13 (過線插頭)", std: "靜態 ~11.8V / 按壓 0.0V", cur: "靜態 11.8V / 按壓 0.0V", bad: false },
+                    { pin: "6282 Pin 1 / Pin 2", std: "Pin1: 11.8V | Pin2: <0.2Ω", cur: "Pin1: 11.8V | Pin2: 0.0Ω", bad: false },
+                    { pin: "BSI 60V MR Pin 52 (62B0)", std: "靜態 0V / 觸發瞬間 +12V", cur: "靜態 0V / 觸發瞬間 +12V", bad: false },
+                    { pin: "BSI 60V MR Pin 19 (62H2)", std: "門關 0.0V / 門開 ~11.8V", cur: "門關 0.0V / 門開 11.8V", bad: false }
+                ],
+                sopTitle: "③ 正常系統標準驗證三步驟",
+                sop: [
+                    "<strong>交叉功能測試：</strong>分別按壓遙控器解鎖鍵與尾門開關 6282，確認兩者皆能清脆觸發 6222 鎖總成彈開。",
+                    "<strong>靜態基準確認：</strong>拔開 6282 插頭量測 Pin 1 對車身金屬應有 ~11.8V 上拉電位，Pin 2 (MC62D) 對車身金屬電阻 < 0.2Ω。",
+                    "<strong>門碰閉環確認：</strong>手動撥動 6222 鎖舌模擬關門/開門，確認 BSI 60V MR Pin 19 (62H2) 在 0V 與 11.8V 之間正確切換。"
+                ]
+            },
+            {
+                id: 1,
+                title: "情境 1：案例重現 — 62C0 銅芯隱性內斷（外皮完好）",
+                tag: "實戰經典案例",
+                isFault: true,
+                badgeStyle: "background:rgba(239,68,68,0.2); color:#f87171; border-color:rgba(239,68,68,0.5);",
+                logic: "【第一道分水嶺：按遙控器有作用、按尾門開關沒作用！】遙控器能開，一瞬間就替 BSI1 繼電器 R2/R3、62B0 供電線、6222 馬達以及共用搭鐵 EM63B/MC63 開出了『100% 正常證明』！故障被嚴格鎖死在『6282 開關 → 62C0 訊號線 → IC82A Pin 13 → BSI Pin 7』這條請求輸入鏈上。尾門橡膠蛇管頻繁折彎處的 62C0 銅芯疲勞斷裂，外觀絕緣皮完好無損，內部卻完全斷路，換再多顆 BSI 都不會好。",
+                meter: [
+                    { pin: "BSI 60V MR Pin 7 (62C0)", std: "靜態 ~11.8V / 按壓 0.0V", cur: "始終 11.8V (按開關無反應!)", bad: true },
+                    { pin: "IC82A Pin 13 (過線端)", std: "車身側與尾門側皆 11.8V", cur: "車身側 11.8V / 尾門側 0.0V", bad: true },
+                    { pin: "6282 Pin 1 (開關端)", std: "靜態 ~11.8V / 按壓 0.0V", cur: "始終 0.0V (收不到上拉電壓!)", bad: true },
+                    { pin: "BSI 60V MR Pin 52 (62B0)", std: "觸發瞬間 +12V", cur: "遙控時 +12V / 按開關時 0.0V", bad: false },
+                    { pin: "6282 Pin 2 (MC62D)", std: "對搭鐵電阻 <0.2Ω", cur: "0.0Ω (開關搭鐵分支正常)", bad: false }
+                ],
+                sopTitle: "③ 拒絕盲換 BSI1：現場三步精準隔離法",
+                sop: [
+                    "<strong>BSI 端試燈直接點觸（免換電腦）：</strong>在 BSI1 60V MR Pin 7（或 IC82A Pin 13 車身側）用 LED 試燈夾搭鐵點觸該腳。尾門立刻彈開，瞬間證明 BSI1 完全沒壞！",
+                    "<strong>尾門開關端量測上拉電位：</strong>拔開 6282 插頭量測 Pin 1 對地電壓，本案例測得 0V（正常應為 11.8V），直接判定 62C0 在過線區間斷路。",
+                    "<strong>蛇管折彎處拉扯與重接：</strong>撥開尾門橡膠蛇管並輕拉 62C0 導線，找出內部銅芯斷裂點（外皮完好但一拉就伸長），剪除疲勞段以防水熱縮管重接。"
+                ]
+            },
+            {
+                id: 2,
+                title: "情境 2：搭鐵匯流 EM63B / MC60B 氧化斷路（全尾門癱瘓）",
+                tag: "共用搭鐵斷路",
+                isFault: true,
+                badgeStyle: "background:rgba(239,68,68,0.2); color:#f87171; border-color:rgba(239,68,68,0.5);",
+                logic: "【雙重失效與連帶異常】如果按遙控器和按尾門開關『同時失效』，且儀表板可能誤報尾門未關（或後風擋 6281/6223 也一併罷工），問題就在尾門共用搭鐵大動脈！查原廠圖紙：6282 開關 (MC62D) 與 6222 門鎖馬達/門碰 (MC62A) 全部匯流壓接於 EM63B，再經 MC60B 接往車身搭鐵點 MC63。一旦 EM63B 受潮氧化或 MC60B 斷路，整個尾門失去負極迴路，遙控器送出 +12V 馬達也無法轉動。",
+                meter: [
+                    { pin: "BSI 60V MR Pin 7 (62C0)", std: "按壓時拉低至 0.0V", cur: "始終 11.8V (開關無法搭鐵)", bad: true },
+                    { pin: "BSI 60V MR Pin 19 (62H2)", std: "門關 0.0V / 門開 ~11.8V", cur: "門關時浮動達 11.8V (誤報門開!)", bad: true },
+                    { pin: "6222 Pin 2 (MC62A)", std: "對車身搭鐵 <0.2Ω", cur: ">500Ω 或 ∞ (EM63B 氧化斷開!)", bad: true },
+                    { pin: "6282 Pin 2 (MC62D)", std: "對車身搭鐵 <0.2Ω", cur: ">500Ω 或 ∞ (EM63B 氧化斷開!)", bad: true },
+                    { pin: "BSI 60V MR Pin 52 (62B0)", std: "遙控瞬間 +12V", cur: "遙控時有 +12V 輸出，但馬達不轉", bad: false }
+                ],
+                sopTitle: "③ 共用搭鐵匯流點排查三步驟",
+                sop: [
+                    "<strong>觀察連帶異常症狀：</strong>測試後風擋開啟開關 6281 是否同時失靈，並檢視儀表門未關警告燈，確認是否為共用搭鐵群組故障。",
+                    "<strong>馬達帶載跨壓測試：</strong>按遙控器解鎖瞬間，用三用電錶紅黑棒直接量測 6222 插頭 Pin 1 與 Pin 2 之間壓差；若壓差為 0V（但 Pin 1 對車身鐵有 12V），100% 確診 Pin 2 搭鐵斷路。",
+                    "<strong>重做 EM63B 壓接與 MC63 螺絲除鏽：</strong>剝開尾門線束找出原廠超音波壓接點 EM63B，剪除綠鏽氧化段重新壓接焊錫並做好防水絕緣。"
+                ]
+            },
+            {
+                id: 3,
+                title: "情境 3：尾門內飾板加裝外接開關（3種改裝接法與燒毀模擬）",
+                tag: "外接改裝殺手",
+                isFault: true,
+                badgeStyle: "background:rgba(244,63,94,0.22); color:#fda4af; border-color:rgba(244,63,94,0.6);",
+                logic: "【飾板背後隱藏的 BSI 殺手】外廠或露營改裝常在尾門內飾板加裝『車內開啟按鈕』：(1) 接法 A 將外接 +12V 直接並聯到 62B0 馬達線，按下時 +12V 逆流倒灌進 BSI1 繼電器 R2/R3 燒毀接點（新換 BSI 沒拆這條線會再燒一次！）；(2) 接法 B 誤把 +12V 灌入 62C0 訊號線，瞬間擊穿 BSI Pin 7 上拉與 MCU 緩衝級；(3) 接法 C 無源並聯 62C0 與 MC62D 雖不燒 BSI，但按鈕受潮或行李擠壓卡鍵會導致『不丁狗』連跳或漏電。",
+                meter: [
+                    { pin: "BSI 60V MR Pin 52 (62B0)", std: "靜態 0V / 脈衝 +12V", cur: "接法A: 逆流 +12V 倒灌燒熔繼電器!", bad: true },
+                    { pin: "BSI 60V MR Pin 7 (62C0)", std: "靜態 ~11.8V (限流弱電)", cur: "接法B: 強電擊穿燒毀 / 接法C卡鍵: 0V", bad: true },
+                    { pin: "非原廠改裝寄生線路", std: "原廠無任何外接開關", cur: "飾板內發現外接按鈕與偷電並聯線!", bad: true },
+                    { pin: "熄火休眠暗電流", std: "休眠後 < 0.03A (30mA)", cur: "接法C受潮漏電時 > 0.25A (電瓶沒電)", bad: true }
+                ],
+                sopTitle: "③ 拆飾板一秒鑑識法與換 BSI 前必檢鐵律",
+                sop: [
+                    "<strong>換新 BSI 前必拆尾門飾板：</strong>凡遇 BSI 內部繼電器燒熔或 Pin 7 無上拉電壓，裝新 BSI 前<strong>必須拆下尾門內飾板</strong>檢查有無加裝車內開啟開關！",
+                    "<strong>一秒線束鑑識法：</strong>看改裝開關背後兩條線——凡有接保險絲盒/燈泡 <strong>+12V 正電</strong>者（接法 A/B），一律徹底拆除；僅兩線無源並聯在 <code>6282 Pin 1 &amp; 2</code> 者（接法 C）方為安全接法，但需更換防水等級按鈕並拔除測試是否卡鍵。",
+                    "<strong>插頭靜態防倒灌檢測：</strong>插上新 BSI 前，先量測車身側 <code>60V MR Pin 7</code> 與 <code>Pin 52</code> 對地電壓，必須為絕對 0.0V 才可插回電腦。"
+                ]
+            },
+            {
+                id: 4,
+                title: "情境 4：62H2 門碰微動邏輯鎖死 / 過線插頭進水氧化",
+                tag: "邊緣邏輯衝突",
+                isFault: true,
+                badgeStyle: "background:rgba(245,158,11,0.2); color:#fbbf24; border-color:rgba(245,158,11,0.5);",
+                logic: "【被忽略的閉環回饋線 62H2】門鎖 6222 Pin 3 內建門碰微動開關（線號 62H2 → IC82A Pin 14 → BSI 60V MR Pin 19）。正常門關時搭鐵為 0V，門開時斷開為 ~11.8V。當過線插頭 IC82A Pin 14 進水長綠鏽，或 62H2 線束磨破對地短路時，BSI 偵測到『門碰狀態與中控指令矛盾』（例如尾門已彈開卻仍回報關閉，或防盜上鎖邏輯衝突），會主動啟動保護鎖死、拒絕執行馬達脈衝，造成『不丁狗（不動作）』。",
+                meter: [
+                    { pin: "BSI 60V MR Pin 19 (62H2)", std: "門關 0.0V / 門開 ~11.8V", cur: "無論開關門皆鎖死在 0.0V (或異常電位)", bad: true },
+                    { pin: "IC82A Pin 14 (過線端)", std: "針腳乾燥無腐蝕", cur: "插頭進水綠鏽氧化 / 對地阻值 <10Ω", bad: true },
+                    { pin: "BSI 60V MR Pin 7 (62C0)", std: "按壓 6282 時拉低至 0V", cur: "按壓正常變 0V，但 BSI 拒絕驅動 62B0", bad: false },
+                    { pin: "診断儀 BSI 數據流", std: "尾門狀態隨鎖舌切換", cur: "狀態卡死或顯示邏輯衝突", bad: true }
+                ],
+                sopTitle: "③ 門碰邏輯鎖死排查三步驟",
+                sop: [
+                    "<strong>診斷儀數據流比對：</strong>進入 BSI1『車門與行李箱狀態』參數，手動撥動 6222 鎖舌模擬開門與關門，觀察電腦判讀狀態是否真實改變。",
+                    "<strong>拔開 IC82A 插頭隔離測試：</strong>分離車身與尾門過線插頭 IC82A，量測 BSI 60V MR Pin 19 是否恢復 ~11.8V 上拉電壓；若恢復，重點清潔 IC82A Pin 14 綠鏽或檢修尾門段 62H2。",
+                    "<strong>檢測 6222 鎖總成微動開關：</strong>若線束無對地短路，則為 6222 內部機械卡滯或微動開關接點黏死，需更換 6222 鎖總成。"
+                ]
+            }
+        ];
+
+        // ==================== 2. 系統全域狀態 ====================
+        let topMode = 'sim';          // 'sim' | 'guide'
+        let currentScenario = 0;      // 0 ~ 4
+        let modSubMode = 'A';         // 'A' | 'B' | 'C'
+        let isOemSwPressed = false;
+        let isModSwPressed = false;
+        let isModSwJammed = false;
+        let isRfPulsing = false;
+        let isDoorClosed = true;
+        let activeProbeStep = 'A';    // 'A' | 'B' | 'C' | 'D'
+        let rfTimer = null;
+        let animTime = 0;
+        let hoverRegions = [];        // 畫布動態熱區
+
+        // ==================== 3. 初始化與事件綁定 ====================
+        const canvas = document.getElementById('schematicCanvas');
+        const ctx = canvas.getContext('2d');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderScenarioButtons();
+            selectScenario(0);
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            setupCanvasHover();
+            requestAnimationFrame(renderLoop);
+        });
+
+        function resizeCanvas() {
+            const container = document.getElementById('canvasContainer');
+            const rect = container.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        // 切換頂部雙模式
+        function switchTopMode(mode) {
+            topMode = mode;
+            const tabSim = document.getElementById('tabSimMode');
+            const tabGuide = document.getElementById('tabGuideMode');
+            const simView = document.getElementById('simControlView');
+            const guideView = document.getElementById('guideControlView');
+            const rightTitle = document.getElementById('rightPanelTitle');
+            const statusBadge = document.getElementById('statusBadge');
+            const canvasHeader = document.getElementById('canvasHeaderLabel');
+
+            if (mode === 'sim') {
+                tabSim.className = 'tab-btn active';
+                tabGuide.className = 'tab-btn';
+                simView.classList.remove('hidden');
+                guideView.classList.add('hidden');
+                rightTitle.textContent = '🛠️ 實戰邊緣案例選擇與現場排查 SOP';
+                canvasHeader.textContent = '即時電流粒子與腳位電位動態模擬';
+                selectScenario(currentScenario);
+            } else {
+                tabSim.className = 'tab-btn';
+                tabGuide.className = 'tab-btn active-guide';
+                simView.classList.add('hidden');
+                guideView.classList.remove('hidden');
+                rightTitle.textContent = '📏 6282 開關走線與手把手萬用表實測教學';
+                canvasHeader.textContent = '萬用表紅黑探針實測點位圖解（點選右側步驟切換探針）';
+                statusBadge.textContent = '量測教學模式';
+                statusBadge.style = 'background:rgba(245,158,11,0.2); color:#fbbf24; border-color:rgba(245,158,11,0.5);';
+                // 切入教學模式時自動切回正常基準線路以便觀察標準電位
+                currentScenario = 0;
+                isModSwPressed = false;
+                isModSwJammed = false;
+                document.getElementById('btnCanvasModSw').classList.add('hidden');
+            }
+        }
+
+        // 渲染右側 5 個情境按鈕
+        function renderScenarioButtons() {
+            const container = document.getElementById('scenarioButtons');
+            container.innerHTML = SCENARIOS.map(sc => `
+                <button id="scBtn_${sc.id}" class="sc-btn" onclick="selectScenario(${sc.id})">
+                    <span class="sc-title">${sc.title}</span>
+                    <span class="sc-tag" style="${sc.badgeStyle}">${sc.tag}</span>
+                </button>
+            `).join('');
+        }
+
+        // 選擇情境
+        function selectScenario(id) {
+            currentScenario = id;
+            isOemSwPressed = false;
+            isModSwPressed = false;
+            isModSwJammed = false;
+            isRfPulsing = false;
+            if (rfTimer) clearTimeout(rfTimer);
+
+            const sc = SCENARIOS[id];
+
+            // 按鈕樣式更新
+            SCENARIOS.forEach(item => {
+                const btn = document.getElementById(`scBtn_${item.id}`);
+                btn.classList.remove('active-ok', 'active-fault');
+                if (item.id === id) {
+                    btn.classList.add(item.isFault ? 'active-fault' : 'active-ok');
+                }
+            });
+
+            // 情境 3 專屬控制項
+            const modPanel = document.getElementById('modSubPanel');
+            const canvasModBtn = document.getElementById('btnCanvasModSw');
+            if (id === 3) {
+                modPanel.classList.add('visible');
+                canvasModBtn.classList.remove('hidden');
+                selectModMode(modSubMode);
+            } else {
+                modPanel.classList.remove('visible');
+                canvasModBtn.classList.add('hidden');
+            }
+
+            // 更新右側診斷資訊
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = sc.tag;
+            badge.style = sc.badgeStyle;
+
+            document.getElementById('logicText').textContent = sc.logic;
+            document.getElementById('sopCardTitle').textContent = sc.sopTitle;
+
+            const meterBody = document.getElementById('meterBody');
+            meterBody.innerHTML = sc.meter.map(m => `
+                <tr class="${m.bad ? 'row-alert' : ''}">
+                    <td style="color:#f1f5f9; font-weight:600;">${m.pin}</td>
+                    <td style="color:#94a3b8;">${m.std}</td>
+                    <td class="${m.bad ? 'val-bad' : 'val-ok'}">${m.cur}</td>
+                </tr>
+            `).join('');
+
+            const sopList = document.getElementById('sopList');
+            sopList.innerHTML = sc.sop.map((s, idx) => `
+                <li class="sop-item">
+                    <span class="sop-num">${idx + 1}</span>
+                    <span>${s}</span>
+                </li>
+            `).join('');
+        }
+
+        // 選擇情境 3 改裝接法 (A / B / C)
+        function selectModMode(mode) {
+            modSubMode = mode;
+            isModSwPressed = false;
+            isModSwJammed = false;
+            updateModJamUI();
+
+            const btnA = document.getElementById('modBtnA');
+            const btnB = document.getElementById('modBtnB');
+            const btnC = document.getElementById('modBtnC');
+            const jamBtn = document.getElementById('btnModJamToggle');
+
+            btnA.className = 'sub-mode-btn' + (mode === 'A' ? ' active' : '');
+            btnB.className = 'sub-mode-btn' + (mode === 'B' ? ' active' : '');
+            btnC.className = 'sub-mode-btn' + (mode === 'C' ? ' active-safe' : '');
+
+            if (mode === 'C') {
+                jamBtn.classList.remove('hidden');
+            } else {
+                jamBtn.classList.add('hidden');
+            }
+        }
+
+        // 互動操作控制函數
+        function setOemSwitch(pressed) {
+            isOemSwPressed = pressed;
+            const btn = document.getElementById('btnPress6282');
+            if (pressed) btn.classList.add('pressed');
+            else btn.classList.remove('pressed');
+        }
+
+        function setModSwitch(pressed) {
+            isModSwPressed = pressed;
+            const btn = document.getElementById('btnCanvasModSw');
+            if (pressed) btn.classList.add('pressed');
+            else btn.classList.remove('pressed');
+        }
+
+        function toggleModJammed() {
+            isModSwJammed = !isModSwJammed;
+            updateModJamUI();
+        }
+
+        function updateModJamUI() {
+            const label = document.getElementById('modJamLabel');
+            if (isModSwJammed) {
+                label.textContent = '卡鍵常閉中 (62C0 鎖死 0V!)';
+                label.style.color = '#f87171';
+            } else {
+                label.textContent = '正常釋放';
+                label.style.color = '#94a3b8';
+            }
+        }
+
+        function triggerRfUnlock() {
+            isRfPulsing = true;
+            if (rfTimer) clearTimeout(rfTimer);
+            rfTimer = setTimeout(() => {
+                isRfPulsing = false;
+            }, 1400);
+        }
+
+        function toggleDoorAjar() {
+            isDoorClosed = !isDoorClosed;
+            const txt = document.getElementById('doorStateText');
+            if (isDoorClosed) {
+                txt.textContent = '已關閉 (0V)';
+                txt.style.color = '#34d399';
+            } else {
+                txt.textContent = '已彈開 (11.8V)';
+                txt.style.color = '#c084fc';
+            }
+        }
+
+        function highlightProbe(step) {
+            activeProbeStep = step;
+            ['A', 'B', 'C', 'D'].forEach(k => {
+                const el = document.getElementById('probeStep' + k);
+                if (k === step) el.classList.add('active-probe');
+                else el.classList.remove('active-probe');
+            });
+        }
+
+        // ==================== 4. HTML5 Canvas 高解析電路繪圖引擎 ====================
+        function renderLoop(timestamp) {
+            animTime = timestamp * 0.001;
+            drawSchematic();
+            requestAnimationFrame(renderLoop);
+        }
+
+        function drawSchematic() {
+            const rect = canvas.getBoundingClientRect();
+            const W = rect.width;
+            const H = rect.height;
+            if (W === 0 || H === 0) return;
+
+            ctx.clearRect(0, 0, W, H);
+            hoverRegions = [];
+
+            // 邏輯座標系 960 x 600 等比例自適應縮放置中
+            const VW = 960;
+            const VH = 600;
+            const scale = Math.min(W / VW, H / VH);
+            const offsetX = (W - VW * scale) / 2;
+            const offsetY = (H - VH * scale) / 2;
+
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+
+            // 1. 繪製背景網格與三大分區框架
+            drawBackgroundZones(VW, VH);
+
+            // 2. 計算當前電氣狀態
+            const state = computeElectricalState();
+
+            // 3. 繪製主線束與電流粒子動畫
+            drawMainWires(state);
+
+            // 4. 繪製 BSI1 控制盒（含內部繼電器 R2/R3、上拉電阻與 MCU）
+            drawBSI1(state);
+
+            // 5. 繪製中間過線總插頭 IC82A (22V NR)
+            drawIC82A(state);
+
+            // 6. 繪製尾門開啟微動開關 6282 (2V NR)
+            drawSwitch6282(state);
+
+            // 7. 繪製尾門鎖總成 6222 (3V NR)
+            drawLock6222(state);
+
+            // 8. 繪製共用搭鐵匯流點 EM63B -> MC60B -> MC63
+            drawGroundSystem(state);
+
+            // 9. 若為情境 3，繪製飾板內改裝開關子電路
+            if (currentScenario === 3 && topMode === 'sim') {
+                drawModSwitchCircuit(state);
+            }
+
+            // 10. 繪製各腳位即時電壓探針徽章
+            drawPinVoltageBadges(state);
+
+            // 11. 若為「萬用表量測教學模式」，繪製紅黑探針實測點標記
+            if (topMode === 'guide') {
+                drawMultimeterGuideProbes();
+            }
+
+            ctx.restore();
+        }
+
+        // 計算即時電路物理狀態
+        function computeElectricalState() {
+            const effectiveModActive = (currentScenario === 3) && (isModSwPressed || (modSubMode === 'C' && isModSwJammed));
+            const chatterPulse = Math.sin(animTime * 18) > 0; // 模擬「不丁狗」連續彈跳
+
+            let s = {
+                pin7Volt: "11.8V",
+                pin19Volt: isDoorClosed ? "0.0V" : "11.8V",
+                pin52Volt: "0.0V",
+                sw6282Pin1Volt: "11.8V",
+                relayClosed: false,
+                motorSpinning: false,
+                flow62C0: 'none',      // 'none' | 'normal' | 'broken' | 'backfeed'
+                flow62B0: 'none',      // 'none' | 'normal' | 'backfeed'
+                flow62H2: isDoorClosed ? 'normal' : 'none',
+                flowGroundMain: 'none',
+                bsiDamaged: false,
+                damageTitle: ""
+            };
+
+            if (currentScenario === 0) {
+                // 正常基準
+                if (isOemSwPressed) {
+                    s.pin7Volt = "0.0V";
+                    s.sw6282Pin1Volt = "0.0V";
+                    s.flow62C0 = 'normal';
+                    s.relayClosed = true;
+                }
+                if (isRfPulsing) {
+                    s.relayClosed = true;
+                }
+                if (s.relayClosed) {
+                    s.pin52Volt = "+12.0V";
+                    s.flow62B0 = 'normal';
+                    s.motorSpinning = true;
+                    s.flowGroundMain = 'normal';
+                }
+            } else if (currentScenario === 1) {
+                // 情境 1：62C0 蛇管處銅芯隱性內斷
+                s.sw6282Pin1Volt = "0.0V (斷路)";
+                if (isOemSwPressed) {
+                    // 按開關無法把 BSI Pin 7 拉低
+                    s.pin7Volt = "11.8V";
+                    s.flow62C0 = 'broken';
+                    s.relayClosed = false;
+                }
+                if (isRfPulsing) {
+                    // 遙控器繞過 62C0 直接成功驅動！
+                    s.relayClosed = true;
+                    s.pin52Volt = "+12.0V";
+                    s.flow62B0 = 'normal';
+                    s.motorSpinning = true;
+                    s.flowGroundMain = 'normal';
+                }
+            } else if (currentScenario === 2) {
+                // 情境 2：EM63B / MC60B 共用搭鐵氧化斷路
+                s.pin7Volt = "11.8V";
+                s.sw6282Pin1Volt = "11.8V";
+                s.pin19Volt = "11.8V (誤報)";
+                s.flow62H2 = 'fault';
+                if (isRfPulsing) {
+                    s.relayClosed = true;
+                    s.pin52Volt = "+12.0V";
+                    s.flow62B0 = 'blocked'; // 有正電但無搭鐵迴路，馬達不轉
+                    s.motorSpinning = false;
+                }
+            } else if (currentScenario === 3) {
+                // 情境 3：飾板改裝開關三種接法
+                if (modSubMode === 'A') {
+                    // 接法 A：並聯 62B0 直接灌 +12V 強電 -> 逆流燒毀繼電器 R2/R3
+                    s.bsiDamaged = true;
+                    s.damageTitle = "🔥 逆流燒毀繼電器 R2/R3 接點！(換新 BSI 未拆線會再燒)";
+                    s.pin52Volt = effectiveModActive ? "+12V 逆流!" : "接點熔毀";
+                    if (effectiveModActive) {
+                        s.flow62B0 = 'backfeed';
+                        s.motorSpinning = true;
+                        s.flowGroundMain = 'normal';
+                    }
+                } else if (modSubMode === 'B') {
+                    // 接法 B：誤灌 +12V 進 62C0 訊號線 -> 擊穿 Pin 7 上拉與 MCU
+                    s.bsiDamaged = true;
+                    s.damageTitle = "⚡ +12V 強電擊穿 Pin 7 上拉電阻與 MCU！(原廠開關永久失效)";
+                    s.pin7Volt = effectiveModActive ? "+12V 擊穿!" : "0.0V (已燒毀)";
+                    s.sw6282Pin1Volt = "0.0V";
+                    if (effectiveModActive) {
+                        s.flow62C0 = 'backfeed';
+                    }
+                    // 遙控器有時仍可驅動
+                    if (isRfPulsing) {
+                        s.relayClosed = true;
+                        s.pin52Volt = "+12.0V";
+                        s.flow62B0 = 'normal';
+                        s.motorSpinning = true;
+                        s.flowGroundMain = 'normal';
+                    }
+                } else if (modSubMode === 'C') {
+                    // 接法 C：無源並聯 62C0 + MC62D（安全接法，但受潮/卡鍵會連跳）
+                    if (isModSwJammed) {
+                        s.pin7Volt = "0.0V (卡鍵!)";
+                        s.sw6282Pin1Volt = "0.0V";
+                        s.flow62C0 = 'normal';
+                        s.relayClosed = chatterPulse;
+                        s.pin52Volt = chatterPulse ? "+12.0V" : "0.0V";
+                        s.flow62B0 = chatterPulse ? 'normal' : 'none';
+                        s.motorSpinning = chatterPulse;
+                        s.flowGroundMain = chatterPulse ? 'normal' : 'none';
+                    } else if (isOemSwPressed || isModSwPressed) {
+                        s.pin7Volt = "0.0V";
+                        s.sw6282Pin1Volt = "0.0V";
+                        s.flow62C0 = 'normal';
+                        s.relayClosed = true;
+                        s.pin52Volt = "+12.0V";
+                        s.flow62B0 = 'normal';
+                        s.motorSpinning = true;
+                        s.flowGroundMain = 'normal';
+                    } else if (isRfPulsing) {
+                        s.relayClosed = true;
+                        s.pin52Volt = "+12.0V";
+                        s.flow62B0 = 'normal';
+                        s.motorSpinning = true;
+                        s.flowGroundMain = 'normal';
+                    }
+                }
+            } else if (currentScenario === 4) {
+                // 情境 4：62H2 門碰微動邏輯鎖死 / IC82A 進水短路
+                s.pin19Volt = "0.0V (對地短路)";
+                s.flow62H2 = 'fault';
+                if (isOemSwPressed) {
+                    s.pin7Volt = "0.0V";
+                    s.sw6282Pin1Volt = "0.0V";
+                    s.flow62C0 = 'normal';
+                }
+                // BSI 偵測狀態衝突，鎖死不輸出驅動脈衝
+                s.relayClosed = false;
+                s.motorSpinning = false;
+            }
+
+            return s;
+        }
+
+        // 繪製背景網格與三大分區
+        function drawBackgroundZones(VW, VH) {
+            ctx.fillStyle = "#070b12";
+            ctx.fillRect(0, 0, VW, VH);
+
+            // 細網格
+            ctx.strokeStyle = "rgba(30, 41, 59, 0.45)";
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= VW; x += 24) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, VH); ctx.stroke();
+            }
+            for (let y = 0; y <= VH; y += 24) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(VW, y); ctx.stroke();
+            }
+
+            // 區域 1：座艙 BSI1 區
+            drawRoundedRect(24, 16, 912, 205, 10, "rgba(15, 23, 42, 0.85)", "#1e293b", 1.5);
+            ctx.fillStyle = "#64748b";
+            ctx.font = "bold 11.5px sans-serif";
+            ctx.fillText("【座艙控制區】BSI1 智能控制盒 (60V MR 棕色60腳插頭)", 38, 36);
+
+            // 區域 2：尾門蛇管過線區 IC82A
+            drawRoundedRect(24, 240, 912, 76, 8, "rgba(17, 24, 39, 0.85)", "#334155", 1.2, true);
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "bold 11.5px sans-serif";
+            ctx.fillText("【過線連接器與尾門橡膠蛇管折彎高風險區】IC82A (22V NR 黑色22腳插頭)", 38, 258);
+
+            // 區域 3：尾門內部總成區
+            drawRoundedRect(24, 336, 912, 248, 10, "rgba(15, 23, 42, 0.85)", "#1e293b", 1.5);
+            ctx.fillStyle = "#64748b";
+            ctx.font = "bold 11.5px sans-serif";
+            ctx.fillText("【尾門內部總成區】開關 6282 (2V NR) / 門鎖總成 6222 (3V NR) / 搭鐵匯流 EM63B → MC63", 38, 356);
+        }
+
+        // 繪製 BSI1 控制盒
+        function drawBSI1(state) {
+            const bx = 130, by = 46, bw = 700, bh = 152;
+            drawRoundedRect(bx, by, bw, bh, 9, "#111b2e", state.bsiDamaged ? "#ef4444" : "#38bdf8", 2);
+            registerHover(bx, by, bw, bh, "BSI1 智能控制盒 (60V MR)", "Pin 7 (62C0) 內建上拉電阻提供 ~11.8V 基準，偵測低電位觸發；Pin 52 (62B0) 透過內部繼電器 R2/R3 輸出 +12V 驅動馬達；Pin 19 (62H2) 接收門碰狀態。");
+
+            ctx.fillStyle = "#38bdf8";
+            ctx.font = "bold 14px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("BSI1 (智能控制盒)", bx + bw / 2, by + 20);
+
+            // 1. RF 無線遙控接收器
+            drawRoundedRect(150, 76, 130, 72, 6, "#090f1d", "#06b6d4", 1.3);
+            ctx.fillStyle = "#22d3ee";
+            ctx.font = "bold 11.5px sans-serif";
+            ctx.fillText("RF 遙控接收模組", 215, 96);
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "10px sans-serif";
+            ctx.fillText("無線解碼直入 MCU", 215, 113);
+            if (isRfPulsing) {
+                ctx.strokeStyle = "#00f0ff";
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(215, 135, 10 + Math.sin(animTime * 20) * 4, Math.PI, 0);
+                ctx.stroke();
+            }
+
+            // 2. 主控 MCU + 上拉電阻 R_pullup
+            drawRoundedRect(310, 76, 260, 82, 6, "#090f1d", "#6366f1", 1.5);
+            ctx.fillStyle = "#a5b4fc";
+            ctx.font = "bold 12px monospace";
+            ctx.fillText("BSI1 主控 MCU 邏輯核心", 440, 95);
+
+            // 繪製 Pin 7 內部 +12V 上拉電阻符號
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 10px monospace";
+            ctx.fillText("+12V", 355, 111);
+            ctx.strokeStyle = "#00f0ff";
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(355, 114); ctx.lineTo(355, 122);
+            // 鋸齒電阻
+            ctx.lineTo(350, 125); ctx.lineTo(360, 130); ctx.lineTo(350, 135); ctx.lineTo(360, 140);
+            ctx.lineTo(355, 143); ctx.lineTo(355, 180);
+            ctx.stroke();
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "9.5px sans-serif";
+            ctx.fillText("上拉電阻", 386, 134);
+
+            // Pin 19 門碰偵測線
+            ctx.strokeStyle = "#a855f7";
+            ctx.beginPath();
+            ctx.moveTo(455, 118); ctx.lineTo(455, 180);
+            ctx.stroke();
+            ctx.fillStyle = "#c084fc";
+            ctx.fillText("門碰邏輯判定", 455, 113);
+
+            // MCU 到繼電器驅動線
+            ctx.strokeStyle = "#f59e0b";
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(570, 116); ctx.lineTo(605, 116);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // 3. 繼電器 R2 / R3 驅動級
+            drawRoundedRect(605, 76, 205, 82, 6, "#090f1d", "#f59e0b", 1.5);
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 11.5px monospace";
+            ctx.fillText("繼電器 R2 / R3 輸出級", 707, 95);
+
+            ctx.fillStyle = "#ef4444";
+            ctx.font = "bold 10.5px monospace";
+            ctx.fillText("+12V 常火 (F17/F24)", 665, 113);
+            ctx.strokeStyle = "#ef4444";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(665, 117); ctx.lineTo(665, 134); ctx.stroke();
+
+            // 繼電器動觸點
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath(); ctx.arc(665, 134, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = state.relayClosed ? "#00f0ff" : "#fbbf24";
+            ctx.lineWidth = 2.8;
+            ctx.beginPath();
+            ctx.moveTo(665, 134);
+            if (state.relayClosed) {
+                ctx.lineTo(710, 134);
+            } else {
+                ctx.lineTo(702, 121);
+            }
+            ctx.stroke();
+            ctx.fillStyle = "#f59e0b";
+            ctx.beginPath(); ctx.arc(710, 134, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(710, 134); ctx.lineTo(710, 180); ctx.stroke();
+
+            // BSI 燒毀警示框（情境 3 模式 A/B）
+            if (state.bsiDamaged) {
+                const pulse = 0.75 + 0.25 * Math.sin(animTime * 10);
+                drawRoundedRect(318, 82, 484, 70, 6, `rgba(185, 28, 28, ${pulse * 0.45})`, "#ef4444", 2.2);
+                ctx.fillStyle = "#fecaca";
+                ctx.font = "bold 13px sans-serif";
+                ctx.fillText(state.damageTitle, 560, 113);
+                ctx.fillStyle = "#fca5a5";
+                ctx.font = "11px sans-serif";
+                ctx.fillText("必須先拆除尾門飾板內的違法改裝電源線，否則更換新 BSI 仍會再次燒毀！", 560, 134);
+            }
+
+            // 60V MR 腳位端子排
+            drawPinBox(355, 180, "60V MR-7", "#00f0ff");
+            drawPinBox(455, 180, "60V MR-19", "#a855f7");
+            drawPinBox(710, 180, "60V MR-52", "#f59e0b");
+            ctx.textAlign = "left";
+        }
+
+        // 繪製過線連接器 IC82A (22V NR)
+        function drawIC82A(state) {
+            drawRoundedRect(315, 268, 445, 32, 6, "#1e293b", "#64748b", 1.8);
+            registerHover(315, 268, 445, 32, "IC82A (22V NR 過線插頭)", "連接座艙線束與尾門線束的關鍵總插頭。Pin 13 = 62C0 (開關信號)，Pin 14 = 62H2 (門碰)，Pin 15 = 62B0 (馬達電源)。拔開此插頭可瞬間隔離車身端與尾門端故障。");
+
+            ctx.fillStyle = "#e2e8f0";
+            ctx.font = "bold 11.5px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("IC82A 22V NR (過線連接器)", 585, 288);
+
+            drawPinBox(355, 272, "13", "#00f0ff", 32, 24);
+            drawPinBox(455, 272, "14", "#a855f7", 32, 24);
+            drawPinBox(710, 272, "15", "#f59e0b", 32, 24);
+            ctx.textAlign = "left";
+        }
+
+        // 繪製尾門開啟開關 6282 (2V NR)
+        function drawSwitch6282(state) {
+            const sx = 175, sy = 400, sw = 165, sh = 96;
+            drawRoundedRect(sx, sy, sw, sh, 8, "#111b2e", "#00f0ff", 1.8);
+            registerHover(sx, sy, sw, sh, "6282 尾門外部開啟微動開關 (2V NR)", "Pin 1 接 62C0 (來自 BSI Pin 7)；Pin 2 接 MC62D (通往 EM63B 搭鐵)。按壓開關時內部閉合，將 62C0 從 11.8V 拉低至 0V。");
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#22d3ee";
+            ctx.font = "bold 12px monospace";
+            ctx.fillText("6282 (2V NR)", sx + sw / 2, sy + 20);
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "10.5px sans-serif";
+            ctx.fillText("尾門外部按壓微動開關", sx + sw / 2, sy + 36);
+
+            // Pin 1 & Pin 2
+            drawPinBox(257, sy - 10, "1", "#00f0ff", 26, 18);
+            drawPinBox(257, sy + sh - 8, "2", "#10b981", 26, 18);
+
+            // 內部機械觸點
+            ctx.strokeStyle = "#00f0ff";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(257, sy + 8); ctx.lineTo(257, sy + 46); ctx.stroke();
+            ctx.fillStyle = "#00f0ff";
+            ctx.beginPath(); ctx.arc(257, sy + 46, 3.5, 0, Math.PI * 2); ctx.fill();
+
+            // 動觸片
+            ctx.strokeStyle = isOemSwPressed ? "#10b981" : "#fbbf24";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(257, sy + 46);
+            if (isOemSwPressed) {
+                ctx.lineTo(257, sy + 72);
+            } else {
+                ctx.lineTo(237, sy + 68);
+            }
+            ctx.stroke();
+
+            ctx.fillStyle = "#10b981";
+            ctx.beginPath(); ctx.arc(257, sy + 72, 3.5, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#10b981";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(257, sy + 72); ctx.lineTo(257, sy + sh - 8); ctx.stroke();
+            ctx.textAlign = "left";
+        }
+
+        // 繪製尾門鎖總成 6222 (3V NR)
+        function drawLock6222(state) {
+            const lx = 535, ly = 400, lw = 230, lh = 96;
+            drawRoundedRect(lx, ly, lw, lh, 8, "#111b2e", "#f59e0b", 1.8);
+            registerHover(lx, ly, lw, lh, "6222 尾門鎖總成 (3V NR)", "Pin 1 (62B0) 接收 +12V 驅動解鎖馬達 M；Pin 2 (MC62A) 共用搭鐵；Pin 3 (62H2) 為內部門碰微動開關訊號輸出。");
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 12px monospace";
+            ctx.fillText("6222 尾門鎖總成 (3V NR)", lx + lw / 2, ly + 20);
+
+            // Pin 3 (62H2), Pin 2 (MC62A), Pin 1 (62B0)
+            drawPinBox(580, ly - 10, "3", "#a855f7", 26, 18);
+            drawPinBox(645, ly + lh - 8, "2", "#10b981", 26, 18);
+            drawPinBox(710, ly - 10, "1", "#f59e0b", 26, 18);
+
+            // 內部門碰開關 (Pin 3 -> Pin 2)
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "9.5px sans-serif";
+            ctx.fillText("門碰微動", 580, ly + 36);
+            ctx.strokeStyle = "#a855f7";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(580, ly + 8); ctx.lineTo(580, ly + 46); ctx.stroke();
+            ctx.strokeStyle = "#10b981";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(580, ly + 46);
+            if (isDoorClosed) ctx.lineTo(580, ly + 70);
+            else ctx.lineTo(564, ly + 66);
+            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(580, ly + 70); ctx.lineTo(580, ly + 80); ctx.lineTo(645, ly + 80); ctx.stroke();
+
+            // 解鎖馬達 M (Pin 1 -> Pin 2)
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(710, ly + 8); ctx.lineTo(710, ly + 34); ctx.stroke();
+
+            ctx.fillStyle = state.motorSpinning ? "rgba(0, 240, 255, 0.25)" : "#090f1d";
+            ctx.strokeStyle = state.motorSpinning ? "#00f0ff" : "#f59e0b";
+            ctx.lineWidth = 2.2;
+            ctx.beginPath(); ctx.arc(710, ly + 52, 18, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+            ctx.fillStyle = state.motorSpinning ? "#00f0ff" : "#fbbf24";
+            ctx.font = "bold 14px monospace";
+            ctx.fillText(state.motorSpinning ? "⚡M" : "M", 710, ly + 57);
+
+            ctx.strokeStyle = "#10b981";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(710, ly + 70); ctx.lineTo(710, ly + 80); ctx.lineTo(645, ly + 80); ctx.lineTo(645, ly + lh - 8); ctx.stroke();
+            ctx.textAlign = "left";
+        }
+
+        // 繪製主線束與動態電流粒子
+        function drawMainWires(state) {
+            // 1. 線號 62C0: BSI Pin 7 (355,202) -> IC82A Pin 13 (355,272) -> 蛇管折彎 (257,355) -> 6282 Pin 1 (257,390)
+            const color62C0 = (state.flow62C0 === 'backfeed') ? "#f43f5e" : "#00f0ff";
+            drawWireSegment([[355, 202], [355, 272]], color62C0, 3);
+            drawWireSegment([[355, 296], [355, 326], [257, 326], [257, 355]], color62C0, 3);
+
+            // 下半段在情境 1 為銅芯斷路
+            if (currentScenario === 1) {
+                drawWireSegment([[257, 355], [257, 390]], "#475569", 2.5, true);
+                // 繪製紅色隱性內斷交叉標記
+                ctx.strokeStyle = "#ef4444";
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(249, 347); ctx.lineTo(265, 363);
+                ctx.moveTo(265, 347); ctx.lineTo(249, 363);
+                ctx.stroke();
+
+                drawRoundedRect(105, 342, 136, 24, 5, "#450a0a", "#ef4444", 1.2);
+                ctx.fillStyle = "#fca5a5";
+                ctx.font = "bold 10.5px sans-serif";
+                ctx.fillText("外皮完好 / 銅芯內斷!", 113, 358);
+            } else {
+                drawWireSegment([[257, 355], [257, 390]], color62C0, 3);
+            }
+
+            ctx.fillStyle = "#22d3ee";
+            ctx.font = "bold 11px monospace";
+            ctx.fillText("62C0 (開關觸發)", 268, 320);
+
+            // 62C0 電流粒子
+            if (state.flow62C0 === 'normal') {
+                drawParticles([[257, 390], [257, 326], [355, 326], [355, 202]], "#10b981", 6);
+            } else if (state.flow62C0 === 'backfeed') {
+                drawParticles([[200, 372], [257, 372], [257, 326], [355, 326], [355, 202]], "#f43f5e", 8);
+            }
+
+            // 2. 線號 62H2: BSI Pin 19 (455,202) -> IC82A Pin 14 (455,272) -> 6222 Pin 3 (580,390)
+            const color62H2 = (state.flow62H2 === 'fault') ? "#ef4444" : "#a855f7";
+            drawWireSegment([[455, 202], [455, 272]], color62H2, 2.8);
+            drawWireSegment([[455, 296], [455, 326], [580, 326], [580, 390]], color62H2, 2.8);
+            ctx.fillStyle = "#c084fc";
+            ctx.fillText("62H2 (門碰狀態)", 480, 320);
+
+            if (state.flow62H2 === 'normal') {
+                drawParticles([[580, 390], [580, 326], [455, 326], [455, 202]], "#a855f7", 4);
+            } else if (state.flow62H2 === 'fault') {
+                drawParticles([[455, 202], [455, 296]], "#ef4444", 5);
+                if (currentScenario === 4) {
+                    drawRoundedRect(468, 298, 128, 22, 4, "#450a0a", "#ef4444", 1);
+                    ctx.fillStyle = "#fca5a5";
+                    ctx.font = "bold 10px sans-serif";
+                    ctx.fillText("⚡ IC82A進水/對地短路", 474, 313);
+                }
+            }
+
+            // 3. 線號 62B0: BSI Pin 52 (710,202) -> IC82A Pin 15 (710,272) -> 6222 Pin 1 (710,390)
+            const color62B0 = (state.flow62B0 === 'backfeed') ? "#f43f5e" : "#f59e0b";
+            drawWireSegment([[710, 202], [710, 272]], color62B0, 3.5);
+            drawWireSegment([[710, 296], [710, 390]], color62B0, 3.5);
+            ctx.fillStyle = "#fbbf24";
+            ctx.fillText("62B0 (+12V馬達電源)", 720, 355);
+
+            if (state.flow62B0 === 'normal') {
+                drawParticles([[710, 202], [710, 390]], "#fbbf24", 7);
+            } else if (state.flow62B0 === 'backfeed') {
+                drawParticles([[710, 370], [710, 202]], "#f43f5e", 9);
+            }
+        }
+
+        // 繪製共用搭鐵匯流 EM63B -> MC60B -> MC63
+        function drawGroundSystem(state) {
+            const isGroundFault = (currentScenario === 2);
+            const gColor = isGroundFault ? "#ef4444" : "#10b981";
+
+            // MC62D (257, 504 -> 455, 535)
+            drawWireSegment([[257, 504], [257, 535], [455, 535]], gColor, 2.8);
+            ctx.fillStyle = gColor;
+            ctx.font = "bold 10.5px monospace";
+            ctx.fillText("MC62D", 340, 529);
+
+            // MC62A (645, 504 -> 455, 535)
+            drawWireSegment([[645, 504], [645, 535], [455, 535]], gColor, 2.8);
+            ctx.fillText("MC62A", 545, 529);
+
+            // MC60B (455, 535 -> 455, 562)
+            drawWireSegment([[455, 535], [455, 562]], gColor, 3.2, isGroundFault);
+            ctx.fillText("MC60B → MC63 車身搭鐵", 482, 558);
+
+            // EM63B 匯流節點
+            ctx.fillStyle = gColor;
+            ctx.beginPath(); ctx.arc(455, 535, 7, 0, Math.PI * 2); ctx.fill();
+            drawRoundedRect(420, 508, 70, 19, 4, isGroundFault ? "#450a0a" : "#064e3b", gColor, 1.2);
+            ctx.fillStyle = isGroundFault ? "#fca5a5" : "#a7f3d0";
+            ctx.textAlign = "center";
+            ctx.fillText(isGroundFault ? "EM63B氧化!" : "EM63B", 455, 521);
+            ctx.textAlign = "left";
+
+            registerHover(420, 508, 70, 34, "EM63B 搭鐵匯流壓接點", "同時匯集 6282 開關負極 (MC62D) 與 6222 尾門鎖馬達/門碰負極 (MC62A)，經 MC60B 接至車身搭鐵螺絲 MC63。一旦氧化斷開，遙控與開關將同時失靈！");
+
+            // MC63 接地符號
+            ctx.strokeStyle = gColor;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(440, 562); ctx.lineTo(470, 562);
+            ctx.moveTo(445, 567); ctx.lineTo(465, 567);
+            ctx.moveTo(450, 572); ctx.lineTo(460, 572);
+            ctx.stroke();
+
+            if (state.flowGroundMain === 'normal' && !isGroundFault) {
+                drawParticles([[645, 504], [645, 535], [455, 535], [455, 562]], "#34d399", 5);
+            }
+        }
+
+        // 繪製情境 3：飾板內改裝開關寄生電路
+        function drawModSwitchCircuit(state) {
+            const mx = 36, my = 400, mw = 115, mh = 96;
+            const isSafe = (modSubMode === 'C');
+            const borderColor = isSafe ? "#10b981" : "#f43f5e";
+            const bgColor = isSafe ? "#062c22" : "#3b0712";
+
+            drawRoundedRect(mx, my, mw, mh, 8, bgColor, borderColor, 2, true);
+            ctx.textAlign = "center";
+            ctx.fillStyle = isSafe ? "#6ee7b7" : "#fda4af";
+            ctx.font = "bold 11px sans-serif";
+            ctx.fillText("飾板內改裝按鈕", mx + mw / 2, my + 20);
+            ctx.font = "9.5px sans-serif";
+            ctx.fillText(isSafe ? "(無源並聯接法 C)" : "(外接 +12V 電源!)", mx + mw / 2, my + 35);
+
+            // 按鈕狀態指示
+            const pressed = isModSwPressed || (isSafe && isModSwJammed);
+            drawRoundedRect(mx + 14, my + 48, mw - 28, 24, 5, pressed ? "#dc2626" : "#1e293b", borderColor, 1.2);
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 10px sans-serif";
+            ctx.fillText(pressed ? (isSafe ? "導通中 (0V)" : "⚡ +12V 逆流!") : "待命 (未按壓)", mx + mw / 2, my + 64);
+            ctx.textAlign = "left";
+
+            // 繪製不同接法的寄生線路徑
+            if (modSubMode === 'A') {
+                // 接法 A：外接 +12V 直接並聯到 62B0 馬達線 (710, 365)
+                drawWireSegment([[151, 448], [162, 448], [162, 576], [790, 576], [790, 365], [710, 365]], "#f43f5e", 2.8, true);
+                if (pressed) {
+                    drawParticles([[151, 448], [162, 448], [162, 576], [790, 576], [790, 365], [710, 365]], "#f43f5e", 8);
+                }
+            } else if (modSubMode === 'B') {
+                // 接法 B：外接 +12V 誤灌入 62C0 訊號線 (257, 372)
+                drawWireSegment([[151, 448], [164, 448], [164, 372], [257, 372]], "#f43f5e", 2.8, true);
+                if (pressed) {
+                    drawParticles([[151, 448], [164, 448], [164, 372], [257, 372]], "#f43f5e", 8);
+                }
+            } else if (modSubMode === 'C') {
+                // 接法 C：安全無源並聯至 6282 Pin 1 (62C0) 與 Pin 2 (MC62D)
+                drawWireSegment([[151, 432], [164, 432], [164, 372], [257, 372]], "#10b981", 2.2, true);
+                drawWireSegment([[151, 464], [164, 464], [164, 518], [257, 518]], "#10b981", 2.2, true);
+                if (pressed) {
+                    drawParticles([[257, 372], [164, 372], [164, 464], [257, 518]], "#34d399", 6);
+                }
+            }
+        }
+
+        // 繪製各腳位即時電壓浮動標籤
+        function drawPinVoltageBadges(state) {
+            drawVoltTag(272, 182, state.pin7Volt, "#00f0ff");
+            drawVoltTag(494, 182, state.pin19Volt, "#a855f7");
+            drawVoltTag(748, 182, state.pin52Volt, "#f59e0b");
+            drawVoltTag(172, 378, state.sw6282Pin1Volt, "#22d3ee");
+        }
+
+        function drawVoltTag(x, y, text, color) {
+            ctx.font = "bold 10.5px monospace";
+            const w = Math.max(54, ctx.measureText(text).width + 12);
+            drawRoundedRect(x, y, w, 20, 4, "#04070d", color, 1.2);
+            ctx.fillStyle = text.includes("斷") || text.includes("燒") || text.includes("擊") || text.includes("逆") || text.includes("短路") ? "#f87171" : color;
+            ctx.textAlign = "center";
+            ctx.fillText(text, x + w / 2, y + 14);
+            ctx.textAlign = "left";
+        }
+
+        // 繪製「萬用表量測教學模式」的紅黑探針標記 (點位 A/B/C/D)
+        function drawMultimeterGuideProbes() {
+            const probes = {
+                A: { x: 257, y: 382, title: "點位 A：紅棒插 6282 Pin 1 (62C0) / 黑棒搭車身鐵", val: "DCV 檔應測得 11.8V 上拉電位" },
+                B: { x: 257, y: 506, title: "點位 B：量測 6282 Pin 2 (MC62D) 對車身搭鐵", val: "Ω 檔 < 0.5Ω（或試燈跨接 Pin1+Pin2 應直接彈開尾門）" },
+                C: { x: 215, y: 448, title: "點位 C：拔下開關量測 6282 本體 1 腳與 2 腳", val: "未按 OL（無窮大） / 按下 < 1.0Ω 蜂鳴導通" },
+                D: { x: 355, y: 192, title: "點位 D：BSI 60V MR Pin 7 用 LED 試燈點觸搭鐵", val: "若尾門立刻彈開 ＝ BSI 100% 正常，故障在線束！" }
+            };
+
+            const p = probes[activeProbeStep];
+            if (!p) return;
+
+            const pulseR = 14 + Math.sin(animTime * 8) * 4;
+            ctx.strokeStyle = "#fbbf24";
+            ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.arc(p.x, p.y, pulseR, 0, Math.PI * 2); ctx.stroke();
+
+            ctx.fillStyle = "rgba(245, 158, 11, 0.3)";
+            ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI * 2); ctx.fill();
+
+            // 探針說明氣泡框
+            const bx = Math.min(Math.max(40, p.x - 160), 540);
+            const by = (p.y > 300) ? p.y - 68 : p.y + 24;
+            drawRoundedRect(bx, by, 370, 48, 7, "rgba(15, 23, 42, 0.96)", "#fbbf24", 1.8);
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "bold 11.5px sans-serif";
+            ctx.fillText(p.title, bx + 10, by + 19);
+            ctx.fillStyle = "#e2e8f0";
+            ctx.font = "11px sans-serif";
+            ctx.fillText(p.val, bx + 10, by + 37);
+        }
+
+        // ==================== 5. 基礎繪圖輔助函數 ====================
+        function drawRoundedRect(x, y, w, h, r, fill, stroke, lineWidth = 1.5, dashed = false) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+            if (fill) {
+                ctx.fillStyle = fill;
+                ctx.fill();
+            }
+            if (stroke) {
+                if (dashed) ctx.setLineDash([5, 4]);
+                ctx.strokeStyle = stroke;
+                ctx.lineWidth = lineWidth;
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function drawPinBox(cx, y, label, borderColor, w = 68, h = 22) {
+            drawRoundedRect(cx - w / 2, y, w, h, 4, "#090f1d", borderColor, 1.3);
+            ctx.fillStyle = "#f8fafc";
+            ctx.font = "bold 10.5px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(label, cx, y + h / 2 + 4);
+        }
+
+        function drawWireSegment(pts, color, width = 2.5, dashed = false) {
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = width;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            if (dashed) ctx.setLineDash([6, 5]);
+            ctx.beginPath();
+            ctx.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i < pts.length; i++) {
+                ctx.lineTo(pts[i][0], pts[i][1]);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawParticles(pts, color, speed = 5) {
+            // 計算總路徑長度並沿路徑繪製流動光點
+            let segs = [];
+            let totalLen = 0;
+            for (let i = 0; i < pts.length - 1; i++) {
+                const dx = pts[i + 1][0] - pts[i][0];
+                const dy = pts[i + 1][1] - pts[i][1];
+                const len = Math.hypot(dx, dy);
+                segs.push({ x1: pts[i][0], y1: pts[i][1], dx, dy, len });
+                totalLen += len;
+            }
+            if (totalLen === 0) return;
+
+            const spacing = 36;
+            const offset = (animTime * speed * 25) % spacing;
+
+            ctx.save();
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 8;
+
+            for (let d = offset; d < totalLen; d += spacing) {
+                let acc = 0;
+                for (let seg of segs) {
+                    if (d <= acc + seg.len) {
+                        const t = (d - acc) / seg.len;
+                        const px = seg.x1 + seg.dx * t;
+                        const py = seg.y1 + seg.dy * t;
+                        ctx.beginPath();
+                        ctx.arc(px, py, 3.6, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                    }
+                    acc += seg.len;
+                }
+            }
+            ctx.restore();
+        }
+
+        function registerHover(x, y, w, h, title, desc) {
+            hoverRegions.push({ x, y, w, h, title, desc });
+        }
+
+        function setupCanvasHover() {
+            const tip = document.getElementById('canvasTooltip');
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scale = Math.min(rect.width / 960, rect.height / 600);
+                const offsetX = (rect.width - 960 * scale) / 2;
+                const offsetY = (rect.height - 600 * scale) / 2;
+                const vx = (e.clientX - rect.left - offsetX) / scale;
+                const vy = (e.clientY - rect.top - offsetY) / scale;
+
+                const hit = hoverRegions.find(r => vx >= r.x && vx <= r.x + r.w && vy >= r.y && vy <= r.y + r.h);
+                if (hit) {
+                    tip.innerHTML = `<strong>🔍 ${hit.title}</strong>${hit.desc}`;
+                    tip.style.display = 'block';
+                } else {
+                    tip.style.display = 'none';
+                }
+            });
+            canvas.addEventListener('mouseleave', () => {
+                tip.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
