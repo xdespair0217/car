@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2025 Stelvio E6020 空調控制系統：M001 保險絲與延遲熔斷診斷模擬器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: #080c14;
+      color: #f1f5f9;
+      margin: 0;
+      padding: 0;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom sleek scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d131f;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    @keyframes pulseFast {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .animate-pulse-fast {
+      animation: pulseFast 0.9s infinite;
+    }
+    @keyframes dashFlowNormal {
+      to { stroke-dashoffset: -36; }
+    }
+    @keyframes dashFlowOverload {
+      to { stroke-dashoffset: -36; }
+    }
+    .wire-flow-normal {
+      stroke-dasharray: 7 11;
+      animation: dashFlowNormal 0.85s linear infinite;
+    }
+    .wire-flow-overload {
+      stroke-dasharray: 8 10;
+      animation: dashFlowOverload 0.35s linear infinite;
+    }
+    .svg-probe-node {
+      cursor: pointer;
+    }
+    .svg-probe-node:hover circle.probe-ring {
+      stroke-width: 3.2;
+      filter: drop-shadow(0 0 7px rgba(56, 189, 248, 0.95));
+    }
+    svg text {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      text-rendering: geometricPrecision;
+    }
+    svg text.mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- TOP DIAGNOSTIC HEADER & SCENARIO BUTTON BAR -->
+  <header class="bg-slate-900/95 border-b border-slate-800 px-5 py-3 sticky top-0 z-30 backdrop-blur">
+    <div class="max-w-[1920px] mx-auto flex flex-col gap-3">
+      <!-- Top Row: Title & Ignition/Reset Controls -->
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-xl bg-red-600/20 border border-red-500/40 flex items-center justify-center shrink-0">
+            <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-2 py-0.5 text-xs font-bold rounded bg-red-500/20 text-red-300 border border-red-500/30 mono">2025 ALFA ROMEO STELVIO 2.0 GME</span>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded bg-slate-800 text-slate-300 border border-slate-700 mono">VIN: ZARPAHPN4S7E10637</span>
+              <span class="px-2 py-0.5 text-xs font-semibold rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">E6020 空調控制系統</span>
+            </div>
+            <h1 class="text-base sm:text-lg font-bold text-white mt-1 tracking-tight">
+              M001 雙 7.5A（F51 / F31）與 F36 保險絲延遲熔斷 &amp; 電路隔離互動教學模擬器
+            </h1>
+          </div>
+        </div>
+
+        <!-- IGNITION & RESET ACTION BAR -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <span class="text-xs text-slate-400 px-2.5 font-medium">點火開關:</span>
+            <button id="btnIgnOff" onclick="setIgnition(false)" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">
+              OFF (熄火)
+            </button>
+            <button id="btnIgnRun" onclick="setIgnition(true)" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">
+              RUN / MAR (紅火)
+            </button>
+          </div>
+
+          <button id="btnResetFuses" onclick="resetAllFuses()" class="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            重插新保險絲 (測試熔斷)
+          </button>
+        </div>
+      </div>
+
+      <!-- Second Row: Horizontal Scenario Quick-Switch Menu Bar -->
+      <div class="pt-2.5 border-t border-slate-800/90 flex flex-col sm:flex-row sm:items-center gap-2">
+        <span class="text-xs font-bold text-cyan-400 shrink-0 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          情境選單：
+        </span>
+        <div id="scenarioList" class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN 2-COLUMN WORKSPACE: LARGE SCHEMATIC ON LEFT (8 COLS) + CONTROLS ON RIGHT (4 COLS) -->
+  <main class="flex-1 max-w-[1920px] w-full mx-auto p-3.5 sm:p-4 grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+
+    <!-- LEFT MAIN STAGE: EXTRA-LARGE VECTOR SCHEMATIC & DIAGNOSTIC CONCLUSION (8 COLS) -->
+    <section class="xl:col-span-8 flex flex-col gap-4">
+      <!-- Schematic Card -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+        <!-- Legend & View Controls -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-800">
+          <div class="flex flex-wrap items-center gap-4 text-xs font-medium text-slate-300">
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-1.5 rounded bg-emerald-400 inline-block"></span>正常供電 (12.5V)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-1.5 rounded bg-red-500 inline-block"></span>過載/短路高電流</span>
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-1.5 rounded bg-slate-600 inline-block"></span>無電 / 斷路 (0V)</span>
+            <span class="flex items-center gap-1.5"><span class="w-3.5 h-1.5 rounded bg-purple-400 inline-block"></span>搭鐵迴路 (GND)</span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="hidden sm:inline text-xs text-cyan-300 font-medium bg-cyan-950/70 px-2.5 py-1 rounded-lg border border-cyan-800/60">
+              點擊圓形測點量測 • 滾輪可微調縮放
+            </span>
+            <button onclick="zoomSvg(1.18)" title="放大" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold mono">+</button>
+            <button onclick="zoomSvg(0.85)" title="縮小" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold mono">-</button>
+            <button onclick="resetSvgView()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 text-xs font-bold">
+              重置 (<span id="zoomLevelLabel">100%</span>)
+            </button>
+          </div>
+        </div>
+
+        <!-- Large High-Resolution Vector SVG Canvas (Tall & Wide so no zooming is needed) -->
+        <div id="svgWrapper" class="relative w-full h-[740px] bg-[#060911] rounded-xl border border-slate-800 overflow-hidden select-none cursor-grab active:cursor-grabbing">
+          <svg id="circuitSvg" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid meet" class="w-full h-full block">
+            <defs>
+              <pattern id="workshopGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(30, 41, 59, 0.38)" stroke-width="1"/>
+              </pattern>
+              <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3.5" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="glowEmerald" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="2.5" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <g id="svgViewport">
+              <rect x="-600" y="-600" width="2400" height="2000" fill="url(#workshopGrid)"/>
+              <g id="svgWiresLayer"></g>
+              <g id="svgModulesLayer"></g>
+              <g id="svgProbesLayer"></g>
+            </g>
+          </svg>
+
+          <!-- Live Vehicle Module Telemetry Floating Card -->
+          <div id="h080StatusBadge" class="absolute bottom-3 left-3 bg-slate-950/95 border border-slate-700 rounded-xl p-3 backdrop-blur min-w-[250px] pointer-events-none shadow-2xl"></div>
+        </div>
+      </div>
+
+      <!-- Diagnostic Logic & Step-by-Step Conclusion -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+          <h2 class="text-sm font-bold text-emerald-400 flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span id="activeScenarioTitle">廠長診斷邏輯推演與現場結論</span>
+          </h2>
+          <span id="faultBadge" class="text-xs font-bold px-2.5 py-0.5 rounded-full"></span>
+        </div>
+        <div id="diagnosticConclusion" class="space-y-2 text-sm text-slate-200 leading-relaxed"></div>
+
+        <!-- Integrated Field Troubleshooting Logic & Step-by-Step Checklist -->
+        <div class="mt-4 pt-3.5 border-t border-slate-800">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+              現場標準除錯 SOP（從「頭」或「尾」切入 • 嚴禁盲拆與亂丟平台）
+            </h3>
+            <span class="text-[11px] text-slate-400">點擊可勾選現場已執行項目</span>
+          </div>
+          <div id="troubleshootingChecklist" class="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT CONTROL SIDEBAR: ALL DIAGNOSTIC TOOLS UNIFIED ON THE RIGHT (4 COLS) -->
+    <aside class="xl:col-span-4 flex flex-col gap-4">
+      <!-- 1. Digital Multimeter Readout -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            1. 數位三用電錶探針讀值
+          </h2>
+          <span class="text-[11px] mono text-slate-400">FLUKE-87V SIM</span>
+        </div>
+
+        <div class="bg-[#0b1914] border-2 border-slate-700 rounded-xl p-3 mb-2.5 shadow-inner">
+          <div class="flex items-center justify-between text-xs text-emerald-500/85 mono mb-0.5">
+            <span id="meterPointCode">PROBE: H080 PIN 2</span>
+            <span id="meterModeLabel">DC VOLTS</span>
+          </div>
+          <div id="meterMainDisplay" class="text-3xl font-bold text-emerald-400 mono tracking-wider text-right my-0.5">
+            12.50 V
+          </div>
+          <div id="meterPointName" class="text-xs text-emerald-200 font-medium truncate border-t border-emerald-900/60 pt-1.5 mt-1">
+            H080 冷氣面板 Pin 2 (SV 點火電 +15)
+          </div>
+        </div>
+
+        <div class="text-[11px] text-slate-400 mb-1.5 font-medium">快速點選常用量測腳位（或直接點左側圖面圓點）：</div>
+        <div id="quickProbeGrid" class="grid grid-cols-3 gap-1.5 text-xs"></div>
+      </div>
+
+      <!-- 2. 21W Test Light Bridge Simulator -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-300"></span>
+            2. 21W 傳統燈泡試燈跨接 F51 座
+          </h2>
+          <label class="inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="toggleTestLight" class="sr-only peer" onchange="toggleTestLightMode(this.checked)">
+            <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all relative peer-checked:bg-amber-500"></div>
+          </label>
+        </div>
+        <div id="testLightBox" class="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center gap-3">
+          <div id="bulbVisual" class="w-11 h-11 rounded-full bg-slate-900 border-2 border-slate-700 flex items-center justify-center shrink-0 transition-all duration-300">
+            <svg class="w-6 h-6 text-slate-600" id="bulbIcon" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1h4v1a2 2 0 11-4 0zM12 14c.015-.34.208-.646.477-.859a4 4 0 10-4.954 0c.27.213.462.519.476.859h4.002z"/>
+            </svg>
+          </div>
+          <div class="min-w-0">
+            <div id="bulbStateTitle" class="text-xs font-bold text-slate-300">試燈未啟用</div>
+            <div id="bulbStateDesc" class="text-[11px] text-slate-400 mt-0.5 leading-snug">開啟右上開關，模擬將試燈跨接在 M001 F51 兩端測點。</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Connector Isolation & Ground Jumper -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400 mb-1.5 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          3. 拔插頭「減法隔離」與飛線測試
+        </h2>
+        <p class="text-[11px] text-slate-400 mb-2.5 leading-relaxed">
+          逐一斷開並聯分支插頭，觀察 F51 電流是否下降、試燈是否熄滅或面板是否喚醒：
+        </p>
+        <div id="connectorControls" class="space-y-2"></div>
+      </div>
+
+      <!-- 4. M001 Three Fuses Telemetry -->
+      <div class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-red-400 mb-1.5 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-red-400"></span>
+          4. M001 三顆關鍵保險絲即時狀態
+        </h2>
+        <p class="text-[11px] text-slate-400 mb-2.5 leading-relaxed">
+          M001 上共有<strong class="text-white">兩顆 7.5A（F51 與 F31）</strong>與一顆 <strong class="text-white">F36（圖面 15A / +30常電）</strong>：
+        </p>
+        <div id="fuseCardsContainer" class="space-y-2"></div>
+      </div>
+    </aside>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. SCENARIOS, FUSES, CONNECTORS & TEST PROBE DEFINITIONS
+    // =========================================================================
+    const SCENARIOS = [
+      {
+        id: 'normal',
+        badge: '正常基準',
+        badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        title: '【正常狀態】全迴路供電、搭鐵與通訊正常',
+        subtitle: 'H080 背光亮起、M070 上線、鼓風機可調速 (F51 電流約 1.8A)',
+        explanation: [
+          '<strong>系統狀態：</strong>M001 三顆保險絲（F51 7.5A、F31 7.5A、F36 15A）全數正常導通，右前搭鐵 C011 B 經 D008 A11 接地良好（<0.5Ω）。',
+          '<strong>關鍵數據：</strong>H080 Pin 1 (+30) = 12.5V、Pin 2 (+15) = 12.5V、Pin 4 (GND) = 0.2Ω；F51 總工作電流穩定在 1.8A 左右，遠低於 7.5A 額定值。',
+          '<strong>教學基準：</strong>點選其他故障情境後，可隨時切回此模式比對正常電路粒子流向與各腳位電壓。'
+        ]
+      },
+      {
+        id: 'f51_delayed_k003',
+        badge: '本案頭號真兇',
+        badgeClass: 'bg-red-500/20 text-red-300 border-red-500/40',
+        title: '【情境一】F51 (7.5A) 延遲燒毀：K003 除霧感知器內部漏電/加熱短路',
+        subtitle: '插上 7.5A 不會馬上燒，過幾秒電流爬升至 9.5A 後熔斷！',
+        explanation: [
+          '<strong>物理現象解讀：</strong>技師回報「7.5A 插上去不會馬上燒，過一下才燒」，這代表<strong>不是線束直接搭鐵死短路</strong>（死短路會在毫秒內啪一聲秒斷），而是某個並聯元件在開紅火通電數秒後啟動內部加熱/偵測電路，導致電流從 1.8A 爬升至 <strong>9.5A</strong>，累積熱量後將 F51 (7.5A) 熔斷！',
+          '<strong>抓漏操作驗證：</strong>請在左側「拔插頭減法隔離」點擊斷開 <span class="text-amber-300 font-bold">[K003 除霧感知器]</span>（或開啟試燈跨接 F51），你會看到過載電流瞬間從 9.5A 降回 1.5A、試燈熄滅，重插 F51 後再也不會燒斷，H080 面板背光立刻亮起！',
+          '<strong>現場定責：</strong>新車前檔貼隔熱紙進水或 K003 出廠不良最常引發此症。拔除 K003 即可確認定責並申請保固更換。'
+        ]
+      },
+      {
+        id: 'f51_short_k064',
+        badge: 'F51 支線短路',
+        badgeClass: 'bg-red-500/20 text-red-300 border-red-500/40',
+        title: '【情境二】F51 (7.5A) 熔斷：K064 廢氣感知器 (AQS) 或 DNA 旋鈕短路',
+        subtitle: 'M001 C18 支線過載燒斷 F51，導致 H080 面板全黑、M070 離線',
+        explanation: [
+          '<strong>為什麼外圍感知器會弄死冷氣面板？</strong>因為在 E6020 電路圖中，<strong>F51 (7.5A)</strong> 除了送電給空調主機 M070 Pin 60 與面板 H080 Pin 2，還同時並聯供電給雨刷槽下的 <strong>K064 廢氣感知器 (AQS)</strong> 與排檔座 <strong>E7074 (DNA 旋鈕)</strong>。',
+          '<strong>量測特徵：</strong>F51 燒斷後，量測 H080 面板後方插頭會發現 <strong>Pin 1 (+30 常電) 仍有 12.5V</strong>，但 <strong>Pin 2 (+15 點火電) 為 0V</strong>，因此面板全黑、M070 無法被喚醒上線（BCM 報 U1710-87）。',
+          '<strong>抓漏操作驗證：</strong>試著在左側斷開 <span class="text-amber-300 font-bold">[K064 廢氣感知器]</span>，即可解除 F51 過載並恢復冷氣系統。'
+        ]
+      },
+      {
+        id: 'f31_blown_blower',
+        badge: '另一顆 7.5A',
+        badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+        title: '【情境三】另一顆 7.5A（F31）燒毀：面板有亮、冷氣有設定，但完全無風',
+        subtitle: '區分兩顆 7.5A！F31 燒斷只會讓後廂 B045 繼電器 T20 不吸合',
+        explanation: [
+          '<strong>釐清兩顆 7.5A 的差別：</strong>M001 上有兩顆 7.5A 保險絲——<strong>F51</strong> 管空調電腦與面板喚醒；而 <strong>F31 (7.5A, INT/A)</strong> 則是從 M001 E27 送電到後行李廂保險絲盒 B045 的 <strong>繼電器 T20 線圈 (Pin 85)</strong>。',
+          '<strong>故障表現對比：</strong>如果是 <strong>F31 (7.5A)</strong> 燒掉，車內的 <strong>H080 冷氣面板背光會正常亮起</strong>、螢幕能調溫度風量、診斷電腦也讀得到 M070，但 <strong>N085 鼓風機完全沒有風</strong>（因為 T20 繼電器沒吸合，F05 40A 大電過不去 M072）。',
+          '<strong>結論：</strong>本案實車連 H080 面板背光都沒有且讀不到 M070，因此問題鎖定在 <strong>F51 迴路</strong>而非 F31。'
+        ]
+      },
+      {
+        id: 'f36_open',
+        badge: '常電 +30 斷路',
+        badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+        title: '【情境四】F36 (+30 常電) 燒毀或 D008 A5 退針：H080 Pin 1 無電',
+        subtitle: '開紅火 Pin 2 (+15) 有 12.5V，但 Pin 1 (+30) 為 0V，M070 依然離線',
+        explanation: [
+          '<strong>雙電源缺一不可：</strong>M070 與 H080 需要 <strong>Pin 1 (+30 常電，來自 F36 → M001 C13 → D008 A5)</strong> 維持主邏輯供電，以及 <strong>Pin 2 (+15 點火電，來自 F51 → M001 D14 → D008 A15)</strong> 負責喚醒。',
+          '<strong>量測特徵：</strong>若 F36 燒斷或中間轉接頭 <strong>D008 插頭 A 的 Pin 5</strong> 退針，量測 H080 插頭會看到 <strong>Pin 2 = 12.5V</strong>、但 <strong>Pin 1 = 0V</strong>。此時主機與面板同樣無法開機，面板全黑且診斷電腦掃不到 HVAC。',
+          '<strong>排查順序：</strong>量測 H080 Pin 1 為 0V 時，回頭量 M001 F36 兩端；若 F36 有電，則 100% 鎖定 D008 A5 轉接頭未扣緊。'
+        ]
+      },
+      {
+        id: 'gnd_open_c011',
+        badge: '共用地線斷路',
+        badgeClass: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+        title: '【情境五】共用地線斷路（D008 A11 退針 / C011 B 大鐵線沒鎖實）',
+        subtitle: 'F51、F36 全都有電沒燒，但 H080 Pin 4 對地電阻無窮大 (OL)！',
+        explanation: [
+          '<strong>為什麼三顆保險絲都沒燒，面板還是全黑？</strong>看電路圖可知，M070 Pin 28 與 H080 Pin 4 共用同一條 <strong>NZ (黑/紫) 搭鐵主幹</strong>，穿過 <strong>D008 插頭 A 的 Pin 11</strong> 接到右前車身搭鐵點 <strong>C011 B</strong>。',
+          '<strong>量測特徵：</strong>此時量測 H080 Pin 1 (+30) 與 Pin 2 (+15) 都是正常的 <strong>12.5V</strong>，但量測 <strong>Pin 4 (NZ) 對車身金屬電阻顯示 OL (無窮大)</strong>！因為沒有接地迴路，電流無法流通，面板全黑、M070 離線。',
+          '<strong>一秒驗證絕招：</strong>在右側點擊 <span class="text-purple-300 font-bold">[接上飛線]</span>，你會看到冷氣面板瞬間亮起、M070 立即上線！接著去鎖緊 C011 B 或重插 D008 A11 即可交車。'
+        ]
+      },
+      {
+        id: 'ecu_internal_fault',
+        badge: '硬體定責',
+        badgeClass: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40',
+        title: '【情境六】H080 四腳供電與搭鐵全正常，定責面板或 M070 主機硬體故障',
+        subtitle: 'Pin 1=12.5V、Pin 2=12.5V、Pin 4<0.5Ω 全數過關，但系統仍無反應',
+        explanation: [
+          '<strong>原廠技術平台最認可的定責證據：</strong>當你實際量測 H080 插頭（以及 M070 Pin 15、60、28），確認 <strong>+30 常電 = 12.5V、+15 點火電 = 12.5V、搭鐵電阻 < 0.5Ω</strong> 全部正常，且保險絲未熔斷。',
+          '<strong>排除線路嫌疑：</strong>這代表從電瓶、B099、M001 保險絲盒、D008 大插頭到 C011 B 搭鐵點的整條外部線路 100% 完好。',
+          '<strong>最終處置：</strong>若 H080 面板全黑且 LIN 線電壓異常/無通訊，可先斷開 H080 看診斷電腦能否讀到 M070（排除面板拉死 LIN 線），進而精準申請保固更換 <strong>H080 冷氣面板</strong> 或 <strong>M070 空調控制單元</strong>。'
+        ]
+      }
+    ];
+
+    const SOP_STEPS = [
+      {
+        step: 'STEP 1',
+        title: '本質判讀：區分「未開機離線」vs「無風」',
+        detail: '面板全黑＋診斷電腦 HVAC 版本空白（U1710-87）＝系統根本沒通電上線；若面板有亮僅無風，才查另一顆 7.5A (F31) 與後廂繼電器 T20。'
+      },
+      {
+        step: 'STEP 2',
+        title: '從「尾端 (H080)」反推四支接腳',
+        detail: '直接拔開中控面板 H080 量測：Pin 1 (GR 常電 +30)=12.5V、Pin 2 (SV 點火電 +15)=12.5V、Pin 4 (NZ 搭鐵)<0.5Ω。全有代表上游保險絲與 D008 全通。'
+      },
+      {
+        step: 'STEP 3',
+        title: '防燒保護：傳統燈泡試燈（禁 LED）跨接 F51',
+        detail: '遇 F51 7.5A「過幾秒才燒」時，用 12V 傳統鎢絲試燈跨接 F51 座限流保護，並與正常 7.5A 保險絲座對比亮度（短路時會異常全亮）。'
+      },
+      {
+        step: 'STEP 4',
+        title: '最高效隔離：M001 一刀切三路（E / C / D 插頭）',
+        detail: '試燈亮起時，直接在 M001 輪流拔插頭：拔 E12 燈滅→車頂 K003；拔 C18 燈滅→AQS K064/DNA；拔 D14 燈滅→M070/H080；全拔仍亮→線束破皮搭鐵。'
+      }
+    ];
+
+    let state = {
+      scenarioId: 'f51_delayed_k003',
+      ignitionOn: true,
+      testLightActive: false,
+      selectedProbe: 'H080_P2',
+      f51Blown: false,
+      f31Blown: false,
+      f36Blown: false,
+      f51Heat: 0,
+      unplugged: {
+        K003: false,
+        K064: false,
+        E7074: false,
+        D008A: false,
+        H080: false
+      },
+      gndJumper: false,
+      checkedSteps: { 0: false, 1: false, 2: false, 3: false }
+    };
+
+    const CONNECTOR_DEFS = [
+      { key: 'K003', name: 'K003 除霧感知器 (車頂內後視鏡)', sub: 'F51 分支 A (M001 E12 LB) • 延遲燒毀頭號嫌疑', tag: '第一順位' },
+      { key: 'K064', name: 'K064 廢氣感知器 A.Q.S. (雨刷槽)', sub: 'F51 分支 B (M001 C18 L -> D008 A12 VB)', tag: '第二順位' },
+      { key: 'E7074', name: 'E7074 DNA 駕駛模式旋鈕', sub: 'F51 分支 B 並聯 (M001 C18 L -> RV)', tag: '第二順位' },
+      { key: 'D008A', name: 'D008 插頭 A (前/空調大轉接頭)', sub: '切斷 F36(A5)、F51(A15)、AQS(A12) 與地線(A11)', tag: '樞紐節點' },
+      { key: 'H080', name: 'H080 中控冷氣控制面板 (4-Pin)', sub: '切斷面板端並聯負載與 LIN 9 (Pin 3 LV)', tag: '末端元件' }
+    ];
+
+    const PROBE_POINTS = {
+      F51_OUT: { code: 'M001 F51', name: 'M001 保險絲 F51 (7.5A INT 輸出端)', mode: 'DC VOLTS' },
+      F31_OUT: { code: 'M001 F31', name: 'M001 保險絲 F31 (7.5A INT/A 輸出端)', mode: 'DC VOLTS' },
+      F36_OUT: { code: 'M001 F36', name: 'M001 保險絲 F36 (15A +30常電 輸出端)', mode: 'DC VOLTS' },
+      H080_P1: { code: 'H080 PIN 1', name: 'H080 面板 Pin 1 (GR 灰/紅 • +30常電)', mode: 'DC VOLTS' },
+      H080_P2: { code: 'H080 PIN 2', name: 'H080 面板 Pin 2 (SV 粉紅/綠 • +15點火電)', mode: 'DC VOLTS' },
+      H080_P3: { code: 'H080 PIN 3', name: 'H080 面板 Pin 3 (LV 藍/綠 • LIN 9 通訊)', mode: 'LIN SIGNAL' },
+      H080_P4: { code: 'H080 PIN 4', name: 'H080 面板 Pin 4 (NZ 黑/紫 • 對車身搭鐵電阻)', mode: 'OHMS (Ω)' },
+      M070_P15: { code: 'M070 PIN 15', name: 'M070 空調主機 Pin 15 (+30 常電輸入)', mode: 'DC VOLTS' },
+      M070_P60: { code: 'M070 PIN 60', name: 'M070 空調主機 Pin 60 (+15 點火電輸入)', mode: 'DC VOLTS' },
+      M070_P28: { code: 'M070 PIN 28', name: 'M070 空調主機 Pin 28 (NZ 搭鐵對地電阻)', mode: 'OHMS (Ω)' },
+      T20_P85: { code: 'B045 T20 #85', name: '後廂 B045 繼電器 T20 Pin 85 (F31 供電)', mode: 'DC VOLTS' }
+    };
+
+    // =========================================================================
+    // 2. CIRCUIT SOLVER ENGINE
+    // =========================================================================
+    function computeCircuitState() {
+      const sc = state.scenarioId;
+      const ign = state.ignitionOn;
+
+      const k003FaultActive = (sc === 'f51_delayed_k003') && !state.unplugged.K003;
+      const k064FaultActive = (sc === 'f51_short_k064') && !state.unplugged.K064 && !state.unplugged.D008A;
+
+      let branchACurrent = 0;
+      let branchBCurrent = 0;
+      let branchCCurrent = 0;
+
+      if (ign) {
+        if (!state.unplugged.K003) branchACurrent += k003FaultActive ? 8.3 : 0.45;
+        branchACurrent += 0.15;
+
+        if (!state.unplugged.K064 && !state.unplugged.D008A) branchBCurrent += k064FaultActive ? 9.8 : 0.35;
+        if (!state.unplugged.E7074) branchBCurrent += 0.25;
+
+        if (!state.unplugged.D008A) {
+          branchCCurrent += 0.45;
+          if (!state.unplugged.H080) branchCCurrent += 0.20;
+        }
+      }
+
+      const rawF51Demand = branchACurrent + branchBCurrent + branchCCurrent;
+      const f51Overloaded = ign && (rawF51Demand > 7.5);
+
+      let f51HasPower = false;
+      let f51Voltage = 0;
+      if (ign) {
+        if (state.testLightActive) {
+          f51HasPower = !f51Overloaded;
+          f51Voltage = f51Overloaded ? 1.15 : 11.20;
+        } else if (!state.f51Blown) {
+          f51HasPower = true;
+          f51Voltage = 12.50;
+        }
+      }
+
+      const f31HasPower = ign && !state.f31Blown;
+      const f36HasPower = !state.f36Blown;
+
+      const m070_p15_v = (f36HasPower && !state.unplugged.D008A) ? 12.50 : 0.00;
+      const h080_p1_v = m070_p15_v;
+
+      const m070_p60_v = (!state.unplugged.D008A) ? f51Voltage : 0.00;
+      const h080_p2_v = m070_p60_v;
+
+      // FIXED: Match exact scenario IDs ('gnd_open_c011' and 'ecu_internal_fault')
+      const baseGndBroken = (sc === 'gnd_open_c011') || state.unplugged.D008A;
+      const gndConnected = state.gndJumper || !baseGndBroken;
+
+      const m070Alive = (m070_p15_v > 10.5) && (m070_p60_v > 10.5) && gndConnected && (sc !== 'ecu_internal_fault');
+      const h080BacklightOn = (h080_p1_v > 10.5) && (h080_p2_v > 10.5) && gndConnected && !state.unplugged.H080 && (sc !== 'ecu_internal_fault');
+
+      let linVoltage = 0.0;
+      if (m070Alive) {
+        linVoltage = 10.45;
+      } else if (h080_p2_v > 10.5 && gndConnected) {
+        linVoltage = (sc === 'ecu_internal_fault') ? 0.15 : 11.80;
+      }
+
+      const t20_p85_v = f31HasPower ? 12.50 : 0.00;
+      const blowerRunning = f31HasPower && m070Alive && h080BacklightOn;
+
+      return {
+        ign,
+        k003FaultActive,
+        k064FaultActive,
+        rawF51Demand,
+        f51Overloaded,
+        f51HasPower,
+        f51Voltage,
+        f31HasPower,
+        f36HasPower,
+        m070_p15_v,
+        h080_p1_v,
+        m070_p60_v,
+        h080_p2_v,
+        gndConnected,
+        m070Alive,
+        h080BacklightOn,
+        linVoltage,
+        t20_p85_v,
+        blowerRunning
+      };
+    }
+
+    // =========================================================================
+    // 3. INTERACTION HANDLERS
+    // =========================================================================
+    function selectScenario(id) {
+      state.scenarioId = id;
+      state.ignitionOn = true;
+      state.unplugged = { K003: false, K064: false, E7074: false, D008A: false, H080: false };
+      state.gndJumper = false;
+      state.f51Heat = 0;
+
+      // FIXED: Exact scenario ID matching for F31, F36, F51, GND, and ECU Fault
+      state.f51Blown = (id === 'f51_short_k064');
+      state.f31Blown = (id === 'f31_blown_blower');
+      state.f36Blown = (id === 'f36_open');
+
+      const defaultProbes = {
+        normal: 'H080_P2',
+        f51_delayed_k003: 'F51_OUT',
+        f51_short_k064: 'H080_P2',
+        f31_blown_blower: 'T20_P85',
+        f36_open: 'H080_P1',
+        gnd_open_c011: 'H080_P4',
+        ecu_internal_fault: 'H080_P2'
+      };
+      state.selectedProbe = defaultProbes[id] || 'H080_P2';
+      renderAllUI();
+    }
+
+    function setIgnition(on) {
+      state.ignitionOn = on;
+      if (!on) state.f51Heat = Math.max(0, state.f51Heat - 30);
+      renderAllUI();
+    }
+
+    function resetAllFuses() {
+      state.f51Blown = false;
+      state.f31Blown = false;
+      state.f36Blown = false;
+      state.f51Heat = 0;
+
+      if (state.ignitionOn) {
+        if (state.scenarioId === 'f31_blown_blower') setTimeout(() => { state.f31Blown = true; renderAllUI(); }, 350);
+        if (state.scenarioId === 'f36_open') setTimeout(() => { state.f36Blown = true; renderAllUI(); }, 350);
+        if (state.scenarioId === 'f51_short_k064' && !state.unplugged.K064 && !state.unplugged.D008A) {
+          setTimeout(() => { state.f51Blown = true; renderAllUI(); }, 350);
+        }
+      }
+      renderAllUI();
+    }
+
+    function toggleSopStep(idx) {
+      state.checkedSteps[idx] = !state.checkedSteps[idx];
+      renderAllUI();
+    }
+
+    function toggleConnector(key) {
+      state.unplugged[key] = !state.unplugged[key];
+      renderAllUI();
+    }
+
+    function toggleGndJumper() {
+      state.gndJumper = !state.gndJumper;
+      renderAllUI();
+    }
+
+    function toggleTestLightMode(checked) {
+      state.testLightActive = checked;
+      if (checked) state.f51Heat = 0;
+      renderAllUI();
+    }
+
+    function selectProbe(probeKey) {
+      state.selectedProbe = probeKey;
+      renderAllUI();
+    }
+
+    // =========================================================================
+    // 4. DOM & PANEL RENDERING
+    // =========================================================================
+    function renderAllUI() {
+      const sim = computeCircuitState();
+
+      // Ignition toggle buttons
+      const btnOff = document.getElementById('btnIgnOff');
+      const btnRun = document.getElementById('btnIgnRun');
+      if (state.ignitionOn) {
+        btnRun.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500 text-slate-950 shadow';
+        btnOff.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white';
+      } else {
+        btnOff.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-700 text-white shadow';
+        btnRun.className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white';
+      }
+
+      // Scenario Top Horizontal Pill Menu Bar
+      const shortLabels = {
+        normal: '正常基準',
+        f51_delayed_k003: '情境一：F51 7.5A 延遲熔斷 (K003)',
+        f51_short_k064: '情境二：F51 7.5A 熔斷 (K064/DNA)',
+        f31_blown_blower: '情境三：另一顆 7.5A (F31 無風)',
+        f36_open: '情境四：F36 (+30常電) 斷路',
+        gnd_open_c011: '情境五：共用地線 C011 B 斷路',
+        ecu_internal_fault: '情境六：四腳正常定責模組硬體'
+      };
+
+      document.getElementById('scenarioList').innerHTML = SCENARIOS.map(sc => {
+        const active = sc.id === state.scenarioId;
+        return `
+          <button onclick="selectScenario('${sc.id}')"
+            class="px-3 py-1.5 rounded-xl border text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 shrink-0 ${
+              active
+                ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-md ring-1 ring-cyan-400/40'
+                : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-600 hover:text-white'
+            }">
+            <span class="text-[10px] px-1.5 py-0.5 rounded border ${sc.badgeClass}">${sc.badge}</span>
+            <span>${shortLabels[sc.id] || sc.title}</span>
+          </button>
+        `;
+      }).join('');
+
+      // Connector Controls + Ground Jumper
+      let connHtml = CONNECTOR_DEFS.map(c => {
+        const isUnplugged = state.unplugged[c.key];
+        return `
+          <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border ${
+            isUnplugged ? 'bg-amber-950/30 border-amber-500/60' : 'bg-slate-950/75 border-slate-800'
+          }">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 shrink-0">${c.tag}</span>
+                <span class="text-xs font-bold text-slate-100 truncate">${c.name}</span>
+              </div>
+              <div class="text-[11px] text-slate-400 truncate mt-0.5">${c.sub}</div>
+            </div>
+            <button onclick="toggleConnector('${c.key}')"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+                isUnplugged
+                  ? 'bg-amber-500 text-slate-950 hover:bg-amber-400'
+                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700'
+              }">
+              ${isUnplugged ? '已拔開 (重插)' : '拔開插頭'}
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      connHtml += `
+        <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl border ${
+          state.gndJumper ? 'bg-purple-950/40 border-purple-500/70' : 'bg-slate-950/75 border-slate-800'
+        }">
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/60 text-purple-200 border border-purple-700 shrink-0">搭鐵飛線</span>
+              <span class="text-xs font-bold text-purple-200 truncate">跨接 H080 Pin 4 至車身搭鐵</span>
+            </div>
+            <div class="text-[11px] text-slate-400 truncate mt-0.5">繞過 D008 A11 與 C011 B 驗證接地迴路</div>
+          </div>
+          <button onclick="toggleGndJumper()"
+            class="px-2.5 py-1.5 rounded-lg text-xs font-bold shrink-0 transition ${
+              state.gndJumper
+                ? 'bg-purple-500 text-white hover:bg-purple-400'
+                : 'bg-slate-800 text-purple-300 hover:bg-slate-700 border border-purple-800/60'
+            }">
+            ${state.gndJumper ? '飛線搭鐵中' : '接上飛線'}
+          </button>
+        </div>
+      `;
+      document.getElementById('connectorControls').innerHTML = connHtml;
+
+      // Fuse Cards
+      const f51DisplayCurrent = (!state.ignitionOn || state.f51Blown) ? 0.0 : (state.testLightActive ? (sim.f51Overloaded ? 1.65 : 1.15) : sim.rawF51Demand);
+      const f51StatusText = state.testLightActive
+        ? '已拔除 (跨接21W試燈)'
+        : (state.f51Blown ? '已熔斷 (OPEN)' : (sim.f51Overloaded ? `過載升溫中 ${Math.round(state.f51Heat)}%` : '正常導通'));
+
+      const fuseCards = [
+        {
+          id: 'F51',
+          rating: '7.5A',
+          bus: 'INT 點火控制電源',
+          dest: 'M070 Pin 60、H080 Pin 2、K003、K064、DNA',
+          blown: state.f51Blown,
+          overloaded: sim.f51Overloaded && !state.f51Blown && !state.testLightActive,
+          testLight: state.testLightActive,
+          statusText: f51StatusText,
+          currentText: `${f51DisplayCurrent.toFixed(2)} A / 7.5 A`,
+          heatPct: state.f51Heat
+        },
+        {
+          id: 'F31',
+          rating: '7.5A',
+          bus: 'INT/A 啟動除外點火電',
+          dest: 'M001 E27 → 後廂 B045 繼電器 T20 (鼓風機控制)',
+          blown: state.f31Blown,
+          overloaded: false,
+          testLight: false,
+          statusText: state.f31Blown ? '已熔斷 (OPEN)' : '正常導通',
+          currentText: (state.ignitionOn && !state.f31Blown) ? '0.25 A / 7.5 A' : '0.00 A / 7.5 A',
+          heatPct: 0
+        },
+        {
+          id: 'F36',
+          rating: '15A',
+          bus: '+30 蓄電池常電',
+          dest: 'M001 C13 → D008 A5 → M070 Pin 15 & H080 Pin 1',
+          blown: state.f36Blown,
+          overloaded: false,
+          testLight: false,
+          statusText: state.f36Blown ? '已熔斷 (OPEN)' : '正常導通',
+          currentText: (!state.f36Blown && !state.unplugged.D008A) ? '0.65 A / 15 A' : '0.00 A / 15 A',
+          heatPct: 0
+        }
+      ];
+
+      document.getElementById('fuseCardsContainer').innerHTML = fuseCards.map(f => {
+        let borderCls = 'border-slate-800 bg-slate-950/80';
+        let badgeCls = 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
+        if (f.blown) {
+          borderCls = 'border-red-500/70 bg-red-950/30';
+          badgeCls = 'bg-red-500 text-white animate-pulse';
+        } else if (f.overloaded) {
+          borderCls = 'border-amber-500/80 bg-amber-950/30';
+          badgeCls = 'bg-amber-500 text-slate-950 animate-pulse-fast';
+        } else if (f.testLight) {
+          borderCls = 'border-amber-400/60 bg-amber-950/20';
+          badgeCls = 'bg-amber-400/20 text-amber-300 border-amber-400/40';
+        }
+        return `
+          <div class="p-3 rounded-xl border ${borderCls} transition">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-xs font-black mono bg-slate-800 text-white border border-slate-600">${f.id} (${f.rating})</span>
+                <span class="text-xs font-bold text-slate-200">${f.bus}</span>
+              </div>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded border shrink-0 ${badgeCls}">${f.statusText}</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1.5">${f.dest}</div>
+            <div class="flex items-center justify-between text-xs mono mt-2 pt-1.5 border-t border-slate-800">
+              <span class="text-slate-400">迴路電流:</span>
+              <span class="${f.overloaded ? 'text-red-400 font-bold' : 'text-emerald-300'}">${f.currentText}</span>
+            </div>
+            ${f.overloaded ? `
+              <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1.5">
+                <div class="h-full bg-gradient-to-r from-amber-400 to-red-500 transition-all duration-100" style="width:${f.heatPct}%"></div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      // 21W Test Light UI
+      const bulbVisual = document.getElementById('bulbVisual');
+      const bulbIcon = document.getElementById('bulbIcon');
+      const bulbTitle = document.getElementById('bulbStateTitle');
+      const bulbDesc = document.getElementById('bulbStateDesc');
+
+      if (!state.testLightActive) {
+        bulbVisual.className = 'w-12 h-12 rounded-full bg-slate-900 border-2 border-slate-700 flex items-center justify-center shrink-0';
+        bulbIcon.className = 'w-6 h-6 text-slate-600';
+        bulbTitle.className = 'text-xs font-bold text-slate-300';
+        bulbTitle.textContent = '試燈未跨接（目前使用保險絲）';
+        bulbDesc.textContent = '打開上方開關，模擬拔掉 F51 改用 21W 燈泡試燈串接保護抓短路。';
+      } else if (!state.ignitionOn) {
+        bulbVisual.className = 'w-12 h-12 rounded-full bg-slate-900 border-2 border-slate-700 flex items-center justify-center shrink-0';
+        bulbIcon.className = 'w-6 h-6 text-slate-600';
+        bulbTitle.className = 'text-xs font-bold text-slate-400';
+        bulbTitle.textContent = '試燈熄滅（鑰匙未開紅火）';
+        bulbDesc.textContent = '請將點火開關切至 RUN / MAR 觀察試燈亮度。';
+      } else if (sim.f51Overloaded) {
+        bulbVisual.className = 'w-12 h-12 rounded-full bg-amber-400 border-2 border-yellow-200 flex items-center justify-center shrink-0 shadow-[0_0_25px_rgba(251,191,36,0.95)]';
+        bulbIcon.className = 'w-7 h-7 text-white';
+        bulbTitle.className = 'text-xs font-bold text-amber-300';
+        bulbTitle.textContent = '🔥 試燈「全亮」！下游存在過載/短路';
+        bulbDesc.textContent = '試燈承受全電壓發光並限制電流（不燒線）。請在左側逐一拔插頭，看燈何時熄滅！';
+      } else {
+        bulbVisual.className = 'w-12 h-12 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center shrink-0';
+        bulbIcon.className = 'w-6 h-6 text-amber-300/70';
+        bulbTitle.className = 'text-xs font-bold text-emerald-300';
+        bulbTitle.textContent = '✅ 試燈「微亮/熄滅」！短路已排除';
+        bulbDesc.textContent = '下游過載負載已被隔離，此時插回全新 7.5A 保險絲將不再燒毀！';
+      }
+
+      // Multimeter Readout
+      const probeDef = PROBE_POINTS[state.selectedProbe];
+      let readingStr = '0.00 V';
+      let readingColor = 'text-emerald-400';
+
+      switch (state.selectedProbe) {
+        case 'F51_OUT':
+          readingStr = `${sim.f51Voltage.toFixed(2)} V`;
+          if (sim.f51Voltage < 10) readingColor = 'text-red-400';
+          break;
+        case 'F31_OUT':
+          readingStr = `${(sim.f31HasPower ? 12.50 : 0.00).toFixed(2)} V`;
+          if (!sim.f31HasPower) readingColor = 'text-red-400';
+          break;
+        case 'F36_OUT':
+          readingStr = `${(sim.f36HasPower ? 12.50 : 0.00).toFixed(2)} V`;
+          if (!sim.f36HasPower) readingColor = 'text-red-400';
+          break;
+        case 'H080_P1':
+          readingStr = `${sim.h080_p1_v.toFixed(2)} V`;
+          if (sim.h080_p1_v < 10) readingColor = 'text-red-400';
+          break;
+        case 'H080_P2':
+          readingStr = `${sim.h080_p2_v.toFixed(2)} V`;
+          if (sim.h080_p2_v < 10) readingColor = 'text-red-400';
+          break;
+        case 'H080_P3':
+          readingStr = `${sim.linVoltage.toFixed(2)} V`;
+          if (sim.linVoltage < 2.0) readingColor = 'text-amber-400';
+          break;
+        case 'H080_P4':
+          if (sim.gndConnected) {
+            readingStr = '0.20 Ω';
+            readingColor = 'text-emerald-400';
+          } else {
+            readingStr = 'OL (無窮大)';
+            readingColor = 'text-red-400';
+          }
+          break;
+        case 'M070_P15':
+          readingStr = `${sim.m070_p15_v.toFixed(2)} V`;
+          if (sim.m070_p15_v < 10) readingColor = 'text-red-400';
+          break;
+        case 'M070_P60':
+          readingStr = `${sim.m070_p60_v.toFixed(2)} V`;
+          if (sim.m070_p60_v < 10) readingColor = 'text-red-400';
+          break;
+        case 'M070_P28':
+          if (sim.gndConnected) {
+            readingStr = '0.20 Ω';
+            readingColor = 'text-emerald-400';
+          } else {
+            readingStr = 'OL (無窮大)';
+            readingColor = 'text-red-400';
+          }
+          break;
+        case 'T20_P85':
+          readingStr = `${sim.t20_p85_v.toFixed(2)} V`;
+          if (sim.t20_p85_v < 10) readingColor = 'text-red-400';
+          break;
+      }
+
+      document.getElementById('meterPointCode').textContent = `PROBE: ${probeDef.code}`;
+      document.getElementById('meterModeLabel').textContent = probeDef.mode;
+      const mainDisp = document.getElementById('meterMainDisplay');
+      mainDisp.textContent = readingStr;
+      mainDisp.className = `text-3xl font-bold mono tracking-wider text-right my-1 ${readingColor}`;
+      document.getElementById('meterPointName').textContent = probeDef.name;
+
+      document.getElementById('quickProbeGrid').innerHTML = Object.entries(PROBE_POINTS).map(([k, v]) => {
+        const isSel = state.selectedProbe === k;
+        return `
+          <button onclick="selectProbe('${k}')"
+            class="px-2.5 py-1.5 rounded-lg border text-left truncate mono transition ${
+              isSel
+                ? 'bg-emerald-500/20 border-emerald-400 text-emerald-200 font-bold'
+                : 'bg-slate-950 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+            }">
+            ${v.code}
+          </button>
+        `;
+      }).join('');
+
+      // Live Module Telemetry Overlay
+      document.getElementById('h080StatusBadge').innerHTML = `
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">實車模組即時上線狀態</div>
+        <div class="space-y-1 text-xs">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-slate-300">H080 冷氣面板:</span>
+            <span class="font-bold ${sim.h080BacklightOn ? 'text-emerald-400' : 'text-red-400'}">
+              ${sim.h080BacklightOn ? '● 背光亮起/正常' : '○ 全黑無背光'}
+            </span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-slate-300">M070 空調主機:</span>
+            <span class="font-bold ${sim.m070Alive ? 'text-emerald-400' : 'text-red-400'}">
+              ${sim.m070Alive ? '● CAN-I 上線' : '○ 離線 (U1710-87)'}
+            </span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-slate-300">N085 鼓風機風量:</span>
+            <span class="font-bold ${sim.blowerRunning ? 'text-cyan-300' : 'text-slate-500'}">
+              ${sim.blowerRunning ? '● 正常出風運轉' : '○ 停止無風'}
+            </span>
+          </div>
+        </div>
+      `;
+
+      // Bottom Diagnostic Explanation
+      const currentSc = SCENARIOS.find(s => s.id === state.scenarioId);
+      const activeTitleEl = document.getElementById('activeScenarioTitle');
+      if (activeTitleEl) activeTitleEl.textContent = currentSc.title;
+      const faultBadge = document.getElementById('faultBadge');
+      faultBadge.textContent = currentSc.badge;
+      faultBadge.className = `text-xs font-bold px-2.5 py-0.5 rounded-full border ${currentSc.badgeClass}`;
+
+      document.getElementById('diagnosticConclusion').innerHTML = currentSc.explanation
+        .map(p => `<p class="bg-slate-950/75 border border-slate-800 rounded-xl px-3.5 py-2.5">${p}</p>`)
+        .join('');
+
+      document.getElementById('troubleshootingChecklist').innerHTML = SOP_STEPS.map((item, idx) => {
+        const checked = !!state.checkedSteps[idx];
+        return `
+          <div onclick="toggleSopStep(${idx})" class="cursor-pointer p-3 rounded-xl border transition flex items-start gap-2.5 ${
+            checked ? 'bg-emerald-950/30 border-emerald-500/50' : 'bg-slate-950/75 border-slate-800 hover:border-slate-600'
+          }">
+            <div class="mt-0.5 w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+              checked ? 'bg-emerald-500 border-emerald-400 text-slate-950 font-bold' : 'border-slate-600 bg-slate-900'
+            }">${checked ? '✓' : ''}</div>
+            <div>
+              <div class="font-bold ${checked ? 'text-emerald-300' : 'text-cyan-300'}">
+                <span class="mono mr-1">[${item.step}]</span>${item.title}
+              </div>
+              <div class="text-slate-300 mt-1 leading-relaxed">${item.detail}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      renderSvgSchematic(sim);
+    }
+
+    // =========================================================================
+    // 5. CRISP VECTOR SVG SCHEMATIC RENDERER (1200x760 VIEWBOX, ZERO OVERLAP)
+    // =========================================================================
+    let svgTransform = { scale: 1, tx: 0, ty: 0 };
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+
+    function applySvgTransform() {
+      const vp = document.getElementById('svgViewport');
+      if (vp) {
+        vp.setAttribute('transform', `translate(${svgTransform.tx.toFixed(1)}, ${svgTransform.ty.toFixed(1)}) scale(${svgTransform.scale.toFixed(3)})`);
+      }
+      const lbl = document.getElementById('zoomLevelLabel');
+      if (lbl) lbl.textContent = `${Math.round(svgTransform.scale * 100)}%`;
+    }
+
+    function zoomSvg(factor, centerX = 600, centerY = 380) {
+      const nextScale = Math.min(2.6, Math.max(0.7, svgTransform.scale * factor));
+      const actualFactor = nextScale / svgTransform.scale;
+      svgTransform.tx = centerX - (centerX - svgTransform.tx) * actualFactor;
+      svgTransform.ty = centerY - (centerY - svgTransform.ty) * actualFactor;
+      svgTransform.scale = nextScale;
+      applySvgTransform();
+    }
+
+    function resetSvgView() {
+      svgTransform = { scale: 1, tx: 0, ty: 0 };
+      applySvgTransform();
+    }
+
+    function initSvgPanZoom() {
+      const wrapper = document.getElementById('svgWrapper');
+      const svg = document.getElementById('circuitSvg');
+
+      wrapper.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const rect = svg.getBoundingClientRect();
+        const svgX = ((e.clientX - rect.left) / rect.width) * 1200;
+        const svgY = ((e.clientY - rect.top) / rect.height) * 760;
+        const factor = e.deltaY < 0 ? 1.15 : 0.87;
+        zoomSvg(factor, svgX, svgY);
+      }, { passive: false });
+
+      wrapper.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.svg-probe-node')) return;
+        isPanning = true;
+        panStart = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        const rect = svg.getBoundingClientRect();
+        const dx = ((e.clientX - panStart.x) / rect.width) * 1200;
+        const dy = ((e.clientY - panStart.y) / rect.height) * 760;
+        panStart = { x: e.clientX, y: e.clientY };
+        svgTransform.tx += dx;
+        svgTransform.ty += dy;
+        applySvgTransform();
+      });
+
+      window.addEventListener('mouseup', () => {
+        isPanning = false;
+      });
+    }
+
+    function svgWire(d, color, active, overloaded, dashed = false) {
+      const strokeColor = overloaded ? '#ef4444' : (active ? color : '#334155');
+      const width = overloaded ? 4.5 : (active ? 3.2 : 2.2);
+      const filter = overloaded ? 'url(#glowRed)' : (active ? 'url(#glowEmerald)' : 'none');
+      const dashAttr = dashed ? 'stroke-dasharray="7 5"' : '';
+
+      let out = `<path d="${d}" fill="none" stroke="${strokeColor}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" ${dashAttr} filter="${filter}"/>`;
+
+      if (active || overloaded) {
+        const flowClass = overloaded ? 'wire-flow-overload' : 'wire-flow-normal';
+        const pulseColor = overloaded ? '#fef08a' : '#ffffff';
+        out += `<path d="${d}" fill="none" stroke="${pulseColor}" stroke-width="${overloaded ? 2.5 : 2}" stroke-linecap="round" stroke-linejoin="round" class="${flowClass}"/>`;
+      }
+      return out;
+    }
+
+    function svgBox(x, y, w, h, title, sub1, sub2, borderColor = '#475569', fillColor = '#0f172a') {
+      return `
+        <g>
+          <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="12" fill="${fillColor}" stroke="${borderColor}" stroke-width="2.2"/>
+          <text x="${x + 14}" y="${y + 25}" fill="#f8fafc" font-size="14.5" font-weight="700">${title}</text>
+          ${sub1 ? `<text x="${x + 14}" y="${y + 46}" fill="#cbd5e1" font-size="12" font-weight="500">${sub1}</text>` : ''}
+          ${sub2 ? `<text x="${x + 14}" y="${y + 65}" fill="#94a3b8" font-size="11.5">${sub2}</text>` : ''}
+        </g>
+      `;
+    }
+
+    function svgFuse(x, y, label, rating, blown, overloaded, testLight) {
+      const bg = blown ? '#450a0a' : (overloaded ? '#451a03' : '#1e293b');
+      const stroke = blown ? '#ef4444' : (overloaded ? '#f59e0b' : '#10b981');
+      let elementSvg = '';
+      if (testLight) {
+        elementSvg = `<circle cx="${x}" cy="${y + 17}" r="6" fill="#fbbf24" stroke="#fef08a" stroke-width="1.5"/>`;
+      } else if (blown) {
+        elementSvg = `
+          <line x1="${x - 16}" y1="${y + 17}" x2="${x - 4}" y2="${y + 12}" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="${x + 4}" y1="${y + 21}" x2="${x + 16}" y2="${y + 17}" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+        `;
+      } else {
+        const lineCol = overloaded ? '#f59e0b' : '#34d399';
+        elementSvg = `<path d="M ${x - 16} ${y + 17} C ${x - 6} ${y + 10}, ${x + 6} ${y + 24}, ${x + 16} ${y + 17}" fill="none" stroke="${lineCol}" stroke-width="2.4" stroke-linecap="round"/>`;
+      }
+
+      return `
+        <g>
+          <rect x="${x - 38}" y="${y - 25}" width="76" height="52" rx="9" fill="${bg}" stroke="${stroke}" stroke-width="2.2"/>
+          <text x="${x}" y="${y - 6}" fill="#f8fafc" font-size="13" font-weight="700" text-anchor="middle" class="mono">${label}</text>
+          <text x="${x}" y="${y + 8}" fill="${blown ? '#fca5a5' : '#e2e8f0'}" font-size="11" text-anchor="middle" class="mono">${rating}</text>
+          ${elementSvg}
+        </g>
+      `;
+    }
+
+    function svgConnector(x, y, isUnplugged, label) {
+      if (isUnplugged) {
+        return `
+          <g>
+            <rect x="${x - 24}" y="${y - 12}" width="48" height="24" fill="#060911"/>
+            <path d="M ${x - 16} ${y - 7} L ${x - 5} ${y} L ${x - 16} ${y + 7} M ${x + 16} ${y - 7} L ${x + 5} ${y} L ${x + 16} ${y + 7}" fill="none" stroke="#f59e0b" stroke-width="2.4" stroke-linecap="round"/>
+            <rect x="${x - 24}" y="${y - 28}" width="48" height="16" rx="4" fill="#451a03" stroke="#f59e0b" stroke-width="1.2"/>
+            <text x="${x}" y="${y - 16}" fill="#fcd34d" font-size="10.5" font-weight="700" text-anchor="middle">已拔開</text>
+          </g>
+        `;
+      }
+      return `
+        <g>
+          <rect x="${x - 22}" y="${y - 11}" width="44" height="22" rx="5" fill="#1e293b" stroke="#64748b" stroke-width="1.6"/>
+          <text x="${x}" y="${y + 4}" fill="#f1f5f9" font-size="11" font-weight="700" text-anchor="middle" class="mono">${label}</text>
+        </g>
+      `;
+    }
+
+    function svgProbe(probeKey, x, y, label, labelOffsetY = -14, labelAnchor = 'middle', labelOffsetX = 0) {
+      const selected = state.selectedProbe === probeKey;
+      const rOuter = selected ? 14 : 9.5;
+      const rInner = selected ? 7.5 : 6;
+      const fill = selected ? '#10b981' : '#0f172a';
+      const stroke = selected ? '#a7f3d0' : '#38bdf8';
+      const textFill = selected ? '#6ee7b7' : '#e2e8f0';
+
+      const pillWidth = label.length * 7.5 + 14;
+      const pillX = x + labelOffsetX - (labelAnchor === 'middle' ? pillWidth / 2 : (labelAnchor === 'start' ? 4 : pillWidth - 4));
+
+      return `
+        <g class="svg-probe-node" onclick="selectProbe('${probeKey}')">
+          <circle cx="${x}" cy="${y}" r="18" fill="transparent"/>
+          ${selected ? `<circle cx="${x}" cy="${y}" r="${rOuter}" fill="rgba(16,185,129,0.24)" stroke="#34d399" stroke-width="1.6"/>` : ''}
+          <circle class="probe-ring" cx="${x}" cy="${y}" r="${rInner}" fill="${fill}" stroke="${stroke}" stroke-width="${selected ? 2.8 : 2.2}"/>
+          <rect x="${pillX}" y="${y + labelOffsetY - 12}" width="${pillWidth}" height="16" rx="4" fill="rgba(6,9,17,0.92)" stroke="rgba(51,65,85,0.6)" stroke-width="0.8"/>
+          <text x="${x + labelOffsetX}" y="${y + labelOffsetY}" fill="${textFill}" font-size="11.5" font-weight="700" text-anchor="${labelAnchor}" class="mono">${label}</text>
+        </g>
+      `;
+    }
+
+    function renderSvgSchematic(sim) {
+      const wiresLayer = document.getElementById('svgWiresLayer');
+      const modulesLayer = document.getElementById('svgModulesLayer');
+      const probesLayer = document.getElementById('svgProbesLayer');
+      if (!wiresLayer || !modulesLayer || !probesLayer) return;
+
+      let wires = '';
+      let modules = '';
+      let probes = '';
+
+      // -----------------------------------------------------------------------
+      // TOP ROW: A001/B099 F72 & M001 BCM
+      // -----------------------------------------------------------------------
+      modules += svgBox(26, 24, 225, 80, 'A001 / B099 F72', '電瓶正極 Maxi 70A 主供電', '全車主電源輸入 M001 插頭 A', '#475569', '#0f172a');
+      wires += svgWire('M 251 64 L 300 64', '#ef4444', true, false);
+
+      modules += svgBox(300, 18, 870, 148, 'M001 車身電腦 (BCM) — 右前乘客座腳踏板下方', '內含三顆空調相關保險絲：F51 (7.5A INT)、F31 (7.5A INT/A)、F36 (15A +30常電)', '', '#3b82f6', '#0b1324');
+
+      const intBusBg = state.ignitionOn ? 'rgba(16, 185, 129, 0.16)' : 'rgba(51, 65, 85, 0.25)';
+      const intBusCol = state.ignitionOn ? '#34d399' : '#64748b';
+      modules += `
+        <rect x="320" y="64" width="510" height="24" rx="6" fill="${intBusBg}" stroke="${intBusCol}" stroke-width="1"/>
+        <text x="334" y="80" fill="${intBusCol}" font-size="12" font-weight="700" class="mono">${state.ignitionOn ? 'INT 點火控制匯流排 (12.5V ON)' : 'INT 點火控制匯流排 (0V OFF)'}</text>
+        <rect x="850" y="64" width="295" height="24" rx="6" fill="rgba(239, 68, 68, 0.16)" stroke="#f87171" stroke-width="1"/>
+        <text x="864" y="80" fill="#fca5a5" font-size="12" font-weight="700" class="mono">+30 蓄電池常電匯流排 (12.5V)</text>
+      `;
+
+      modules += svgFuse(480, 124, 'F51', '7.5A INT', state.f51Blown, sim.f51Overloaded && !state.f51Blown && !state.testLightActive, state.testLightActive);
+      modules += svgFuse(730, 124, 'F31', '7.5A INT/A', state.f31Blown, false, false);
+      modules += svgFuse(990, 124, 'F36', '15A +30', state.f36Blown, false, false);
+
+      // -----------------------------------------------------------------------
+      // F51 (7.5A) DISTRIBUTION RAIL & THREE PARALLEL BRANCHES (A, B, C)
+      // -----------------------------------------------------------------------
+      const f51OutActive = sim.f51HasPower || (state.testLightActive && state.ignitionOn);
+      const f51OutOverload = sim.f51Overloaded && state.ignitionOn;
+
+      wires += svgWire('M 480 151 L 480 212', '#38bdf8', f51OutActive, f51OutOverload);
+      wires += svgWire('M 140 212 L 625 212', '#38bdf8', f51OutActive, f51OutOverload);
+
+      // Branch A (x = 140): K003 Defogger Sensor
+      const brAOver = sim.k003FaultActive && state.ignitionOn;
+      const brAActive = f51OutActive && !state.unplugged.K003;
+      wires += svgWire('M 140 212 L 140 322', '#38bdf8', brAActive, brAOver);
+      modules += svgBox(26, 322, 232, 90, 'K003 除霧感知器 (車頂)', 'Pin 3 (LB 藍/白) • F51 分支 A', '延遲過載燒毀頭號嫌疑', sim.k003FaultActive ? '#ef4444' : '#475569', '#0f172a');
+      modules += svgConnector(140, 270, state.unplugged.K003, 'D278');
+
+      // Branch B (x = 385): K064 AQS & E7074 DNA
+      const brBOver = sim.k064FaultActive && state.ignitionOn;
+      const brBActive = f51OutActive && !state.unplugged.K064 && !state.unplugged.D008A;
+      wires += svgWire('M 385 212 L 385 322', '#60a5fa', brBActive, brBOver);
+      modules += svgBox(278, 322, 222, 90, 'K064 廢氣感知器 (AQS)', 'M001 C18(L) → D008 A12(VB)', '與 E7074 DNA 旋鈕並聯負載', sim.k064FaultActive ? '#ef4444' : '#475569', '#0f172a');
+      modules += svgConnector(385, 270, state.unplugged.K064 || state.unplugged.D008A, 'D008 A12');
+
+      // Branch C (x = 625): D008 A15 -> M070 Pin 60 & H080 Pin 2 (+15)
+      const brCActive = (sim.h080_p2_v > 10.5);
+      wires += svgWire('M 625 212 L 625 452', '#f472b6', brCActive, false);
+      wires += svgWire('M 625 452 L 745 452 L 745 525', '#f472b6', brCActive, false);
+      wires += svgWire('M 625 452 L 395 452 L 395 588', '#f472b6', brCActive && !state.unplugged.H080, false);
+
+      // -----------------------------------------------------------------------
+      // F31 (7.5A) -> B045 TRUNK RELAY T20 -> N085 BLOWER
+      // -----------------------------------------------------------------------
+      wires += svgWire('M 730 151 L 730 232 L 1065 232 L 1065 316', '#94a3b8', sim.f31HasPower, false);
+      modules += svgBox(955, 316, 215, 96, 'B045 行李廂盒 / T20', sim.blowerRunning ? '繼電器吸合 → N085 運轉' : '繼電器斷開 → 鼓風機無風', '由 F31 (7.5A) 獨立控制', sim.f31HasPower ? '#10b981' : '#ef4444', '#0f172a');
+
+      // -----------------------------------------------------------------------
+      // F36 (15A +30) -> D008 A5 -> M070 Pin 15 & H080 Pin 1
+      // -----------------------------------------------------------------------
+      const f36Active = (sim.m070_p15_v > 10.5);
+      wires += svgWire('M 990 151 L 990 258 L 855 258 L 855 426', '#fbbf24', f36Active, false);
+      wires += svgWire('M 855 426 L 855 525', '#fbbf24', f36Active, false);
+      wires += svgWire('M 855 426 L 315 426 L 315 588', '#fbbf24', f36Active && !state.unplugged.H080, false);
+
+      // -----------------------------------------------------------------------
+      // D008 CONNECTOR A CENTRAL JUNCTION BAR
+      // -----------------------------------------------------------------------
+      const d008Fill = state.unplugged.D008A ? 'rgba(245, 158, 11, 0.24)' : 'rgba(30, 41, 59, 0.94)';
+      const d008Stroke = state.unplugged.D008A ? '#f59e0b' : '#64748b';
+      modules += `
+        <g>
+          <rect x="580" y="346" width="315" height="40" rx="8" fill="${d008Fill}" stroke="${d008Stroke}" stroke-width="1.8" stroke-dasharray="5 3"/>
+          <text x="737" y="370" fill="${state.unplugged.D008A ? '#fcd34d' : '#f1f5f9'}" font-size="12" font-weight="700" text-anchor="middle">
+            ${state.unplugged.D008A ? '⚠️ D008 插頭 A 已拔開 (電源與地線全斷路)' : 'D008 插頭 A (A15:+15 / A5:+30 / A11:共用地線)'}
+          </text>
+        </g>
+      `;
+
+      // -----------------------------------------------------------------------
+      // BOTTOM LEFT: H080 CLIMATE CONTROL PANEL (80PX PIN SPACING!)
+      // -----------------------------------------------------------------------
+      modules += svgBox(280, 588, 315, 112, 'H080 中控冷氣控制面板 (4-Pin)', sim.h080BacklightOn ? '狀態：背光亮起 • 按鍵/旋鈕正常' : '狀態：全黑無背光 • 完全無反應', '線色：GR(+30) / SV(+15) / LV(LIN) / NZ(GND)', sim.h080BacklightOn ? '#10b981' : '#ef4444', '#0b1324');
+      modules += svgConnector(437, 700, state.unplugged.H080, 'H080 4P');
+
+      // LIN 9 Wire between M070 Pin 12 (x=695, y=525) and H080 Pin 3 (x=475, y=588)
+      wires += svgWire('M 695 525 L 695 496 L 475 496 L 475 588', '#38bdf8', sim.m070Alive && !state.unplugged.H080, false, true);
+
+      // -----------------------------------------------------------------------
+      // BOTTOM RIGHT: M070 HVAC ECU & SHARED GROUND C011 B
+      // -----------------------------------------------------------------------
+      modules += svgBox(665, 525, 290, 108, 'M070 空調控制單元 (ECU)', sim.m070Alive ? 'CAN-I 總線通訊正常 (上線)' : '無法讀取 (BCM 報 U1710-87)', 'Pin 15(+30) / Pin 60(+15) / Pin 28(GND)', sim.m070Alive ? '#10b981' : '#ef4444', '#0b1324');
+
+      // Shared Ground NZ Wire (FIXED: exact scenario ID 'gnd_open_c011')
+      const gndBaseActive = !state.unplugged.D008A && (state.scenarioId !== 'gnd_open_c011');
+      wires += svgWire('M 555 588 L 555 554 L 620 554 L 620 676 L 895 676', '#a855f7', gndBaseActive && !state.unplugged.H080, false);
+      wires += svgWire('M 895 633 L 895 724', '#a855f7', gndBaseActive, false);
+
+      // Ground Symbol C011 B
+      const gndCol = gndBaseActive ? '#a855f7' : '#ef4444';
+      modules += `
+        <g>
+          <line x1="878" y1="724" x2="912" y2="724" stroke="${gndCol}" stroke-width="2.6" stroke-linecap="round"/>
+          <line x1="884" y1="731" x2="906" y2="731" stroke="${gndCol}" stroke-width="2.6" stroke-linecap="round"/>
+          <line x1="890" y1="738" x2="900" y2="738" stroke="${gndCol}" stroke-width="2.6" stroke-linecap="round"/>
+          <text x="920" y="730" fill="${gndBaseActive ? '#d8b4fe' : '#fca5a5'}" font-size="12" font-weight="700" class="mono">
+            ${gndBaseActive ? 'C011 B 右前搭鐵 (正常 <0.5Ω)' : 'C011 B 右前搭鐵 (斷路 OL!)'}
+          </text>
+        </g>
+      `;
+
+      // Jumper Ground Wire visualization
+      if (state.gndJumper) {
+        wires += svgWire('M 620 676 L 245 676 L 245 724', '#e879f9', true, false, true);
+        modules += `
+          <line x1="230" y1="724" x2="260" y2="724" stroke="#e879f9" stroke-width="2.6"/>
+          <line x1="236" y1="731" x2="254" y2="731" stroke="#e879f9" stroke-width="2.6"/>
+          <text x="220" y="730" fill="#f0abfc" font-size="11.5" font-weight="700" text-anchor="end">⚡ 飛線跨接車身搭鐵 (已導通)</text>
+        `;
+      }
+
+      // -----------------------------------------------------------------------
+      // CLICKABLE MULTIMETER TEST PROBES (ZERO OVERLAP SPACING)
+      // -----------------------------------------------------------------------
+      probes += svgProbe('F51_OUT', 480, 182, 'F51輸出', -13, 'end', -12);
+      probes += svgProbe('F31_OUT', 730, 182, 'F31輸出', -13, 'start', 12);
+      probes += svgProbe('F36_OUT', 990, 182, 'F36輸出', -13, 'start', 12);
+
+      // H080 4 Pins spaced 80px apart (315, 395, 475, 555) with staggered vertical labels
+      probes += svgProbe('H080_P1', 315, 588, 'P1(+30)', -15, 'middle', 0);
+      probes += svgProbe('H080_P2', 395, 588, 'P2(+15)', -32, 'middle', 0);
+      probes += svgProbe('H080_P3', 475, 588, 'P3(LIN)', -15, 'middle', 0);
+      probes += svgProbe('H080_P4', 555, 588, 'P4(GND)', -32, 'middle', 0);
+
+      // M070 Pins clearly separated
+      probes += svgProbe('M070_P60', 745, 525, 'P60(+15)', -15, 'middle', 0);
+      probes += svgProbe('M070_P15', 855, 525, 'P15(+30)', -15, 'middle', 0);
+      probes += svgProbe('M070_P28', 895, 633, 'P28(GND)', 18, 'start', 12);
+
+      // B045 T20 #85 clearly separated above B045 box
+      probes += svgProbe('T20_P85', 1065, 316, 'T20 #85', -15, 'middle', 0);
+
+      wiresLayer.innerHTML = wires;
+      modulesLayer.innerHTML = modules;
+      probesLayer.innerHTML = probes;
+    }
+
+    // =========================================================================
+    // 6. MAIN ANIMATION & THERMAL FUSE-BLOW SIMULATION LOOP
+    // =========================================================================
+    let lastTime = performance.now();
+    function animationLoop(now) {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      const sim = computeCircuitState();
+
+      if (state.ignitionOn && !state.f51Blown && !state.testLightActive && sim.f51Overloaded) {
+        state.f51Heat += dt * 26;
+        if (state.f51Heat >= 100) {
+          state.f51Heat = 100;
+          state.f51Blown = true;
+        }
+        renderAllUI();
+      } else if (!sim.f51Overloaded && state.f51Heat > 0 && !state.f51Blown) {
+        state.f51Heat = Math.max(0, state.f51Heat - dt * 35);
+        renderAllUI();
+      }
+
+      requestAnimationFrame(animationLoop);
+    }
+
+    window.onload = function () {
+      initSvgPanZoom();
+      selectScenario('f51_delayed_k003');
+      requestAnimationFrame(animationLoop);
+    };
+  </script>
+</body>
+</html>
